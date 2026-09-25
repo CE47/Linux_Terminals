@@ -1,0 +1,1140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Learn grep — Visual Linux</title>
+<style>
+/* ============ TOKENS ============ */
+:root{
+  --bg:#0a0714;
+  --txt:#ece9f8;
+  --dim:#948fb4;
+  --accent:#a78bfa;
+  --green:#4ade80;
+  --mark:#fbbf24;
+  --err:#fb7185;
+  --line:rgba(255,255,255,.11);
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;min-height:100dvh;
+  font-family:var(--mono);color:var(--txt);
+  background:#0a0714;overflow-x:hidden;
+  -webkit-font-smoothing:antialiased;
+}
+body::before{
+  content:'';position:fixed;inset:0;z-index:-2;
+  background:
+    radial-gradient(900px 620px at 8% -12%, rgba(167,139,250,.20), transparent 62%),
+    radial-gradient(820px 620px at 100% 4%, rgba(251,191,36,.10), transparent 58%),
+    radial-gradient(760px 700px at 46% 118%, rgba(74,222,128,.09), transparent 62%),
+    #0a0714;
+}
+body::after{
+  content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;
+  background-image:
+    linear-gradient(rgba(255,255,255,.026) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.026) 1px, transparent 1px);
+  background-size:46px 46px;
+  -webkit-mask-image:radial-gradient(ellipse at 50% 0%, #000 15%, transparent 72%);
+  mask-image:radial-gradient(ellipse at 50% 0%, #000 15%, transparent 72%);
+}
+
+/* ============ LAYOUT ============ */
+.app{
+  max-width:1320px;margin:0 auto;min-height:100dvh;
+  display:flex;flex-direction:column;
+  padding:14px 16px 16px;gap:11px;
+}
+
+/* ---- header ---- */
+.top{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:11px}
+.logo{
+  width:38px;height:38px;flex:0 0 auto;border-radius:11px;
+  display:grid;place-items:center;position:relative;
+  font-size:19px;font-weight:700;color:#160b2e;
+  background:linear-gradient(150deg,#ddd6fe,#a78bfa 45%,#7c3aed);
+  box-shadow:0 8px 22px -8px rgba(167,139,250,.95), inset 0 1px 0 rgba(255,255,255,.6);
+  animation:logoPulse 3.2s ease-in-out infinite;
+}
+@keyframes logoPulse{
+  0%,100%{box-shadow:0 8px 22px -8px rgba(167,139,250,.95), inset 0 1px 0 rgba(255,255,255,.6)}
+  50%{box-shadow:0 8px 34px -6px rgba(167,139,250,1), inset 0 1px 0 rgba(255,255,255,.6)}
+}
+.brand h1{margin:0;font-size:16px;letter-spacing:.01em;font-weight:700}
+.brand h1 code{
+  background:rgba(167,139,250,.18);color:#c4b5fd;
+  padding:1px 7px;border-radius:6px;border:1px solid rgba(167,139,250,.3);
+}
+.brand p{margin:2px 0 0;font-size:11.5px;color:var(--dim)}
+.steps{display:flex;gap:7px;align-items:center}
+.steps i{
+  width:9px;height:9px;border-radius:50%;display:block;
+  background:rgba(255,255,255,.13);
+  transition:all .45s cubic-bezier(.34,1.56,.64,1);
+}
+.steps i.done{
+  background:var(--green);
+  box-shadow:0 0 0 4px rgba(74,222,128,.15), 0 0 14px rgba(74,222,128,.7);
+  transform:scale(1.15);
+}
+
+/* ---- mission bar ---- */
+.mission{
+  display:flex;align-items:center;gap:12px;
+  padding:10px 13px;border-radius:14px;
+  background:linear-gradient(90deg, rgba(167,139,250,.13), rgba(167,139,250,.02));
+  border:1px solid rgba(167,139,250,.24);
+  transition:background .35s, border-color .35s, transform .35s, box-shadow .35s;
+}
+.mission.complete{
+  background:linear-gradient(90deg, rgba(74,222,128,.24), rgba(74,222,128,.05));
+  border-color:rgba(74,222,128,.55);
+  transform:scale(1.012);
+  box-shadow:0 0 30px -8px rgba(74,222,128,.5);
+}
+.badge{
+  font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;
+  padding:5px 9px;border-radius:999px;white-space:nowrap;
+  background:rgba(167,139,250,.18);color:#c4b5fd;border:1px solid rgba(167,139,250,.32);
+  transition:all .3s;
+}
+.mission.complete .badge{background:rgba(74,222,128,.2);color:#86efac;border-color:rgba(74,222,128,.45)}
+.mission-text{flex:1;font-size:13px;line-height:1.4;min-width:0}
+.mission-text b{color:#c4b5fd}
+.mission.complete .mission-text b{color:#86efac}
+.hint-btn{
+  font:inherit;font-size:11px;color:var(--dim);cursor:pointer;
+  background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);
+  padding:6px 11px;border-radius:9px;white-space:nowrap;transition:.2s;
+}
+.hint-btn:hover{color:var(--txt);background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.24)}
+.hint{
+  max-height:0;overflow:hidden;opacity:0;
+  font-size:12.5px;color:var(--dim);
+  padding:0 14px;border-radius:12px;
+  transition:max-height .3s ease, opacity .3s ease, padding .3s ease, background .3s;
+}
+.hint.show{max-height:80px;opacity:1;padding:9px 14px;background:rgba(255,255,255,.035)}
+.hint code{color:#fde68a;background:rgba(251,191,36,.13);padding:1px 6px;border-radius:5px}
+
+/* ---- main grid ---- */
+main{
+  flex:1;min-height:0;display:grid;
+  grid-template-columns:minmax(0,1.12fr) minmax(0,1fr);
+  gap:13px;
+}
+.panel{
+  background:linear-gradient(180deg, rgba(255,255,255,.048), rgba(255,255,255,.014));
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:17px;padding:12px;
+  display:flex;flex-direction:column;min-height:0;
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  box-shadow:0 22px 44px -24px rgba(0,0,0,.9), inset 0 1px 0 rgba(255,255,255,.055);
+}
+.panel-head{display:flex;align-items:center;gap:9px;padding:1px 4px 10px}
+.title{font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:var(--dim);font-weight:700}
+.dots{display:flex;gap:5px;margin-right:2px}
+.dots i{width:9px;height:9px;border-radius:50%;display:block}
+.dots i:nth-child(1){background:#fb7185}
+.dots i:nth-child(2){background:#fbbf24}
+.dots i:nth-child(3){background:#4ade80}
+
+/* ---- match counter ---- */
+.counter{
+  margin-left:auto;display:flex;align-items:center;gap:5px;
+  font-size:10.5px;letter-spacing:.04em;
+  color:#fde68a;
+  padding:4px 10px;border-radius:99px;
+  background:rgba(251,191,36,.11);
+  border:1px solid rgba(251,191,36,.24);
+  transition:background .3s, border-color .3s, color .3s;
+}
+.counter b{font-size:12.5px;color:var(--mark);min-width:9px;text-align:center}
+.counter.zero{background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.1);color:var(--dim)}
+.counter.zero b{color:var(--dim)}
+.counter.pop{animation:counterPop .55s cubic-bezier(.34,1.56,.64,1)}
+@keyframes counterPop{
+  0%{transform:scale(1)}
+  40%{transform:scale(1.22);box-shadow:0 0 24px rgba(251,191,36,.55)}
+  100%{transform:scale(1)}
+}
+
+/* ============ FILE CARDS ============ */
+.files{
+  flex:1;min-height:0;overflow-y:auto;
+  padding:2px 2px 8px;
+  scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.16) transparent;
+  -webkit-overflow-scrolling:touch;
+}
+.files::-webkit-scrollbar{width:8px}
+.files::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:99px}
+.files::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.26)}
+
+.file-card{
+  position:relative;border-radius:14px;overflow:hidden;
+  background:rgba(0,0,0,.32);
+  border:1px solid rgba(255,255,255,.07);
+  margin-bottom:11px;
+  animation:cardIn .5s cubic-bezier(.34,1.4,.64,1) backwards;
+}
+.file-card:last-child{margin-bottom:0}
+@keyframes cardIn{from{opacity:0;transform:translateY(9px) scale(.98)}}
+
+.file-head{
+  display:flex;align-items:center;gap:8px;
+  padding:9px 12px;position:relative;z-index:4;
+  background:linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,.018));
+  border-bottom:1px solid rgba(255,255,255,.06);
+}
+.file-icon{
+  width:13px;height:16px;flex:0 0 auto;border-radius:2px 4px 2px 2px;
+  background:linear-gradient(180deg,#c4b5fd,#8b5cf6);
+  box-shadow:0 2px 9px rgba(139,92,246,.4);
+  position:relative;
+}
+.file-icon::before{
+  content:'';position:absolute;top:0;right:0;
+  border-width:0 5px 5px 0;border-style:solid;
+  border-color:transparent rgba(255,255,255,.5) transparent transparent;
+}
+.file-name{font-size:12.5px;color:#ddd6fe;font-weight:600}
+.file-count{
+  margin-left:auto;font-size:10px;letter-spacing:.04em;
+  color:var(--mark);background:rgba(251,191,36,.13);
+  border:1px solid rgba(251,191,36,.26);
+  padding:2px 8px;border-radius:99px;
+  opacity:0;transform:scale(.85);
+  transition:opacity .3s, transform .3s cubic-bezier(.34,1.56,.64,1);
+}
+.file-count:not(:empty){opacity:1;transform:scale(1)}
+
+.file-body{position:relative;padding:5px 0}
+
+.f-line{
+  display:flex;gap:10px;align-items:baseline;
+  padding:3px 12px 3px 9px;
+  font-size:12.5px;line-height:1.55;
+  border-left:3px solid transparent;
+  transition:background .35s, opacity .35s, border-color .35s;
+}
+.f-line .ln{
+  color:rgba(148,143,180,.38);
+  min-width:18px;text-align:right;flex:0 0 auto;
+  user-select:none;font-size:11.5px;
+  transition:color .35s;
+}
+.f-line .tx{color:#8b93a8;word-break:break-word;min-width:0;transition:color .35s}
+
+.f-line.dim{opacity:.18}
+.f-line.hit{
+  border-left-color:rgba(251,191,36,.8);
+  background:linear-gradient(90deg,rgba(251,191,36,.13),rgba(251,191,36,.02));
+  animation:hitPop .5s cubic-bezier(.34,1.56,.64,1) backwards;
+}
+@keyframes hitPop{
+  0%{background:rgba(251,191,36,.5);transform:translateX(-7px);opacity:.15}
+  100%{background:linear-gradient(90deg,rgba(251,191,36,.13),rgba(251,191,36,.02));transform:none;opacity:1}
+}
+.f-line.hit .tx{color:#f1f5f9}
+.f-line.hit .ln{color:var(--mark)}
+
+/* scanner sweep */
+.scan-bar{
+  position:absolute;left:0;right:0;height:30px;top:-30px;
+  background:linear-gradient(180deg,
+    transparent 0%,
+    rgba(167,139,250,.10) 28%,
+    rgba(167,139,250,.32) 50%,
+    rgba(167,139,250,.10) 72%,
+    transparent 100%);
+  border-top:1px solid rgba(167,139,250,.6);
+  border-bottom:1px solid rgba(167,139,250,.6);
+  pointer-events:none;z-index:3;
+  animation:scanDown .62s cubic-bezier(.45,.05,.55,.95) forwards;
+}
+@keyframes scanDown{
+  0%{top:-30px;opacity:0}
+  12%{opacity:1}
+  88%{opacity:1}
+  100%{top:100%;opacity:0}
+}
+
+/* highlighter */
+mark{
+  background:rgba(251,191,36,.26);
+  color:#fde68a;font-weight:600;
+  border-radius:4px;padding:0 3px;
+  box-shadow:inset 0 -2px 0 rgba(251,191,36,.35);
+  animation:markPop .6s ease-out;
+}
+@keyframes markPop{
+  0%{background:rgba(251,191,36,.95);color:#1c1206;box-shadow:0 0 0 5px rgba(251,191,36,.3)}
+  100%{background:rgba(251,191,36,.26);color:#fde68a;box-shadow:0 0 0 0 rgba(251,191,36,0)}
+}
+
+/* ============ TERMINAL ============ */
+.term{
+  flex:1;min-height:0;overflow-y:auto;
+  padding:12px 13px;border-radius:12px;
+  background:rgba(0,0,0,.36);
+  border:1px solid rgba(255,255,255,.055);
+  font-size:12.5px;line-height:1.75;
+  scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.16) transparent;
+}
+.term::-webkit-scrollbar{width:8px}
+.term::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:99px}
+.line{white-space:pre-wrap;word-break:break-word;animation:lineIn .22s ease-out}
+@keyframes lineIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+
+.line .p{color:var(--green);opacity:.9}
+.line .c{color:#f8fafc;font-weight:600}
+.line.err{color:var(--err)}
+.line .d{color:#c4b5fd;font-weight:600}
+.line .ln-out{color:rgba(148,143,180,.6)}
+.line .dim{color:var(--dim)}
+.line .ok{color:#86efac}
+.line .hl{color:#c4b5fd;font-weight:700}
+.line .code{color:#fde68a;background:rgba(251,191,36,.11);padding:1px 7px;border-radius:6px;border:1px solid rgba(251,191,36,.2)}
+
+.line.tip{
+  margin-top:5px;padding:7px 11px;border-radius:9px;
+  background:rgba(167,139,250,.09);
+  border-left:3px solid rgba(167,139,250,.5);
+  color:#c4b5fd;font-size:11.5px;line-height:1.6;
+}
+.line.tip b{color:#ddd6fe}
+.line.tip code{color:#fde68a;background:rgba(251,191,36,.12);padding:0 5px;border-radius:5px}
+
+/* ---- chips ---- */
+.chips{display:flex;gap:7px;overflow-x:auto;padding:10px 1px 2px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{
+  font:inherit;font-size:11.5px;white-space:nowrap;cursor:pointer;
+  padding:6px 11px;border-radius:9px;color:#c4b5fd;
+  background:rgba(167,139,250,.1);
+  border:1px solid rgba(167,139,250,.24);
+  transition:.18s;-webkit-tap-highlight-color:transparent;
+}
+.chip:hover{background:rgba(167,139,250,.24);color:#e9e3ff;transform:translateY(-1px)}
+.chip:active{transform:translateY(0) scale(.96)}
+
+/* ---- input ---- */
+.input-row{
+  display:flex;align-items:center;gap:8px;margin-top:9px;
+  padding:9px 10px;border-radius:12px;
+  background:rgba(0,0,0,.42);
+  border:1px solid rgba(167,139,250,.26);
+  transition:border-color .2s, box-shadow .2s;
+}
+.input-row:focus-within{
+  border-color:rgba(167,139,250,.75);
+  box-shadow:0 0 0 3px rgba(167,139,250,.13);
+}
+.input-row.shake{animation:shake .4s}
+@keyframes shake{
+  10%,90%{transform:translateX(-2px)}
+  20%,80%{transform:translateX(4px)}
+  30%,50%,70%{transform:translateX(-6px)}
+  40%,60%{transform:translateX(6px)}
+}
+.ps1{font-size:12.5px;color:var(--green);white-space:nowrap;flex:0 1 auto;overflow:hidden;text-overflow:ellipsis}
+.ps1 .ps-user{opacity:.8}
+.input-row input{
+  flex:1;min-width:40px;background:none;border:none;outline:none;
+  color:#f1f5f9;font:inherit;font-size:13px;padding:0;
+}
+.input-row input::placeholder{color:rgba(148,143,180,.5)}
+.send{
+  font:inherit;font-size:14px;line-height:1;cursor:pointer;
+  width:30px;height:30px;flex:0 0 auto;border-radius:9px;
+  color:#160b2e;background:linear-gradient(150deg,#ddd6fe,#a78bfa);
+  border:none;display:grid;place-items:center;transition:.18s;
+  box-shadow:0 4px 14px -4px rgba(167,139,250,.85);
+}
+.send:hover{transform:translateY(-1px);box-shadow:0 6px 18px -4px rgba(167,139,250,1)}
+.send:active{transform:scale(.93)}
+
+/* ---- confetti ---- */
+.confetti{
+  position:fixed;top:-14px;width:8px;height:13px;border-radius:2px;
+  z-index:999;pointer-events:none;animation:fall linear forwards;
+}
+@keyframes fall{to{transform:translateY(108vh) rotate(var(--rot,360deg));opacity:.05}}
+
+/* ============ RESPONSIVE ============ */
+@media (min-width:901px){
+  .term{
+    flex:0 0 clamp(240px,42vh,420px);
+    overflow-y:auto;
+  }
+}
+@media (max-width:900px){
+  .app{padding:12px 12px 16px;gap:10px}
+  main{grid-template-columns:1fr;grid-template-rows:auto auto;flex:none}
+  .files-panel{max-height:50vh}
+  .files{max-height:36vh}
+  .term{min-height:132px;max-height:30vh}
+  .brand h1{font-size:15px}
+  .brand p{display:none}
+  .mission-text{font-size:12.5px}
+  .ps1 .ps-user{display:none}
+}
+@media (max-width:420px){
+  .logo{width:34px;height:34px;font-size:17px}
+  .badge{font-size:9px;padding:4px 7px}
+  .mission{gap:8px;padding:9px 11px}
+  .hint-btn{padding:5px 9px;font-size:10.5px}
+  .f-line{font-size:12px;padding:3px 10px 3px 8px}
+  .files-panel{max-height:46vh}
+  .files{max-height:32vh}
+}
+@media (prefers-reduced-motion:reduce){
+  *{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header class="top">
+    <div class="brand">
+      <div class="logo">⌕</div>
+      <div>
+        <h1>Learn <code>grep</code></h1>
+        <p>Find needles in haystacks — no experience needed.</p>
+      </div>
+    </div>
+    <div class="steps" id="steps"></div>
+  </header>
+
+  <div class="mission" id="mission">
+    <span class="badge" id="missionBadge">Mission 1 / 6</span>
+    <span class="mission-text" id="missionText">Loading…</span>
+    <button class="hint-btn" id="hintBtn" type="button">Hint</button>
+  </div>
+  <div class="hint" id="hintBar"></div>
+
+  <main>
+    <section class="panel files-panel">
+      <div class="panel-head">
+        <span class="dots"><i></i><i></i><i></i></span>
+        <span class="title">Files</span>
+        <span class="counter zero" id="counter"><b id="countNum">0</b> matches</span>
+      </div>
+      <div class="files" id="files"></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <span class="title">Terminal</span>
+      </div>
+      <div class="term" id="term"></div>
+      <div class="chips" id="chips"></div>
+      <form class="input-row" id="form" autocomplete="off">
+        <span class="ps1"><span class="ps-user">you@linux:~/logs</span><span id="psPath"></span>$</span>
+        <input id="cmd" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="type a command…">
+        <button class="send" type="submit" aria-label="Run command">↵</button>
+      </form>
+    </section>
+  </main>
+</div>
+
+<script>
+/* ==================================================================
+   1. THE FILES
+   ================================================================== */
+const FILES = {
+  'server.log': [
+    '2024-05-01 10:02:11 INFO  server started on port 8080',
+    '2024-05-01 10:02:12 INFO  connected to database',
+    '2024-05-01 10:03:45 ERROR failed to load config file',
+    '2024-05-01 10:03:46 WARN  retrying connection in 5s',
+    '2024-05-01 10:04:02 INFO  user alice logged in',
+    '2024-05-01 10:05:19 ERROR timeout on payment service',
+    '2024-05-01 10:06:00 INFO  cache warmed successfully',
+    '2024-05-01 10:07:31 WARN  slow query detected (2.4s)',
+    '2024-05-01 10:08:12 ERROR disk space low on /var',
+    '2024-05-01 10:09:55 INFO  user bob logged in',
+    '2024-05-01 10:10:03 ERROR failed login attempt from 10.0.0.4',
+    '2024-05-01 10:11:20 INFO  server shutting down'
+  ],
+  'notes.txt': [
+    'remember to check the ERROR logs first',
+    'buy milk and eggs',
+    'the backup script failed again last night',
+    'ERROR: disk was full during the sync'
+  ]
+};
+
+const esc = s => String(s).replace(/[&<>"']/g,
+  c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+
+/* ==================================================================
+   2. DOM
+   ================================================================== */
+const filesEl   = document.getElementById('files');
+const term      = document.getElementById('term');
+const chips     = document.getElementById('chips');
+const form      = document.getElementById('form');
+const input     = document.getElementById('cmd');
+const stepsEl   = document.getElementById('steps');
+const missionEl = document.getElementById('mission');
+const missionBadge = document.getElementById('missionBadge');
+const missionText  = document.getElementById('missionText');
+const hintBtn   = document.getElementById('hintBtn');
+const hintBar   = document.getElementById('hintBar');
+const counterEl = document.getElementById('counter');
+const countNum  = document.getElementById('countNum');
+
+const PS = 'you@linux:~/logs';
+
+/* ==================================================================
+   3. TEXT HELPERS
+   ================================================================== */
+function makeRegex(pattern, ignoreCase) {
+  try { return new RegExp(pattern, ignoreCase ? 'gi' : 'g'); }
+  catch (e) { return null; }
+}
+
+/* wrap matches in <mark> */
+function highlight(text, pattern, flags) {
+  const re = makeRegex(pattern, flags.i);   // was: makeRegex(pattern, flags)
+  if (!re) return esc(text);
+  let out = '', last = 0, m, guard = 0;
+  while ((m = re.exec(text)) !== null && guard++ < 300) {
+    if (m[0] === '') { re.lastIndex++; continue; }
+    out += esc(text.slice(last, m.index));
+    out += '<mark>' + esc(m[0]) + '</mark>';
+    last = m.index + m[0].length;
+  }
+  out += esc(text.slice(last));
+  return out;
+}
+
+/* ==================================================================
+   4. FILE RENDERING
+   ================================================================== */
+function renderFiles(names) {
+  filesEl.innerHTML = '';
+  names.forEach((fn, ci) => {
+    const card = document.createElement('div');
+    card.className = 'file-card';
+    card.dataset.file = fn;
+    card.style.animationDelay = (ci * 70) + 'ms';
+
+    const head = document.createElement('div');
+    head.className = 'file-head';
+    head.innerHTML =
+      '<span class="file-icon"></span>' +
+      '<span class="file-name">' + esc(fn) + '</span>' +
+      '<span class="file-count"></span>';
+    card.appendChild(head);
+
+    const body = document.createElement('div');
+    body.className = 'file-body';
+
+    FILES[fn].forEach((text, i) => {
+      const line = document.createElement('div');
+      line.className = 'f-line';
+      line.innerHTML =
+        '<span class="ln">' + (i + 1) + '</span>' +
+        '<span class="tx">' + esc(text) + '</span>';
+      body.appendChild(line);
+    });
+
+    card.appendChild(body);
+    filesEl.appendChild(card);
+  });
+}
+
+function animateScan(cards) {
+  return new Promise(resolve => {
+    if (!cards.length) return resolve();
+    let maxDelay = 0;
+    cards.forEach((card, i) => {
+      const body = card.querySelector('.file-body');
+      if (!body) return;
+      const bar = document.createElement('div');
+      bar.className = 'scan-bar';
+      const delay = i * 130;
+      bar.style.animationDelay = delay + 'ms';
+      body.appendChild(bar);
+      maxDelay = Math.max(maxDelay, delay);
+      setTimeout(() => bar.remove(), 760 + delay);
+    });
+    setTimeout(resolve, 600 + maxDelay);
+  });
+}
+
+function paint(perFile, pattern, flags) {
+  Object.keys(perFile).forEach(fn => {
+    const card = filesEl.querySelector('.file-card[data-file="' + fn + '"]');
+    if (!card) return;
+    const hits = new Set(perFile[fn]);
+    const lines = card.querySelectorAll('.f-line');
+    let k = 0;
+
+    lines.forEach((line, i) => {
+      if (hits.has(i)) {
+        line.classList.add('hit');
+        line.style.animationDelay = (k++ * 55) + 'ms';
+        if (!flags.v) {
+          line.querySelector('.tx').innerHTML =
+            highlight(FILES[fn][i], pattern, flags);
+        }
+      } else {
+        line.classList.add('dim');
+      }
+    });
+
+    const badge = card.querySelector('.file-count');
+    const n = perFile[fn].length;
+    badge.textContent = n ? n + (n === 1 ? ' hit' : ' hits') : '';
+  });
+}
+
+function updateCounter(n) {
+  const from = parseInt(countNum.textContent, 10) || 0;
+  const t0 = performance.now(), dur = 440;
+  (function step(t) {
+    const p = Math.min(1, (t - t0) / dur);
+    const e = 1 - Math.pow(1 - p, 3);
+    countNum.textContent = Math.round(from + (n - from) * e);
+    if (p < 1) requestAnimationFrame(step);
+  })(t0);
+
+  counterEl.classList.toggle('zero', n === 0);
+  counterEl.classList.remove('pop');
+  void counterEl.offsetWidth;
+  counterEl.classList.add('pop');
+}
+
+/* ==================================================================
+   5. GREP ENGINE
+   ================================================================== */
+function parseGrep(args) {
+  const flags = { i:false, n:false, c:false, v:false, r:false };
+  let pattern = null;
+  const files = [];
+  let dd = false;
+
+  for (const a of args) {
+    if (!dd && a === '--') { dd = true; continue; }
+    if (!dd && a.length > 1 && a[0] === '-') {
+      if (a === '--ignore-case')   { flags.i = true; continue; }
+      if (a === '--line-number')   { flags.n = true; continue; }
+      if (a === '--count')         { flags.c = true; continue; }
+      if (a === '--invert-match')  { flags.v = true; continue; }
+      if (a === '--recursive')     { flags.r = true; continue; }
+      for (const ch of a.slice(1)) {
+        if (ch in flags) flags[ch] = true;
+        else return { error: "invalid option -- '" + ch + "'" };
+      }
+      continue;
+    }
+    if (pattern === null) pattern = a;
+    else files.push(a);
+  }
+  return { flags, pattern, files };
+}
+
+let lastCtx = null;
+
+function runGrep({ pattern, flags, targets }) {
+  const re = makeRegex(pattern, flags.i);
+  if (!re) {
+    log('grep: invalid pattern: ' + esc(pattern), 'err');
+    shakeInput();
+    return;
+  }
+
+  const perFile = {};
+  let total = 0;
+
+  targets.forEach(fn => {
+    const hits = [];
+    FILES[fn].forEach((text, idx) => {
+      re.lastIndex = 0;
+      const m = re.test(text);
+      if (flags.v ? !m : m) hits.push(idx);
+    });
+    perFile[fn] = hits;
+    total += hits.length;
+  });
+
+  renderFiles(targets);
+  updateCounter(total);
+
+  const cards = Array.prototype.slice.call(filesEl.querySelectorAll('.file-card'));
+
+  animateScan(cards).then(() => {
+    paint(perFile, pattern, flags);
+    printOutput(perFile, pattern, flags, targets, total);
+
+    lastCtx = { cmd:'grep', pattern, flags, targets, total, perFile };
+    checkMission();
+  });
+}
+
+function printOutput(perFile, pattern, flags, targets, total) {
+  const multi = targets.length > 1;
+
+  /* --- count mode --- */
+  if (flags.c) {
+    targets.forEach(fn => {
+      const n = perFile[fn].length;
+      log(multi
+        ? '<span class="d">' + esc(fn) + '</span><span class="dim">:</span>' + n
+        : String(n));
+    });
+    log('grep -c only prints the number — the map shows which lines it counted.', 'tip');
+    return;
+  }
+
+  /* --- nothing found --- */
+  if (total === 0) {
+    log('<span class="dim">(no matches)</span>');
+    log(flags.i
+      ? 'grep found nothing at all. Double-check the spelling of your pattern.'
+      : 'grep found nothing. Try <b>-i</b> to ignore upper/lower case — or check your spelling.', 'tip');
+    return;
+  }
+
+  /* --- normal / inverted output --- */
+  targets.forEach(fn => {
+    perFile[fn].forEach(idx => {
+      const text = FILES[fn][idx];
+      let out = '';
+      if (multi)   out += '<span class="d">' + esc(fn) + '</span><span class="dim">:</span>';
+      if (flags.n) out += '<span class="ln-out">' + (idx + 1) + '</span><span class="dim">:</span>';
+      out += flags.v ? esc(text) : highlight(text, pattern, flags);
+      log(out);
+    });
+  });
+
+  if (flags.v) {
+    log('grep -v flipped the match — these are the lines that do <b>not</b> contain it.', 'tip');
+  }
+}
+
+/* ==================================================================
+   6. TERMINAL
+   ================================================================== */
+function log(html, cls) {
+  const d = document.createElement('div');
+  d.className = 'line' + (cls ? ' ' + cls : '');
+  d.innerHTML = html;
+  term.appendChild(d);
+  term.scrollTop = term.scrollHeight;
+}
+function shakeInput() {
+  form.classList.remove('shake');
+  void form.offsetWidth;
+  form.classList.add('shake');
+}
+
+/* ==================================================================
+   7. COMMANDS
+   ================================================================== */
+let history = [], hIdx = -1;
+
+function execute(raw) {
+  const line = raw.trim();
+  if (!line) return;
+
+  history.push(line);
+  hIdx = -1;
+
+  log('<span class="p">' + PS + '$</span> <span class="c">' + esc(line) + '</span>');
+
+  if (line.indexOf('|') !== -1) { handlePipe(line); return; }
+
+  const parts = line.match(/(?:[^\s"]+|"[^"]*")+/g) || [];
+  const cmd  = parts[0];
+  const args = parts.slice(1).map(s => s.replace(/^"|"$/g, ''));
+
+  switch (cmd) {
+    case 'grep':  doGrep(args); break;
+    case 'cat':   doCat(args); break;
+    case 'ls':    doLs(args); break;
+    case 'clear': term.innerHTML = ''; break;
+    case 'help':  doHelp(); break;
+    default:
+      log('bash: ' + esc(cmd) + ': command not found', 'err');
+      log('Type <b>help</b> to see what works here.', 'tip');
+      shakeInput();
+  }
+}
+
+function doGrep(args) {
+  const p = parseGrep(args);
+  if (p.error) {
+    log('grep: ' + esc(p.error), 'err');
+    log('Try <b>-i</b> (ignore case), <b>-n</b> (line numbers), <b>-c</b> (count), <b>-v</b> (invert) or <b>-r</b> (recursive).', 'tip');
+    shakeInput();
+    return;
+  }
+
+  if (p.pattern === null || p.pattern === '') {
+    log('grep: no pattern given', 'err');
+    log('Usage: <b>grep [options] PATTERN [FILE...]</b>', 'tip');
+    shakeInput();
+    return;
+  }
+
+  if (p.files.length === 0) {
+    log('grep: no file given', 'err');
+    log('Tell grep where to look: <b>grep ' + esc(p.pattern) + ' server.log</b>', 'tip');
+    shakeInput();
+    return;
+  }
+
+  const targets = [];
+  for (const f of p.files) {
+    if (f === '.' || f === './') {
+      if (!p.flags.r) {
+        log('grep: ' + esc(f) + ': Is a directory', 'err');
+        log('Add <b>-r</b> to search inside a folder: <b>grep -r ' + esc(p.pattern) + ' .</b>', 'tip');
+        shakeInput();
+        return;
+      }
+      Object.keys(FILES).forEach(k => targets.push(k));
+    } else if (FILES[f] !== undefined) {
+      targets.push(f);
+    } else {
+      log('grep: ' + esc(f) + ': No such file or directory', 'err');
+      log('Files here: <b>' + Object.keys(FILES).join('</b>, <b>') + '</b>', 'tip');
+      shakeInput();
+      return;
+    }
+  }
+
+  runGrep({ pattern: p.pattern, flags: p.flags, targets: [...new Set(targets)] });
+}
+
+function doCat(args) {
+  if (!args.length) { log('cat: missing file name', 'err'); shakeInput(); return; }
+  const fn = args[0];
+  if (!FILES[fn]) {
+    log('cat: ' + esc(fn) + ': No such file or directory', 'err');
+    log('Files here: <b>' + Object.keys(FILES).join('</b>, <b>') + '</b>', 'tip');
+    shakeInput();
+    return;
+  }
+  FILES[fn].forEach(t => log(esc(t)));
+}
+
+function handlePipe(line) {
+  const segs = line.split('|').map(s => s.trim()).filter(Boolean);
+  if (segs.length !== 2) {
+    log('Only one pipe is supported in this demo.', 'err');
+    shakeInput();
+    return;
+  }
+
+  const left = segs[0].split(/\s+/);
+  if (left[0] !== 'cat' || !left[1]) {
+    log('This demo only understands <b>cat FILE | grep ...</b> pipes.', 'err');
+    shakeInput();
+    return;
+  }
+
+  const fn = left[1];
+  if (!FILES[fn]) {
+    log('cat: ' + esc(fn) + ': No such file or directory', 'err');
+    shakeInput();
+    return;
+  }
+
+  const rparts = segs[1].split(/\s+/);
+  if (rparts[0] !== 'grep') {
+    log('bash: ' + esc(rparts[0]) + ': command not found', 'err');
+    shakeInput();
+    return;
+  }
+
+  const p = parseGrep(rparts.slice(1));
+  if (p.error) { log('grep: ' + esc(p.error), 'err'); shakeInput(); return; }
+  if (!p.pattern) { log('grep: no pattern given', 'err'); shakeInput(); return; }
+
+  runGrep({ pattern: p.pattern, flags: p.flags, targets: [fn] });
+}
+
+function parseLs(args) {
+  const flags = {a:false, l:false, t:false, r:false, one:false, h:false};
+  const paths = [];
+  let optionsEnded = false;
+  for (const arg of args) {
+    if (arg === '--help') return {help:true};
+    if (!optionsEnded && arg === '--') { optionsEnded = true; continue; }
+    if (!optionsEnded && arg.startsWith('--')) {
+      const names = {all:'a','almost-all':'a',long:'l','time-sort':'t',reverse:'r',oneline:'one','human-readable':'h'};
+      const key = arg.slice(2).split('=')[0];
+      if (!(key in names)) return {error:`unsupported option -- '${arg.slice(2)}'`};
+      flags[names[key]] = true;
+      continue;
+    }
+    if (!optionsEnded && arg.startsWith('-') && arg.length > 1) {
+      for (const flag of arg.slice(1)) {
+        if (flag === 'A') { flags.a = true; continue; }
+        if (!(flag in flags)) return {error:`invalid option -- '${flag}'`};
+        flags[flag] = true;
+      }
+      continue;
+    }
+    paths.push(arg);
+  }
+  if (paths.length > 1) return {error:'this playground lists one path at a time'};
+  return {flags, path:paths[0] || '.'};
+}
+function lsEntries(flags) {
+  let entries = Object.keys(FILES).map((name,index) => ({name, index, size:FILES[name].join('\n').length, mtime:1700000000000 + index * 60000}));
+  if (!flags.a) entries = entries.filter(entry => !entry.name.startsWith('.'));
+  entries.sort((left,right) => left.name.localeCompare(right.name,undefined,{numeric:true,sensitivity:'base'}));
+  if (flags.t) entries.sort((left,right) => right.mtime-left.mtime);
+  if (flags.r) entries.reverse();
+  return entries;
+}
+function lsName(entry) { return entry.name; }
+function lsMode() { return '-rw-r--r--'; }
+function lsSize(entry,human) { return human ? Math.max(1,Math.round(entry.size/1024)) + 'K' : entry.size + 'B'; }
+function lsDate(entry) { return new Date(entry.mtime).toLocaleDateString('en-US',{month:'short',day:'2-digit',year:'numeric'}); }
+function doLs(args) {
+  const parsed = parseLs(args);
+  if (parsed.help) { doHelp(); return; }
+  if (parsed.error) { log(`ls: ${esc(parsed.error)}`, 'err'); shakeInput(); return; }
+  let entries = lsEntries(parsed.flags);
+  const path = parsed.path;
+  if (path !== '.' && path !== './' && path !== 'logs' && path !== '~/logs' && path !== '/home/you/logs') {
+    const name = path.split('/').filter(Boolean).pop();
+    entries = entries.filter(entry => entry.name === name);
+    if (!entries.length) { log(`ls: cannot access '${esc(path)}': No such file or directory`, 'err'); shakeInput(); return; }
+  }
+  if (!entries.length) { log('<span class="dim">(empty)</span>'); return; }
+  if (parsed.flags.l) entries.forEach(entry => log(`${lsMode(entry)}  you  you  ${lsSize(entry,parsed.flags.h)}  ${lsDate(entry)}  ${lsName(entry)}`));
+  else if (parsed.flags.one) entries.forEach(entry => log(`<span class="${entry.name.startsWith('.')?'code':'dim'}">${esc(lsName(entry))}</span>`));
+  else log(entries.map(entry => `<span class="${entry.name.startsWith('.')?'code':'d'}">${esc(lsName(entry))}</span>`).join('   '));
+  log(`<span class="dim">${entries.length} ${entries.length === 1 ? 'entry' : 'entries'} in this log directory</span>`);
+}
+function doHelp() {
+  log('<span class="ok">Things you can try:</span>');
+  log('  <span class="d">grep PATTERN FILE</span>     show lines containing PATTERN');
+  log('  <span class="d">grep -i PATTERN FILE</span>    ignore upper/lower case');
+  log('  <span class="d">grep -n PATTERN FILE</span>    show line numbers');
+  log('  <span class="d">grep -c PATTERN FILE</span>    count matches only');
+  log('  <span class="d">grep -v PATTERN FILE</span>    show lines that do NOT match');
+  log('  <span class="d">grep -r PATTERN .</span>       search every file');
+  log('  <span class="d">cat FILE | grep PATTERN</span>  search another command\'s output');
+  log('');
+  log('  <span class="d">ls</span>  list files   <span class="d">ls -a</span>  include hidden   <span class="d">ls -l</span>  long view');
+  log('  <span class="d">cat FILE</span>  show a file   <span class="d">clear</span>  wipe screen');
+}
+
+/* ==================================================================
+   8. MISSIONS
+   ================================================================== */
+const missions = [
+  {
+    text: 'Find every line containing <b>ERROR</b> in <b>server.log</b>.',
+    hint: 'grep takes a pattern, then a file. Type: <code>grep ERROR server.log</code>',
+    answer: 'grep ERROR server.log',
+    check: c => c.total > 0 && c.pattern.toUpperCase() === 'ERROR' && !c.flags.v
+  },
+  {
+    text: 'Now find <b>info</b> — but it is written in CAPS in the file.',
+    hint: 'The <code>-i</code> flag means "ignore case". Type: <code>grep -i INFO server.log</code>',
+    answer: 'grep -i info server.log',
+    check: c => c.flags.i && c.pattern.toLowerCase() === 'info' && c.total > 0
+  },
+  {
+    text: 'Show the <b>line numbers</b> of every WARN line.',
+    hint: 'The <code>-n</code> flag prints line numbers. Type: <code>grep -n WARN server.log</code>',
+    answer: 'grep -n WARN server.log',
+    check: c => c.flags.n && c.total > 0
+  },
+  {
+    text: 'Just <b>count</b> how many ERROR lines there are.',
+    hint: 'The <code>-c</code> flag prints only the count. Type: <code>grep -c ERROR server.log</code>',
+    answer: 'grep -c ERROR server.log',
+    check: c => c.flags.c && c.total > 0
+  },
+  {
+    text: 'Show everything that is <b>NOT</b> an INFO line.',
+    hint: 'The <code>-v</code> flag flips the match. Type: <code>grep -v INFO server.log</code>',
+    answer: 'grep -v INFO server.log',
+    check: c => c.flags.v && c.total > 0
+  },
+  {
+    text: 'Search <b>every file at once</b> for ERROR.',
+    hint: '<code>-r</code> means recursive — search all files. Type: <code>grep -r ERROR .</code>',
+    answer: 'grep -r ERROR .',
+    check: c => c.flags.r && c.targets.length > 1 && c.total > 0
+  }
+];
+
+let missionIdx = 0;
+let missionLocked = false;
+
+missions.forEach(() => {
+  const d = document.createElement('i');
+  stepsEl.appendChild(d);
+});
+
+function renderMission() {
+  const m = missions[missionIdx];
+  missionBadge.textContent = 'Mission ' + (missionIdx + 1) + ' / ' + missions.length;
+  missionText.innerHTML = m.text;
+  hintBar.classList.remove('show');
+  hintBar.innerHTML = '';
+  renderChips();
+}
+
+function checkMission() {
+  if (missionLocked || missionIdx >= missions.length) return;
+  if (lastCtx && missions[missionIdx].check(lastCtx)) completeMission();
+}
+
+function completeMission() {
+  missionLocked = true;
+  stepsEl.children[missionIdx].classList.add('done');
+  missionEl.classList.add('complete');
+
+  setTimeout(() => {
+    missionEl.classList.remove('complete');
+    missionIdx++;
+    missionLocked = false;
+
+    if (missionIdx >= missions.length) finishAll();
+    else renderMission();
+  }, 950);
+}
+
+function finishAll() {
+  missionBadge.textContent = 'All done';
+  missionText.innerHTML = 'You can search files like a pro. Try your own patterns!';
+  hintBtn.style.display = 'none';
+  hintBar.classList.remove('show');
+  renderChips();
+  confetti();
+  log('<span class="ok">All missions complete — nicely done!</span>');
+}
+
+function confetti() {
+  const colors = ['#a78bfa', '#fbbf24', '#4ade80', '#f472b6', '#7dd3fc', '#ddd6fe'];
+  for (let i = 0; i < 55; i++) {
+    const c = document.createElement('i');
+    c.className = 'confetti';
+    c.style.left = Math.random() * 100 + '%';
+    c.style.background = colors[i % colors.length];
+    c.style.animationDelay = (Math.random() * 0.45) + 's';
+    c.style.animationDuration = (1.7 + Math.random() * 1.3) + 's';
+    c.style.setProperty('--rot', (Math.random() * 900 - 450) + 'deg');
+    document.body.appendChild(c);
+    setTimeout(() => c.remove(), 3600);
+  }
+}
+
+/* ==================================================================
+   9. CHIPS
+   ================================================================== */
+const CHIP_POOL = [
+  'ls',
+  'help',
+  'grep ERROR server.log',
+  'grep -i info server.log',
+  'grep -n WARN server.log',
+  'grep -c ERROR server.log',
+  'grep -v INFO server.log',
+  'grep -r ERROR .',
+  'cat server.log',
+  'cat server.log | grep ERROR'
+];
+
+function renderChips() {
+  chips.innerHTML = '';
+  const safeIdx = Math.min(missionIdx, missions.length - 1);
+  const answer = missions[safeIdx].answer;
+  const showAnswer = hintBar.classList.contains('show');
+
+  let list = CHIP_POOL.filter(c => c !== answer);
+  const off = (missionIdx * 3) % list.length;
+  list = list.slice(off).concat(list.slice(0, off));
+  list = list.slice(0, 4);
+
+  if (showAnswer) list.unshift(answer);
+
+  list.forEach(cmd => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'chip';
+    b.textContent = cmd;
+    b.addEventListener('click', () => { execute(cmd); input.focus(); });
+    chips.appendChild(b);
+  });
+}
+
+/* ==================================================================
+   10. EVENTS
+   ================================================================== */
+hintBtn.addEventListener('click', () => {
+  if (hintBar.classList.contains('show')) {
+    hintBar.classList.remove('show');
+    renderChips();
+    return;
+  }
+  hintBar.innerHTML = missions[Math.min(missionIdx, missions.length - 1)].hint;
+  hintBar.classList.add('show');
+  renderChips();
+});
+
+form.addEventListener('submit', e => {
+  e.preventDefault();
+  const v = input.value;
+  input.value = '';
+  execute(v);
+  input.focus();
+});
+
+input.addEventListener('keydown', e => {
+  if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    if (hIdx < history.length - 1) {
+      hIdx++;
+      input.value = history[history.length - 1 - hIdx];
+      input.setSelectionRange(input.value.length, input.value.length);
+    }
+  } else if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    if (hIdx > 0) {
+      hIdx--;
+      input.value = history[history.length - 1 - hIdx];
+    } else {
+      hIdx = -1;
+      input.value = '';
+    }
+  }
+});
+
+/* ==================================================================
+   11. BOOT
+   ================================================================== */
+renderFiles(Object.keys(FILES));
+renderMission();
+
+log('<span class="hl">Welcome to the visual grep terminal.</span>');
+log('The panel on the left shows two files. <b>grep</b> scans them for text.');
+log('Run a command below — or tap a folder chip — and watch the scanner sweep.');
+log('');
+log('<span class="dim">Try this first:</span> <span class="code">grep ERROR server.log</span>');
+
+if (!('ontouchstart' in window) && window.innerWidth > 900) {
+  setTimeout(() => input.focus(), 400);
+}
+</script>
+</body>
+</html>

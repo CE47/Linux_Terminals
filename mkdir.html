@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Learn `mkdir` — Visual Linux</title>
+<style>
+:root{
+  --bg:#080e18;
+  --txt:#e8f1ff;
+  --dim:#8da1bd;
+  --accent:#38bdf8;
+  --accent2:#4ade80;
+  --gold:#fbbf24;
+  --pink:#f472b6;
+  --err:#fb7185;
+  --line:rgba(255,255,255,.11);
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;min-height:100dvh;font-family:var(--mono);color:var(--txt);background:var(--bg);overflow-x:hidden;-webkit-font-smoothing:antialiased}
+body::before{content:'';position:fixed;inset:0;z-index:-2;background:radial-gradient(900px 620px at 10% -12%,rgba(56,189,248,.17),transparent 62%),radial-gradient(800px 600px at 100% 2%,rgba(251,191,36,.11),transparent 60%),radial-gradient(760px 700px at 48% 118%,rgba(74,222,128,.1),transparent 63%),#080e18}
+body::after{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;background-image:linear-gradient(rgba(255,255,255,.028) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.028) 1px,transparent 1px);background-size:46px 46px;-webkit-mask-image:radial-gradient(ellipse at 50% 0%,#000 14%,transparent 74%);mask-image:radial-gradient(ellipse at 50% 0%,#000 14%,transparent 74%)}
+.app{max-width:1320px;margin:0 auto;min-height:100dvh;display:flex;flex-direction:column;padding:14px 16px 16px;gap:11px}.top{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}.brand{display:flex;align-items:center;gap:11px}.logo{width:38px;height:38px;flex:0 0 auto;border-radius:11px;display:grid;place-items:center;font-size:19px;font-weight:700;color:#071827;background:linear-gradient(150deg,#7dd3fc,#38bdf8 45%,#0ea5e9);box-shadow:0 8px 22px -8px rgba(56,189,248,.9),inset 0 1px 0 rgba(255,255,255,.65);animation:logoPulse 3.2s ease-in-out infinite}@keyframes logoPulse{0%,100%{box-shadow:0 8px 22px -8px rgba(56,189,248,.9),inset 0 1px 0 rgba(255,255,255,.65)}50%{box-shadow:0 8px 32px -6px rgba(56,189,248,1),inset 0 1px 0 rgba(255,255,255,.65)}}
+.brand h1{margin:0;font-size:16px;letter-spacing:.01em;font-weight:700}.brand h1 code{color:#7dd3fc;background:rgba(56,189,248,.16);padding:1px 7px;border-radius:6px;border:1px solid rgba(56,189,248,.3)}.brand p{margin:2px 0 0;font-size:11.5px;color:var(--dim)}.steps{display:flex;gap:7px;align-items:center}.steps i{width:9px;height:9px;border-radius:50%;display:block;background:rgba(255,255,255,.13);transition:all .45s cubic-bezier(.34,1.56,.64,1)}.steps i.done{background:var(--accent2);box-shadow:0 0 0 4px rgba(74,222,128,.14),0 0 14px rgba(74,222,128,.7);transform:scale(1.15)}
+.mission{display:flex;align-items:center;gap:12px;padding:10px 13px;border-radius:14px;background:linear-gradient(90deg,rgba(56,189,248,.11),rgba(56,189,248,.02));border:1px solid rgba(56,189,248,.22);transition:background .35s,border-color .35s,transform .35s,box-shadow .35s}.mission.complete{background:linear-gradient(90deg,rgba(74,222,128,.24),rgba(74,222,128,.05));border-color:rgba(74,222,128,.55);transform:scale(1.012);box-shadow:0 0 30px -8px rgba(74,222,128,.5)}.badge{font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;padding:5px 9px;border-radius:999px;white-space:nowrap;color:#7dd3fc;background:rgba(56,189,248,.16);border:1px solid rgba(56,189,248,.3);transition:all .3s}.mission.complete .badge{color:#86efac;background:rgba(74,222,128,.2);border-color:rgba(74,222,128,.45)}.mission-text{flex:1;font-size:13px;line-height:1.4;min-width:0}.mission-text b{color:#7dd3fc}.mission.complete .mission-text b{color:#86efac}.hint-btn{font:inherit;font-size:11px;color:var(--dim);cursor:pointer;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);padding:6px 11px;border-radius:9px;white-space:nowrap;transition:.2s}.hint-btn:hover{color:var(--txt);background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.24)}.hint{max-height:0;overflow:hidden;opacity:0;font-size:12.5px;color:var(--dim);padding:0 14px;border-radius:12px;transition:max-height .3s ease,opacity .3s ease,padding .3s ease,background .3s}.hint.show{max-height:80px;opacity:1;padding:9px 14px;background:rgba(255,255,255,.035)}.hint code{color:#fde68a;background:rgba(251,191,36,.13);padding:1px 6px;border-radius:5px}
+main{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1.08fr) minmax(0,1fr);gap:13px}.panel{background:linear-gradient(180deg,rgba(255,255,255,.048),rgba(255,255,255,.014));border:1px solid rgba(255,255,255,.08);border-radius:17px;padding:12px;display:flex;flex-direction:column;min-height:0;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:0 22px 44px -24px rgba(0,0,0,.9),inset 0 1px 0 rgba(255,255,255,.055)}.panel-head{display:flex;align-items:center;gap:9px;padding:1px 4px 9px}.title{font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:var(--dim);font-weight:700}.sub{font-size:11px;color:rgba(141,161,189,.65);margin-left:auto}.dots{display:flex;gap:5px;margin-right:2px}.dots i{width:9px;height:9px;border-radius:50%;display:block}.dots i:nth-child(1){background:#fb7185}.dots i:nth-child(2){background:#fbbf24}.dots i:nth-child(3){background:#4ade80}
+.crumbs{display:flex;align-items:center;flex-wrap:wrap;gap:3px;padding:7px 9px;margin-bottom:8px;border-radius:11px;background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.055);min-height:37px}.crumb{font-size:12px;padding:3px 9px;border-radius:7px;background:rgba(56,189,248,.13);color:#7dd3fc;border:1px solid rgba(56,189,248,.22);animation:crumbIn .32s cubic-bezier(.34,1.56,.64,1) backwards}.crumb:last-child{color:#86efac;background:rgba(74,222,128,.1);border-color:rgba(74,222,128,.24)}@keyframes crumbIn{from{opacity:0;transform:translateY(-5px) scale(.85)}to{opacity:1;transform:none}}.sep{color:rgba(141,161,189,.5);font-size:11px;padding:0 1px}
+.create-card{position:relative;display:flex;align-items:center;gap:10px;min-height:62px;padding:9px 11px;margin-bottom:8px;border-radius:12px;background:linear-gradient(90deg,rgba(251,191,36,.12),rgba(56,189,248,.035));border:1px solid rgba(251,191,36,.2);overflow:hidden;transition:background .3s,border-color .3s,box-shadow .3s}.create-card::before{content:'';position:absolute;inset:0;pointer-events:none;background:linear-gradient(90deg,transparent,rgba(255,255,255,.08),transparent);transform:translateX(-100%);animation:createShimmer 4.5s ease-in-out infinite}.create-card.burst{animation:createBurst .8s cubic-bezier(.2,.8,.2,1)}@keyframes createBurst{0%{transform:scale(.985);box-shadow:0 0 0 rgba(251,191,36,0)}35%{box-shadow:0 0 32px -10px rgba(251,191,36,.95)}100%{transform:none}}@keyframes createShimmer{0%,55%{transform:translateX(-100%)}78%,100%{transform:translateX(100%)}}.create-icon{width:33px;height:30px;flex:0 0 auto;position:relative;border-radius:5px;background:linear-gradient(180deg,#fde68a,#f59e0b);box-shadow:0 5px 14px rgba(251,191,36,.28);transition:transform .3s}.create-icon::before{content:'';position:absolute;left:0;top:-5px;width:15px;height:7px;border-radius:4px 4px 0 0;background:#fde68a}.create-card.burst .create-icon{animation:folderPop .8s cubic-bezier(.34,1.56,.64,1)}@keyframes folderPop{0%{transform:scale(.75) rotate(-12deg)}55%{transform:scale(1.18) rotate(6deg)}100%{transform:none}}.create-copy{min-width:0;flex:1}.create-label{display:block;color:#fde68a;font-size:9px;letter-spacing:.12em}.create-path{display:block;margin-top:3px;color:#fff7d6;font-size:12px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.create-hint{display:block;margin-top:2px;color:#b8c9dc;font-size:9px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.create-count{margin-left:auto;align-self:flex-start;font-size:9.5px;color:#fde68a;background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.26);padding:4px 6px;border-radius:999px;white-space:nowrap}
+.tree-scroll{flex:1;min-height:0;overflow:auto;padding:4px 2px 6px;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.16) transparent;-webkit-overflow-scrolling:touch}.tree-scroll::-webkit-scrollbar{width:8px;height:8px}.tree-scroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:99px}.tree-scroll::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.26)}.tree-inner{position:relative;display:inline-block;vertical-align:top;min-width:100%;padding:6px 58px 16px 2px}.node{position:relative}.children{margin-left:16px;padding-left:12px;border-left:2px solid var(--line)}.children>.node::before{content:'';position:absolute;left:-14px;top:17px;width:14px;height:2px;background:var(--line);border-radius:2px}.row{display:inline-flex;align-items:center;gap:8px;min-height:34px;padding:5px 11px 5px 9px;border-radius:10px;cursor:pointer;white-space:nowrap;position:relative;transition:background .22s,box-shadow .22s,transform .18s;-webkit-tap-highlight-color:transparent}.row:hover{background:rgba(255,255,255,.055);transform:translateX(2px)}.row.current{background:linear-gradient(90deg,rgba(56,189,248,.22),rgba(56,189,248,.03));box-shadow:inset 0 0 0 1px rgba(56,189,248,.4)}.row.current .label{color:#fff;font-weight:700}.row.created{animation:rowCreated 1s cubic-bezier(.34,1.56,.64,1)}@keyframes rowCreated{0%{opacity:0;transform:translateX(-12px) scale(.86);box-shadow:0 0 0 1px rgba(251,191,36,.8),0 0 28px rgba(251,191,36,.75)}65%{opacity:1;background:rgba(251,191,36,.22);box-shadow:0 0 22px rgba(251,191,36,.35)}100%{opacity:1;transform:none}}.row.file{opacity:.5;cursor:default}.row.file:hover{transform:none}.icon{width:18px;height:14px;flex:0 0 auto;position:relative;border-radius:3px;transition:box-shadow .3s}.icon.dir{background:linear-gradient(180deg,#fcd34d,#f59e0b);box-shadow:0 2px 7px rgba(251,191,36,.22)}.icon.dir::before{content:'';position:absolute;top:-4px;left:0;width:8px;height:6px;background:#fcd34d;border-radius:3px 3px 0 0}.icon.file{background:linear-gradient(180deg,#a8b6c9,#64748b);border-radius:2px 5px 2px 2px}.row.current .icon.dir{box-shadow:0 0 0 3px rgba(56,189,248,.28),0 2px 12px rgba(251,191,36,.75)}.label{font-size:13.5px;letter-spacing:.01em}.tag{font-size:9.5px;padding:2px 6px;border-radius:99px;font-weight:700;background:rgba(74,222,128,.16);color:#86efac;border:1px solid rgba(74,222,128,.3)}
+.avatar{position:absolute;left:0;top:0;width:30px;height:30px;z-index:6;pointer-events:none;transition:transform .62s cubic-bezier(.34,1.3,.64,1);will-change:transform}.avatar .body{width:100%;height:100%;border-radius:50% 50% 46% 46%;background:radial-gradient(circle at 34% 28%,#bae6fd,#38bdf8 52%,#0369a1);box-shadow:0 0 0 3px rgba(56,189,248,.16),0 9px 20px -4px rgba(2,132,199,.75);display:grid;place-items:center;animation:idle 2.8s ease-in-out infinite}.avatar.hop .body{animation:hop .58s cubic-bezier(.34,1.3,.64,1)}@keyframes idle{0%,100%{transform:translateY(0)}50%{transform:translateY(-2.5px)}}@keyframes hop{0%{transform:translateY(0) scale(1,1)}28%{transform:translateY(-11px) scale(.9,1.12)}58%{transform:translateY(0) scale(1.12,.88)}80%{transform:translateY(-3px) scale(.98,1.03)}100%{transform:translateY(0) scale(1,1)}}.eyes{display:flex;gap:5px}.eyes i{width:4px;height:6.5px;background:#082f49;border-radius:50%;display:block;animation:blink 4.6s infinite}@keyframes blink{0%,92%,100%{transform:scaleY(1)}95%{transform:scaleY(.1)}}.ping{position:absolute;left:0;top:0;width:0;height:0;pointer-events:none;z-index:4}.ping i{position:absolute;left:-17px;top:-17px;width:34px;height:34px;border-radius:50%;border:2px solid rgba(56,189,248,.85);display:block;animation:pingA .75s ease-out forwards}@keyframes pingA{0%{transform:scale(.2);opacity:1}100%{transform:scale(1.9);opacity:0}}
+.term{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:12px 13px;border-radius:12px;background:rgba(0,0,0,.36);border:1px solid rgba(255,255,255,.055);font-size:12.5px;line-height:1.7;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.16) transparent;-webkit-overflow-scrolling:touch}.term::-webkit-scrollbar{width:8px;height:8px}.term::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:99px}.term::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.26)}.line{white-space:pre-wrap;word-break:break-word;animation:lineIn .22s ease-out}@keyframes lineIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}.line .p{color:var(--accent2)}.line .c{color:#f8fafc;font-weight:600}.line.err{color:var(--err)}.line .d{color:#7dd3fc;font-weight:600}.line .hl{color:#7dd3fc;font-weight:700}.line .ok{color:#86efac}.line .dim{color:var(--dim)}.line .code{color:#fde68a;background:rgba(251,191,36,.1);padding:1px 7px;border-radius:6px;border:1px solid rgba(251,191,36,.2)}.ls-columns{display:flex;flex-wrap:wrap;gap:3px 18px;padding:3px 0 2px}.ls-name{min-width:76px}.ls-name.dir{color:#7dd3fc;font-weight:600}.ls-name.file{color:#cbd5e1}.ls-name.hidden{color:#f472b6;font-weight:600}.ls-long-row{display:grid;grid-template-columns:104px 42px 42px 62px 84px minmax(0,1fr);gap:8px;align-items:baseline;padding:2px 0}.ls-long-row .ls-perm{color:#c4b5fd;font-size:11px;white-space:nowrap}.ls-long-row .ls-owner,.ls-long-row .ls-group{color:#b7c9df;overflow:hidden;text-overflow:ellipsis}.ls-long-row .ls-size{color:#fde68a;text-align:right;white-space:nowrap}.ls-long-row .ls-date{color:var(--dim);white-space:nowrap}.ls-long-row .ls-file-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.tip-line{margin-top:4px;padding:6px 10px;border-radius:8px;background:rgba(251,191,36,.08);border-left:3px solid rgba(251,191,36,.55);color:#fcd34d;font-size:12px}
+.chips{display:flex;gap:7px;overflow-x:auto;padding:10px 1px 2px;scrollbar-width:none;-ms-overflow-style:none}.chips::-webkit-scrollbar{display:none}.chip{font:inherit;font-size:11.5px;white-space:nowrap;cursor:pointer;padding:6px 11px;border-radius:9px;color:#a5b4fc;background:rgba(129,140,248,.1);border:1px solid rgba(129,140,248,.25);transition:.18s;-webkit-tap-highlight-color:transparent}.chip:hover{background:rgba(129,140,248,.22);color:#c7d2fe;transform:translateY(-1px);box-shadow:0 6px 16px -12px rgba(129,140,248,.9)}.chip:active{transform:translateY(0) scale(.96)}.input-row{display:flex;align-items:center;gap:8px;margin-top:9px;padding:9px 10px;border-radius:12px;background:rgba(0,0,0,.4);border:1px solid rgba(56,189,248,.25);transition:border-color .2s,box-shadow .2s}.input-row:focus-within{border-color:rgba(56,189,248,.7);box-shadow:0 0 0 3px rgba(56,189,248,.13)}.input-row.shake{animation:shake .4s}@keyframes shake{10%,90%{transform:translateX(-2px)}20%,80%{transform:translateX(4px)}30%,50%,70%{transform:translateX(-6px)}40%,60%{transform:translateX(6px)}}.ps1{font-size:12.5px;color:var(--accent2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:0 1 auto}.ps1 .ps-user{color:var(--accent2);opacity:.85}.input-row input{flex:1;min-width:40px;background:none;border:none;outline:none;color:#f1f5f9;font:inherit;font-size:13px;padding:0}.input-row input::placeholder{color:rgba(141,161,189,.5)}.send{font:inherit;font-size:14px;line-height:1;cursor:pointer;width:30px;height:30px;flex:0 0 auto;border-radius:9px;color:#04121f;background:linear-gradient(150deg,#7dd3fc,#38bdf8);border:none;display:grid;place-items:center;transition:.18s;box-shadow:0 4px 14px -4px rgba(56,189,248,.8)}.send:hover{transform:translateY(-1px);box-shadow:0 6px 18px -4px rgba(56,189,248,1)}.send:active{transform:scale(.93)}.confetti{position:fixed;top:-14px;width:8px;height:13px;border-radius:2px;z-index:999;pointer-events:none;animation:fall linear forwards}@keyframes fall{to{transform:translateY(108vh) rotate(var(--rot,360deg));opacity:.05}}
+@media (min-width:901px){.term{flex:0 0 clamp(240px,42vh,420px);overflow-y:auto}}@media (max-width:900px){.app{padding:12px 12px 16px;gap:10px}main{grid-template-columns:1fr;grid-template-rows:auto auto;flex:none}.panel{min-height:0}.tree-scroll{max-height:40vh}.term{min-height:150px;max-height:32vh}.brand h1{font-size:15px}.brand p,.sub{display:none}.mission-text{font-size:12.5px}.ps1 .ps-user{display:none}}@media (max-width:420px){.logo{width:34px;height:34px;font-size:17px}.badge{font-size:9px;padding:4px 7px}.mission{gap:8px;padding:9px 11px}.hint-btn{padding:5px 9px;font-size:10.5px}.label{font-size:13px}.tree-inner{padding-right:48px}.create-card{padding:8px}.create-count{display:none}}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <div class="logo">＋</div>
+      <div>
+        <h1>Learn <code>mkdir</code></h1>
+        <p>Build new folders and watch the filesystem grow.</p>
+      </div>
+    </div>
+    <div class="steps" id="steps"></div>
+  </header>
+  <div class="mission" id="mission">
+    <span class="badge" id="missionBadge">Mission 1 / 6</span>
+    <span class="mission-text" id="missionText">Loading…</span>
+    <button class="hint-btn" id="hintBtn" type="button">Hint</button>
+  </div>
+  <div class="hint" id="hintBar"></div>
+  <main>
+    <section class="panel">
+      <div class="panel-head">
+        <span class="title">Filesystem map</span>
+        <span class="sub">tap folders to move · watch new branches appear</span>
+      </div>
+      <div class="crumbs" id="crumbs"></div>
+      <div class="create-card" id="createCard">
+        <span class="create-icon"></span>
+        <div class="create-copy">
+          <span class="create-label">NEW DIRECTORY</span>
+          <span class="create-path" id="createPath">playground</span>
+          <span class="create-hint" id="createHint">ready for your first mkdir</span>
+        </div>
+        <span class="create-count" id="createCount">0 new</span>
+      </div>
+      <div class="tree-scroll" id="treeScroll">
+        <div class="tree" id="tree"></div>
+      </div>
+    </section>
+    <section class="panel">
+      <div class="panel-head">
+        <span class="dots"><i></i><i></i><i></i></span>
+        <span class="title">Terminal</span>
+      </div>
+      <div class="term" id="term"></div>
+      <div class="chips" id="chips"></div>
+      <form class="input-row" id="form" autocomplete="off">
+        <span class="ps1" id="ps1"><span class="ps-user">you@linux:</span><span id="psPath">~</span>$</span>
+        <input id="cmd" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="type mkdir…">
+        <button class="send" type="submit" aria-label="Run command">↵</button>
+      </form>
+    </section>
+  </main>
+</div>
+<script>
+let uid = 0;
+const mk = (name, type = 'dir') => ({id:++uid, name, type, children:type === 'dir' ? [] : null, parent:null, size:type === 'dir' ? 4096 : 1, mtime:1700000000000 + uid * 60000});
+const ROOT = mk('/');
+const homeDir = mk('home');
+const HOME = mk('you');
+const documents = mk('documents');
+const projects = mk('projects');
+const pictures = mk('pictures');
+const music = mk('music');
+const etc = mk('etc');
+const notes = mk('notes.txt', 'file');
+const readme = mk('README.md', 'file');
+const appFile = mk('app.js', 'file');
+const designFile = mk('theme.css', 'file');
+const hostFile = mk('hosts', 'file');
+const configDir = mk('.config');
+ROOT.children = [homeDir, etc];
+homeDir.children = [HOME];
+HOME.children = [documents, projects, pictures, music, notes, readme, configDir];
+documents.children = [mk('draft.txt', 'file')];
+projects.children = [appFile, designFile];
+etc.children = [hostFile];
+const rowOf = new Map();
+const newNodes = new Set();
+function link(node, parent) { node.parent = parent; if (node.children) node.children.forEach(child => link(child, node)); }
+ROOT.children.forEach(child => link(child, ROOT));
+let cwd = HOME;
+let previousDir = HOME;
+let lastContext = null;
+let history = [];
+let historyIndex = -1;
+const esc = value => String(value).replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+const treeEl = document.getElementById('tree');
+const treeScroll = document.getElementById('treeScroll');
+const crumbs = document.getElementById('crumbs');
+const term = document.getElementById('term');
+const chips = document.getElementById('chips');
+const form = document.getElementById('form');
+const input = document.getElementById('cmd');
+const psPath = document.getElementById('psPath');
+const stepsEl = document.getElementById('steps');
+const missionEl = document.getElementById('mission');
+const missionBadge = document.getElementById('missionBadge');
+const missionText = document.getElementById('missionText');
+const hintBtn = document.getElementById('hintBtn');
+const hintBar = document.getElementById('hintBar');
+const createCard = document.getElementById('createCard');
+const createPath = document.getElementById('createPath');
+const createHint = document.getElementById('createHint');
+const createCount = document.getElementById('createCount');
+let treeInner;
+let avatarEl;
+let missionIndex = 0;
+let missionLocked = false;
+const missions = [
+  {text:'Create a folder named <b>playground</b>.',hint:'Type: <code>mkdir playground</code>',answer:'mkdir playground',check:context=>context.command==='mkdir'&&!context.flags.p&&!context.flags.v&&context.created.some(node=>node.name==='playground')},
+  {text:'Create the nested path <b>labs/alpha</b>, including its missing parent.',hint:'The <code>-p</code> flag creates parents. Type: <code>mkdir -p labs/alpha</code>',answer:'mkdir -p labs/alpha',check:context=>context.command==='mkdir'&&context.flags.p&&context.created.some(node=>node.name==='labs')&&context.created.some(node=>node.name==='alpha')},
+  {text:'Create <b>archive</b> and make the command report what it made.',hint:'The <code>-v</code> flag is verbose. Type: <code>mkdir -v archive</code>',answer:'mkdir -v archive',check:context=>context.command==='mkdir'&&context.flags.v&&context.created.some(node=>node.name==='archive')},
+  {text:'Move into <b>playground</b>, then create <b>src</b> and <b>assets</b> together.',hint:'Run <code>cd playground</code>, then <code>mkdir src assets</code>.',answer:'mkdir src assets',check:context=>context.command==='mkdir'&&context.cwd.name==='playground'&&context.created.some(node=>node.name==='src')&&context.created.some(node=>node.name==='assets')},
+  {text:'Return home and create <b>projects/frontend</b> with missing parents.',hint:'Run <code>cd ..</code>, then <code>mkdir -p projects/frontend</code>.',answer:'mkdir -p projects/frontend',check:context=>context.command==='mkdir'&&context.cwd===HOME&&context.flags.p&&context.created.some(node=>node.name==='frontend')},
+  {text:'Build a deep path: <b>backups/2026/raw</b>.',hint:'Use <code>-p</code> for every missing parent. Type: <code>mkdir -p backups/2026/raw</code>',answer:'mkdir -p backups/2026/raw',check:context=>context.command==='mkdir'&&context.flags.p&&context.created.length===3}
+];
+const missionCount = missions.length;
+missions.forEach(() => stepsEl.appendChild(document.createElement('i')));
+function absPath(node) { if (node === ROOT) return '/'; const parts = []; let current = node; while (current && current !== ROOT) { parts.unshift(current.name); current = current.parent; } return '/' + parts.join('/'); }
+function prettyPath(node) { const path = absPath(node); if (path === '/home/you') return '~'; if (path.startsWith('/home/you/')) return '~' + path.slice(9); return path; }
+function resolvePath(input, base = cwd) { let current; let rest = input; if (input === '~' || input.startsWith('~/')) { current = HOME; rest = input.slice(1); } else if (input.startsWith('/')) { current = ROOT; rest = input.slice(1); } else current = base; const segments = rest.split('/').filter(Boolean); for (const segment of segments) { if (segment === '.') continue; if (segment === '..') { current = current.parent || ROOT; continue; } if (!current.children) return {error:'notdir', name:segment}; const next = current.children.find(child => child.name === segment); if (!next) return {error:'missing', name:segment}; current = next; } return {node:current}; }
+function log(html, className = '') { const line = document.createElement('div'); line.className = 'line' + (className ? ' ' + className : ''); line.innerHTML = html; term.appendChild(line); term.scrollTop = term.scrollHeight; }
+function shakeInput() { form.classList.remove('shake'); void form.offsetWidth; form.classList.add('shake'); }
+function buildTree() { treeInner = document.createElement('div'); treeInner.className = 'tree-inner'; treeEl.appendChild(treeInner); avatarEl = document.createElement('div'); avatarEl.className = 'avatar'; avatarEl.innerHTML = '<div class="body"><span class="eyes"><i></i><i></i></span></div>'; renderNode(ROOT, treeInner); treeInner.appendChild(avatarEl); }
+function renderNode(node, parentEl) { const wrap = document.createElement('div'); wrap.className = 'node'; const row = document.createElement('div'); row.className = 'row' + (node.type === 'file' ? ' file' : '') + (newNodes.has(node) ? ' created' : ''); const icon = document.createElement('span'); icon.className = 'icon ' + node.type; const label = document.createElement('span'); label.className = 'label'; label.textContent = node === ROOT ? '/' : node.name; row.append(icon,label); if (node === HOME) { const tag = document.createElement('span'); tag.className = 'tag'; tag.textContent = '~'; row.appendChild(tag); } if (node.type === 'dir') row.addEventListener('click',() => onNodeClick(node)); wrap.appendChild(row); rowOf.set(node,row); if (node.children && node.children.length) { const kids = document.createElement('div'); kids.className = 'children'; node.children.forEach(child => renderNode(child,kids)); wrap.appendChild(kids); } parentEl.appendChild(wrap); }
+function rebuildTree() { treeInner.innerHTML = ''; rowOf.clear(); renderNode(ROOT, treeInner); treeInner.appendChild(avatarEl); }
+function avatarTarget(node) { const row = rowOf.get(node); const label = row.querySelector('.label'); const innerRect = treeInner.getBoundingClientRect(); const labelRect = label.getBoundingClientRect(); return {x:labelRect.right-innerRect.left+9,y:labelRect.top-innerRect.top+labelRect.height/2-15}; }
+function moveAvatar(animate,node=cwd) { const target=avatarTarget(node); if (!animate) avatarEl.style.transition='none'; avatarEl.style.transform=`translate(${target.x}px, ${target.y}px)`; if (!animate) requestAnimationFrame(()=>{avatarEl.style.transition='';}); }
+function ping(x,y) { const element=document.createElement('div'); element.className='ping'; element.style.transform=`translate(${x}px, ${y}px)`; element.innerHTML='<i></i>'; treeInner.appendChild(element); window.setTimeout(()=>element.remove(),800); }
+function scrollToRow(node) { const row=rowOf.get(node); const rr=row.getBoundingClientRect(); const ir=treeInner.getBoundingClientRect(); const target=rr.top-ir.top+rr.height/2-treeScroll.clientHeight/2; treeScroll.scrollTo({top:Math.max(0,target),behavior:'smooth'}); }
+function animateMove(node) { moveAvatar(true,node); avatarEl.classList.remove('hop'); void avatarEl.offsetWidth; avatarEl.classList.add('hop'); const row=rowOf.get(node); const rr=row.getBoundingClientRect(); const ir=treeInner.getBoundingClientRect(); ping(rr.left-ir.left+14,rr.top-ir.top+rr.height/2); row.classList.remove('flash'); void row.offsetWidth; row.classList.add('flash'); scrollToRow(node); }
+function renderCrumbs() { crumbs.innerHTML=''; const path=prettyPath(cwd); const parts=path==='/'?['/']:(path.startsWith('~')?['/','home','you',...path.slice(1).split('/').filter(Boolean)]:['/',...path.split('/').filter(Boolean)]); parts.forEach((part,index)=>{if(index){const separator=document.createElement('span');separator.className='sep';separator.textContent='›';crumbs.appendChild(separator);}const crumb=document.createElement('span');crumb.className='crumb';crumb.style.animationDelay=`${index*45}ms`;crumb.textContent=part==='you'?'~':part;crumbs.appendChild(crumb);}); }
+function updateCreateCard(context) { if (!context) { createPath.textContent='playground'; createHint.textContent='ready for your first mkdir'; createCount.textContent='0 new'; return; } const paths=context.created.map(node=>prettyPath(node)); createPath.textContent=paths.length?paths.join(' · '):'no new folder'; createHint.textContent=context.flags.p?'parents mode · safe to repeat':context.flags.v?'verbose mode · reporting each creation':'directory created'; createCount.textContent=`${context.created.length} new`; createCard.classList.remove('burst'); void createCard.offsetWidth; createCard.classList.add('burst'); }
+function updateUI() { rowOf.forEach((row,node)=>row.classList.toggle('current',node===cwd)); psPath.textContent=prettyPath(cwd); renderCrumbs(); renderChips(); }
+function animateCreation(nodes) { nodes.forEach((node,index)=>window.setTimeout(()=>{const row=rowOf.get(node);if(!row)return;row.classList.add('flash');animateMove(node);},index*180)); window.setTimeout(()=>nodes.forEach(node=>newNodes.delete(node)),Math.max(1100,nodes.length*180+1000)); }
+function parseMkdir(args) { const flags={p:false,v:false}; const paths=[]; let optionsEnded=false; for(const arg of args){if(!optionsEnded&&arg==='--'){optionsEnded=true;continue;}if(!optionsEnded&&arg.startsWith('--')){const names={parents:'p',verbose:'v'};const key=arg.slice(2).split('=')[0];if(!(key in names))return{error:`unsupported option -- '${arg.slice(2)}'`};flags[names[key]]=true;continue;}if(!optionsEnded&&arg.startsWith('-')&&arg.length>1){for(const flag of arg.slice(1)){if(!(flag in flags))return{error:`invalid option -- '${flag}'`};flags[flag]=true;}continue;}paths.push(arg);}if(!paths.length)return{error:'missing operand'};return{flags,paths}; }
+function mkdirFromSpec(spec,flags) { let current;let rest=spec;if(spec==='~'||spec.startsWith('~/')){current=HOME;rest=spec.slice(1);}else if(spec.startsWith('/')){current=ROOT;rest=spec.slice(1);}else current=cwd;const segments=rest.split('/').filter(Boolean);if(!segments.length)return{error:'exists',path:spec};const created=[];for(let index=0;index<segments.length;index++){const segment=segments[index];if(segment==='.')continue;if(segment==='..'){current=current.parent||ROOT;continue;}if(!current.children)return{error:'notdir',name:segment};let next=current.children.find(child=>child.name===segment);if(!next){if(index<segments.length-1&&!flags.p)return{error:'missing',name:segment,parent:current};next=mk(segment,'dir');current.children.push(next);next.parent=current;created.push(next);}else if(next.type!=='dir'){return{error:'notdir',name:segment};}else if(index===segments.length-1&&!flags.p){return{error:'exists',path:spec};}current=next;}return{created,node:current}; }
+function doMkdir(args) { const parsed=parseMkdir(args);if(parsed.error){log(parsed.error==='missing operand'?'mkdir: missing operand':`mkdir: ${esc(parsed.error)}`,'err');log('<span class="tip-line">Give <b>mkdir</b> a folder name, like <b>mkdir playground</b>.</span>','tip-line-wrap');shakeInput();return;}const created=[];for(const spec of parsed.paths){const result=mkdirFromSpec(spec,parsed.flags);if(result.error){if(created.length){created.forEach(node=>newNodes.add(node));rebuildTree();updateUI();animateCreation(created);}log(result.error==='missing'?`mkdir: cannot create directory '${esc(spec)}': No such file or directory`:result.error==='notdir'?`mkdir: cannot create directory '${esc(spec)}': Not a directory`:`mkdir: cannot create directory '${esc(spec)}': File exists`,'err');shakeInput();return;}created.push(...result.created);}if(created.length){created.forEach(node=>newNodes.add(node));rebuildTree();updateUI();animateCreation(created);}const context={command:'mkdir',flags:parsed.flags,specs:parsed.paths.slice(),created,cwd,rawArgs:args.slice()};lastContext=context;updateCreateCard(context);if(parsed.flags.v){created.forEach(node=>log(`<span class="ok">created directory '${esc(prettyPath(node))}'</span>`));}else if(created.length){log(`<span class="ok">created ${created.length} director${created.length===1?'y':'ies'} in ${esc(prettyPath(cwd))}</span>`);}else{log('<span class="dim">Nothing new — the path already existed.</span>');}checkMission(); }
+function doCd(args) {if(args.length>1){log('bash: cd: too many arguments','err');shakeInput();return;}let target;const arg=args[0]===undefined?'':args[0];if(!arg)target=HOME;else if(arg==='-'){target=previousDir;log(`<span class="dim">${esc(prettyPath(target))}</span>`);}else{const result=resolvePath(arg);if(result.error){log(result.error==='missing'?`bash: cd: ${esc(arg)}: No such directory`:`bash: cd: ${esc(arg)}: Not a directory`,'err');shakeInput();return;}target=result.node;if(target.type!=='dir'){log(`bash: cd: ${esc(arg)}: Not a directory`,'err');shakeInput();return;}}if(target===cwd){log('<span class="ok">You are already there — nothing to do.</span>');return;}previousDir=cwd;cwd=target;animateMove(cwd);updateUI();log(`<span class="ok">Now in ${esc(prettyPath(cwd))}</span>`);}
+function parseLs(args) {
+  const flags={a:false,l:false,t:false,r:false,one:false,h:false};
+  const paths=[];
+  let optionsEnded=false;
+  for(const arg of args){
+    if(arg==='--help')return{help:true};
+    if(!optionsEnded&&arg==='--'){optionsEnded=true;continue;}
+    if(!optionsEnded&&arg.startsWith('--')){const names={all:'a','almost-all':'a',long:'l','time-sort':'t',reverse:'r',oneline:'one','human-readable':'h'};const key=arg.slice(2).split('=')[0];if(!(key in names))return{error:`unsupported option -- '${arg.slice(2)}'`};flags[names[key]]=true;continue;}
+    if(!optionsEnded&&arg.startsWith('-')&&arg.length>1){for(const flag of arg.slice(1)){if(flag==='A'){flags.a=true;continue;}if(!(flag in flags))return{error:`invalid option -- '${flag}'`};flags[flag]=true;}continue;}
+    paths.push(arg);
+  }
+  if(paths.length>1)return{error:'this playground lists one path at a time'};
+  return{flags,path:paths[0]||'.'};
+}
+function listEntries(node,flags){if(node.type!=='dir')return[node];let entries=node.children.slice();if(!flags.a)entries=entries.filter(child=>!child.name.startsWith('.'));entries.sort((left,right)=>left.name.localeCompare(right.name,undefined,{numeric:true,sensitivity:'base'}));if(flags.t)entries.sort((left,right)=>right.mtime-left.mtime);if(flags.r)entries.reverse();return entries;}
+function lsMode(node){if(node.type==='dir')return'drwxr-xr-x';return node.name.startsWith('.')?'-rw-------':'-rw-r--r--';}
+function lsSize(node,human){const bytes=node.size||1;if(bytes>=1024*1024)return human?(bytes/1024/1024).toFixed(1)+'M':Math.max(1,Math.round(bytes/1024/1024))+'M';if(bytes>=1024)return human?(bytes/1024).toFixed(1)+'K':Math.max(1,Math.round(bytes/1024))+'K';return bytes+'B';}
+function lsDate(node){return new Date(node.mtime).toLocaleDateString('en-US',{month:'short',day:'2-digit',year:'numeric'});}
+function lsName(node){return node.name+(node.type==='dir'?'/':'');}
+function renderLsLong(entries,flags){return entries.map(node=>`<div class="ls-long-row"><span class="ls-perm">${esc(lsMode(node))}</span><span class="ls-owner">you</span><span class="ls-group">you</span><span class="ls-size">${esc(lsSize(node,flags.h))}</span><span class="ls-date">${esc(lsDate(node))}</span><span class="ls-file-name ls-name ${node.name.startsWith('.')?'hidden':node.type==='dir'?'dir':'file'}">${esc(lsName(node))}</span></div>`).join('');}
+function doLs(args){
+  const parsed=parseLs(args);
+  if(parsed.help){showHelp();return;}
+  if(parsed.error){log(`ls: ${esc(parsed.error)}`,'err');shakeInput();return;}
+  const result=resolvePath(parsed.path);
+  if(result.error){log(result.error==='missing'?`ls: cannot access '${esc(parsed.path)}': No such file or directory`:`ls: cannot access '${esc(parsed.path)}': Not a directory`,'err');shakeInput();return;}
+  const node=result.node;
+  const entries=listEntries(node,parsed.flags);
+  if(!entries.length){log('<span class="dim">(empty)</span>');return;}
+  if(parsed.flags.l){log(renderLsLong(entries,parsed.flags),'ls-output');}
+  else if(parsed.flags.one){entries.forEach(entry=>log(`<span class="ls-name ${entry.name.startsWith('.')?'hidden':entry.type==='dir'?'dir':'file'}">${esc(lsName(entry))}</span>`));}
+  else{log(`<span class="ls-columns">${entries.map(entry=>`<span class="ls-name ${entry.name.startsWith('.')?'hidden':entry.type==='dir'?'dir':'file'}">${esc(lsName(entry))}</span>`).join('')}</span>`,'ls-output');}
+  log(`<span class="dim">${entries.length} ${entries.length===1?'entry':'entries'} in ${esc(prettyPath(node))}</span>`);
+}
+function doPwd(){log(esc(absPath(cwd)));}
+function showHelp(){log('<span class="ok">Commands you can try:</span>');log('  <span class="hl">mkdir NAME</span>       create one directory');log('  <span class="hl">mkdir -p PATH</span>    create missing parents');log('  <span class="hl">mkdir -v NAME</span>     report each creation');log('  <span class="hl">mkdir A B</span>      create several folders');log('  <span class="hl">ls</span>                list visible entries');log('  <span class="hl">ls -a</span>             include hidden entries');log('  <span class="hl">ls -l</span>             show long details');log('  <span class="hl">ls -t / -r</span>         sort by time or reverse');log('  <span class="hl">cd / pwd</span>          move and locate');}
+function execute(raw){const commandLine=raw.trim();if(!commandLine)return;history.push(commandLine);historyIndex=-1;const prompt=`you@linux:${prettyPath(cwd)}$`;log(`<span class="p">${esc(prompt)}</span> <span class="c">${esc(commandLine)}</span>`);if(commandLine==='clear'){term.innerHTML='';return;}if(commandLine==='help'||commandLine==='--help'){showHelp();return;}const parts=commandLine.match(/(?:[^\s"']+|"[^"]*"|'[^']*')+/g)||[];const command=parts[0];const args=parts.slice(1).map(arg=>arg.replace(/^"|"$/g,'').replace(/^'|'$/g,''));if(command==='mkdir')doMkdir(args);else if(command==='cd')doCd(args);else if(command==='ls')doLs(args);else if(command==='pwd')doPwd(args);else{log(`bash: ${esc(command)}: command not found`,'err');log('<span class="dim">This playground is learning <b>mkdir</b>. Try naming a new folder below.</span>');shakeInput();}}
+function onNodeClick(node){if(node.type!=='dir')return;const command=node.parent===cwd?'cd '+node.name:'cd '+prettyPath(node);execute(command);}
+function renderChips(){chips.innerHTML='';const mission=missions[Math.min(missionIndex,missions.length-1)];const commands=['mkdir playground','mkdir -p labs/alpha','mkdir -v archive','mkdir src assets','mkdir -p projects/frontend','mkdir -p backups/2026/raw','cd ..','cd ~','ls','pwd','help'].filter(command=>command!==mission.answer);if(missionIndex===3)commands.unshift('cd playground','mkdir src assets');if(missionIndex===4)commands.unshift('cd ..','mkdir -p projects/frontend');const list=commands.slice(0,5);if(hintBar.classList.contains('show')&&!list.includes(mission.answer))list.unshift(mission.answer);list.forEach(command=>{const button=document.createElement('button');button.type='button';button.className='chip';button.textContent=command;button.addEventListener('click',()=>{execute(command);input.focus();});chips.appendChild(button);});}
+function renderMission(){const mission=missions[missionIndex];missionBadge.textContent=`Mission ${missionIndex+1} / ${missionCount}`;missionText.innerHTML=mission.text;hintBar.classList.remove('show');hintBar.textContent='';renderChips();}
+function checkMission(){if(missionLocked||missionIndex>=missionCount||!lastContext)return;if(missions[missionIndex].check(lastContext))completeMission();}
+function completeMission(){missionLocked=true;stepsEl.children[missionIndex].classList.add('done');missionEl.classList.add('complete');window.setTimeout(()=>{missionEl.classList.remove('complete');missionIndex++;missionLocked=false;if(missionIndex>=missionCount)finishAll();else renderMission();},950);}
+function finishAll(){missionBadge.textContent='All done';missionText.innerHTML='You can shape the filesystem with confidence. Keep building!';hintBtn.style.display='none';hintBar.classList.remove('show');renderChips();confetti();log('<span class="ok">All missions complete — nicely done!</span>');}
+function confetti(){const colors=['#38bdf8','#4ade80','#fbbf24','#f472b6','#a5b4fc','#7dd3fc'];for(let i=0;i<55;i++){const piece=document.createElement('i');piece.className='confetti';piece.style.left=Math.random()*100+'%';piece.style.background=colors[i%colors.length];piece.style.animationDelay=(Math.random()*.45)+'s';piece.style.animationDuration=(1.7+Math.random()*1.3)+'s';piece.style.setProperty('--rot',(Math.random()*900-450)+'deg');document.body.appendChild(piece);window.setTimeout(()=>piece.remove(),3600);}}
+hintBtn.addEventListener('click',()=>{if(hintBar.classList.contains('show')){hintBar.classList.remove('show');renderChips();return;}const mission=missions[Math.min(missionIndex,missions.length-1)];hintBar.innerHTML=mission.hint;hintBar.classList.add('show');renderChips();});
+form.addEventListener('submit',event=>{event.preventDefault();const value=input.value;input.value='';execute(value);input.focus();});
+input.addEventListener('keydown',event=>{if(event.key==='ArrowUp'){event.preventDefault();if(historyIndex<history.length-1){historyIndex++;input.value=history[history.length-1-historyIndex];input.setSelectionRange(input.value.length,input.value.length);}}else if(event.key==='ArrowDown'){event.preventDefault();if(historyIndex>0){historyIndex--;input.value=history[history.length-1-historyIndex];}else{historyIndex=-1;input.value='';}}});
+buildTree();
+requestAnimationFrame(()=>{moveAvatar(false);updateUI();renderMission();log('<span class="hl">Welcome to the visual mkdir terminal.</span>');log('Create a folder and watch the map grow a new branch.');log('Try <b>mkdir playground</b> to begin.');log('');log('<span class="dim">Try this first:</span> <span class="code">mkdir playground</span>');});
+window.addEventListener('resize',()=>moveAvatar(false));
+if(document.fonts&&document.fonts.ready)document.fonts.ready.then(()=>moveAvatar(false));
+if(!('ontouchstart' in window)&&window.innerWidth>900)window.setTimeout(()=>input.focus(),400);
+</script>
+</body>
+</html>

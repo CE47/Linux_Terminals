@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Learn `pwd` — Visual Linux</title>
+<style>
+:root{
+  --bg:#080d1b;
+  --txt:#e8efff;
+  --dim:#8b9ab9;
+  --accent:#60a5fa;
+  --accent2:#a5b4fc;
+  --mint:#5eead4;
+  --gold:#fbbf24;
+  --pink:#f472b6;
+  --err:#fb7185;
+  --line:rgba(255,255,255,.11);
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;min-height:100dvh;font-family:var(--mono);color:var(--txt);background:var(--bg);
+  overflow-x:hidden;-webkit-font-smoothing:antialiased;
+}
+body::before{
+  content:'';position:fixed;inset:0;z-index:-2;
+  background:
+    radial-gradient(900px 620px at 10% -14%,rgba(96,165,250,.17),transparent 62%),
+    radial-gradient(820px 600px at 102% 2%,rgba(165,180,252,.13),transparent 60%),
+    radial-gradient(760px 700px at 45% 118%,rgba(94,234,212,.09),transparent 64%),
+    #080d1b;
+}
+body::after{
+  content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;
+  background-image:
+    linear-gradient(rgba(255,255,255,.027) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(255,255,255,.027) 1px,transparent 1px);
+  background-size:46px 46px;
+  -webkit-mask-image:radial-gradient(ellipse at 50% 0%,#000 14%,transparent 74%);
+  mask-image:radial-gradient(ellipse at 50% 0%,#000 14%,transparent 74%);
+}
+.app{max-width:1320px;margin:0 auto;min-height:100dvh;display:flex;flex-direction:column;padding:14px 16px 16px;gap:11px}
+.top{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:11px}
+.logo{
+  width:38px;height:38px;flex:0 0 auto;border-radius:11px;display:grid;place-items:center;
+  font-size:20px;font-weight:700;color:#07162d;background:linear-gradient(150deg,#c7d2fe,#60a5fa 45%,#3b82f6);
+  box-shadow:0 8px 22px -8px rgba(96,165,250,.9),inset 0 1px 0 rgba(255,255,255,.7);
+  animation:logoPulse 3.2s ease-in-out infinite;
+}
+@keyframes logoPulse{0%,100%{box-shadow:0 8px 22px -8px rgba(96,165,250,.9),inset 0 1px 0 rgba(255,255,255,.7)}50%{box-shadow:0 8px 32px -6px rgba(96,165,250,1),inset 0 1px 0 rgba(255,255,255,.7)}}
+.brand h1{margin:0;font-size:16px;letter-spacing:.01em;font-weight:700}
+.brand h1 code{color:#bfdbfe;background:rgba(96,165,250,.16);padding:1px 7px;border-radius:6px;border:1px solid rgba(96,165,250,.3)}
+.brand p{margin:2px 0 0;font-size:11.5px;color:var(--dim)}
+.steps{display:flex;gap:7px;align-items:center}
+.steps i{width:9px;height:9px;border-radius:50%;display:block;background:rgba(255,255,255,.13);transition:all .45s cubic-bezier(.34,1.56,.64,1)}
+.steps i.done{background:var(--mint);box-shadow:0 0 0 4px rgba(94,234,212,.14),0 0 14px rgba(94,234,212,.7);transform:scale(1.15)}
+.mission{
+  display:flex;align-items:center;gap:12px;padding:10px 13px;border-radius:14px;
+  background:linear-gradient(90deg,rgba(96,165,250,.12),rgba(96,165,250,.02));border:1px solid rgba(96,165,250,.24);
+  transition:background .35s,border-color .35s,transform .35s,box-shadow .35s;
+}
+.mission.complete{background:linear-gradient(90deg,rgba(74,222,128,.24),rgba(74,222,128,.05));border-color:rgba(74,222,128,.55);transform:scale(1.012);box-shadow:0 0 30px -8px rgba(74,222,128,.5)}
+.badge{font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;padding:5px 9px;border-radius:999px;white-space:nowrap;color:#bfdbfe;background:rgba(96,165,250,.16);border:1px solid rgba(96,165,250,.3);transition:all .3s}
+.mission.complete .badge{color:#86efac;background:rgba(74,222,128,.2);border-color:rgba(74,222,128,.45)}
+.mission-text{flex:1;font-size:13px;line-height:1.4;min-width:0}
+.mission-text b{color:#bfdbfe}
+.mission.complete .mission-text b{color:#86efac}
+.hint-btn{font:inherit;font-size:11px;color:var(--dim);cursor:pointer;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);padding:6px 11px;border-radius:9px;white-space:nowrap;transition:.2s}
+.hint-btn:hover{color:var(--txt);background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.24)}
+.hint{max-height:0;overflow:hidden;opacity:0;font-size:12.5px;color:var(--dim);padding:0 14px;border-radius:12px;transition:max-height .3s ease,opacity .3s ease,padding .3s ease,background .3s}
+.hint.show{max-height:80px;opacity:1;padding:9px 14px;background:rgba(255,255,255,.035)}
+.hint code{color:#fde68a;background:rgba(251,191,36,.13);padding:1px 6px;border-radius:5px}
+main{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:13px}
+.panel{
+  background:linear-gradient(180deg,rgba(255,255,255,.048),rgba(255,255,255,.014));border:1px solid rgba(255,255,255,.08);
+  border-radius:17px;padding:12px;display:flex;flex-direction:column;min-height:0;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  box-shadow:0 22px 44px -24px rgba(0,0,0,.9),inset 0 1px 0 rgba(255,255,255,.055);
+}
+.panel-head{display:flex;align-items:center;gap:9px;padding:1px 4px 10px}
+.title{font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:var(--dim);font-weight:700}
+.sub{font-size:11px;color:rgba(139,154,185,.66);margin-left:auto}
+.live{margin-left:auto;display:flex;align-items:center;gap:5px;font-size:10px;letter-spacing:.08em;color:#86efac}
+.live i{width:6px;height:6px;border-radius:50%;background:var(--mint);box-shadow:0 0 10px rgba(94,234,212,.8);animation:livePulse 1.8s ease-in-out infinite}
+@keyframes livePulse{50%{opacity:.35;transform:scale(.7)}}
+.dots{display:flex;gap:5px;margin-right:2px}
+.dots i{width:9px;height:9px;border-radius:50%;display:block}
+.dots i:nth-child(1){background:#fb7185}.dots i:nth-child(2){background:#fbbf24}.dots i:nth-child(3){background:#4ade80}
+.coordinate-card{
+  position:relative;overflow:hidden;padding:14px;border-radius:14px;margin-bottom:11px;
+  background:linear-gradient(135deg,rgba(96,165,250,.17),rgba(96,165,250,.035) 58%,rgba(94,234,212,.07));
+  border:1px solid rgba(96,165,250,.32);box-shadow:0 16px 32px -24px rgba(96,165,250,.8);
+}
+.coordinate-card::before{content:'';position:absolute;inset:0;pointer-events:none;opacity:.32;background-image:linear-gradient(rgba(191,219,254,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(191,219,254,.08) 1px,transparent 1px);background-size:22px 22px;mask-image:linear-gradient(135deg,#000,transparent 75%)}
+.coordinate-card::after{content:'';position:absolute;width:170px;height:170px;right:-55px;top:-80px;border-radius:50%;background:rgba(96,165,250,.17);filter:blur(18px);pointer-events:none}
+.coordinate-top{position:relative;z-index:1;display:flex;align-items:center;gap:8px;color:#bfdbfe;font-size:9.5px;letter-spacing:.14em}
+.coordinate-top .live-dot{width:6px;height:6px;border-radius:50%;background:var(--mint);box-shadow:0 0 10px rgba(94,234,212,.8)}
+.path-mode-tabs{position:relative;z-index:2;display:flex;gap:4px;margin-left:auto}
+.path-mode-tabs button{font:inherit;font-size:9px;letter-spacing:.04em;color:#9eb0d5;background:rgba(8,13,27,.28);border:1px solid rgba(191,219,254,.14);padding:3px 7px;border-radius:999px;cursor:pointer;transition:.2s}
+.path-mode-tabs button:hover{color:#fff;border-color:rgba(191,219,254,.35)}
+.path-mode-tabs button.active{color:#06152e;background:#bfdbfe;border-color:#bfdbfe;box-shadow:0 0 14px rgba(191,219,254,.4)}
+.coordinate-path{position:relative;z-index:1;margin-top:13px;color:#f5f9ff;font-size:clamp(15px,2.2vw,22px);font-weight:700;letter-spacing:-.02em;overflow-wrap:anywhere;line-height:1.35;text-shadow:0 0 20px rgba(96,165,250,.22)}
+.coordinate-card.physical-mode .coordinate-path{color:#baffeb;text-shadow:0 0 20px rgba(94,234,212,.22)}
+.coordinate-bottom{position:relative;z-index:1;display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-top:12px;color:#a9b9db;font-size:10.5px}
+.coordinate-bottom .shell-path{color:var(--mint);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:48%;min-width:0}
+.coordinate-bottom .physical-note{color:#fcd34d;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:48%;min-width:0}
+.copy-btn{margin-left:auto;font:inherit;font-size:9.5px;color:#bfdbfe;background:rgba(8,13,27,.32);border:1px solid rgba(191,219,254,.18);border-radius:7px;padding:4px 7px;cursor:pointer;transition:.2s;white-space:nowrap}
+.copy-btn:hover{color:#fff;background:rgba(96,165,250,.2);border-color:rgba(191,219,254,.45)}
+.coordinate-card.refresh{animation:coordinateRefresh .65s cubic-bezier(.2,.8,.2,1)}
+@keyframes coordinateRefresh{0%{transform:scale(.985);box-shadow:0 0 0 rgba(96,165,250,0)}45%{box-shadow:0 0 34px -12px rgba(96,165,250,.95)}100%{transform:none}}
+.filesystem-map{position:relative;padding:11px 11px 9px;margin-bottom:12px;border-radius:14px;background:linear-gradient(180deg,rgba(8,13,27,.48),rgba(8,13,27,.24));border:1px solid rgba(255,255,255,.08);box-shadow:inset 0 1px 0 rgba(255,255,255,.04)}.map-head{display:flex;align-items:center;gap:9px;padding:0 2px 8px}.map-heading{display:flex;align-items:baseline;gap:8px;min-width:0}.map-title{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#bfdbfe;font-weight:700}.map-sub{font-size:10px;color:rgba(139,154,185,.65)}.map-status{margin-left:auto;max-width:48%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--mint);font-size:9.5px}.map-tree{position:relative;overflow:hidden;border:1px solid rgba(255,255,255,.07);border-radius:12px;background:rgba(0,0,0,.25);padding:4px 2px 6px}.tree-scroll{height:clamp(220px,30vh,360px);min-height:0;overflow:auto;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.16) transparent;-webkit-overflow-scrolling:touch}.tree-scroll::-webkit-scrollbar{width:8px;height:8px}.tree-scroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:99px}.tree-scroll::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.26)}.tree-inner{position:relative;display:inline-block;vertical-align:top;min-width:100%;padding:6px 58px 16px 2px}.node{position:relative}.children{margin-left:16px;padding-left:12px;border-left:2px solid rgba(255,255,255,.11)}.children>.node::before{content:'';position:absolute;left:-14px;top:17px;width:14px;height:2px;background:rgba(255,255,255,.11);border-radius:2px}.row{display:inline-flex;align-items:center;gap:8px;min-height:34px;padding:5px 11px 5px 9px;border-radius:10px;cursor:pointer;white-space:nowrap;position:relative;transition:background .22s,box-shadow .22s,transform .18s;-webkit-tap-highlight-color:transparent}.row:hover{background:rgba(96,165,250,.08);transform:translateX(2px)}.row.current{background:linear-gradient(90deg,rgba(96,165,250,.22),rgba(96,165,250,.03));box-shadow:inset 0 0 0 1px rgba(96,165,250,.4)}.row.current .label{color:#fff;font-weight:700}.row.selected{background:linear-gradient(90deg,rgba(94,234,212,.14),rgba(94,234,212,.02));box-shadow:inset 0 0 0 1px rgba(94,234,212,.3)}.row.flash{animation:flashRow .75s ease}.row.file{opacity:.5;cursor:pointer}.row.file:hover{transform:translateX(2px)}.row.link .label{color:#fcd34d}.row.link .label::after{content:' ↗';font-size:10px;color:#fbbf24}.row .tag-home{font-size:9.5px;padding:2px 6px;border-radius:99px;font-weight:700;color:#86efac;background:rgba(74,222,128,.16);border:1px solid rgba(74,222,128,.3)}@keyframes flashRow{0%{background:rgba(94,234,212,.42);box-shadow:inset 0 0 0 1px rgba(94,234,212,.8)}100%{background:transparent;box-shadow:inset 0 0 0 1px transparent}}.icon{width:18px;height:14px;flex:0 0 auto;position:relative;border-radius:3px;transition:box-shadow .3s}.icon.dir{background:linear-gradient(180deg,#fcd34d,#f59e0b);box-shadow:0 2px 7px rgba(251,191,36,.22)}.icon.dir::before{content:'';position:absolute;top:-4px;left:0;width:8px;height:6px;background:#fcd34d;border-radius:3px 3px 0 0}.icon.file{background:linear-gradient(180deg,#a8b6c9,#64748b);border-radius:2px 5px 2px 2px}.row.current .icon.dir{box-shadow:0 0 0 3px rgba(96,165,250,.28),0 2px 12px rgba(251,191,36,.75)}.label{font-size:13.5px;letter-spacing:.01em}.avatar{position:absolute;left:0;top:0;width:30px;height:30px;z-index:6;pointer-events:none;transition:transform .62s cubic-bezier(.34,1.3,.64,1);will-change:transform}.avatar .body{width:100%;height:100%;border-radius:50% 50% 46% 46%;background:radial-gradient(circle at 34% 28%,#bae6fd,#60a5fa 52%,#1d4ed8);box-shadow:0 0 0 3px rgba(96,165,250,.16),0 9px 20px -4px rgba(37,99,235,.75);display:grid;place-items:center;animation:idle 2.8s ease-in-out infinite}.avatar.hop .body{animation:hop .58s cubic-bezier(.34,1.3,.64,1)}@keyframes idle{0%,100%{transform:translateY(0)}50%{transform:translateY(-2.5px)}}@keyframes hop{0%{transform:translateY(0) scale(1,1)}28%{transform:translateY(-11px) scale(.9,1.12)}58%{transform:translateY(0) scale(1.12,.88)}80%{transform:translateY(-3px) scale(.98,1.03)}100%{transform:translateY(0) scale(1,1)}}.eyes{display:flex;gap:5px}.eyes i{width:4px;height:6.5px;background:#082f49;border-radius:50%;display:block;animation:blink 4.6s infinite}@keyframes blink{0%,92%,100%{transform:scaleY(1)}95%{transform:scaleY(.1)}}.ping{position:absolute;left:0;top:0;width:0;height:0;pointer-events:none;z-index:4}.ping i{position:absolute;left:-17px;top:-17px;width:34px;height:34px;border-radius:50%;border:2px solid rgba(96,165,250,.85);display:block;animation:pingA .75s ease-out forwards}@keyframes pingA{0%{transform:scale(.2);opacity:1}100%{transform:scale(1.9);opacity:0}}.map-footer{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:8px 2px 0;color:rgba(139,154,185,.68);font-size:9.5px}.map-legend{display:flex;align-items:center;gap:11px;flex-wrap:wrap}.map-legend span{display:flex;align-items:center;gap:5px}.map-legend i{width:7px;height:7px;border-radius:50%;background:#60a5fa;display:block}.map-legend i.folder{background:#fbbf24}.map-legend i.file{border-radius:2px;background:#a8b6c9}.map-legend i.you-dot{background:#60a5fa;box-shadow:0 0 8px rgba(96,165,250,.8)}.map-footer-note{margin-left:auto;color:rgba(94,234,212,.72)}.section-label{font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:rgba(139,154,185,.65);padding:2px 2px 7px}
+.observatory-body{flex:1;min-height:0;overflow:auto;padding:0 3px 8px 1px;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.16) transparent;-webkit-overflow-scrolling:touch}
+.observatory-body::-webkit-scrollbar{width:8px;height:8px}.observatory-body::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:99px}.observatory-body::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.26)}
+.breadcrumbs{display:flex;align-items:center;gap:3px;overflow-x:auto;padding:2px 1px 12px;scrollbar-width:none}
+.breadcrumbs::-webkit-scrollbar{display:none}
+.crumb-node{font:inherit;font-size:11.5px;white-space:nowrap;color:#a9b9db;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.08);padding:5px 9px;border-radius:8px;cursor:pointer;transition:.2s;animation:crumbIn .38s cubic-bezier(.34,1.56,.64,1) backwards;animation-delay:calc(var(--i) * 45ms)}
+.crumb-node:hover{color:#fff;background:rgba(96,165,250,.16);border-color:rgba(96,165,250,.35);transform:translateY(-1px)}
+.crumb-node.current{color:#06152e;background:#bfdbfe;border-color:#bfdbfe;font-weight:700;box-shadow:0 0 16px rgba(96,165,250,.25)}
+.crumb-sep{color:rgba(139,154,185,.4);font-size:11px;flex:0 0 auto}
+@keyframes crumbIn{from{opacity:0;transform:translateY(-5px) scale(.86)}to{opacity:1;transform:none}}
+.route-shell{position:relative;overflow:hidden;border:1px solid rgba(255,255,255,.07);border-radius:14px;background:rgba(0,0,0,.22);padding:12px 11px 12px 9px;margin-bottom:11px}
+.route-shell::before{content:'';position:absolute;right:-45px;top:-65px;width:170px;height:170px;border-radius:50%;border:1px solid rgba(96,165,250,.16);box-shadow:0 0 0 18px rgba(96,165,250,.035),0 0 0 36px rgba(96,165,250,.025);pointer-events:none}
+.route-shell::after{content:'';position:absolute;left:0;right:0;top:0;height:1px;background:linear-gradient(90deg,transparent,rgba(96,165,250,.55),transparent)}
+.route{display:flex;flex-direction:column;gap:4px;position:relative;z-index:1}
+.route-stop{display:flex;align-items:center;gap:10px;min-width:0;position:relative;padding:7px 8px;border:1px solid transparent;border-radius:10px;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer;transition:.22s;animation:routeIn .42s cubic-bezier(.2,.8,.2,1) backwards;animation-delay:calc(var(--i) * 55ms)}
+.route-stop::before{content:'';position:absolute;left:16px;top:-9px;width:1px;height:18px;background:rgba(139,154,185,.22)}
+.route-stop:first-child::before{display:none}
+.route-stop:hover{background:rgba(96,165,250,.08);border-color:rgba(96,165,250,.2)}
+.route-stop.current{background:linear-gradient(90deg,rgba(96,165,250,.2),rgba(96,165,250,.035));border-color:rgba(96,165,250,.38);box-shadow:0 7px 18px -15px rgba(96,165,250,.9)}
+.stop-dot{width:17px;height:17px;flex:0 0 auto;border-radius:50%;border:2px solid rgba(139,154,185,.38);background:#0b1428;display:grid;place-items:center;position:relative;z-index:1;transition:.25s}
+.stop-dot::after{content:'';width:5px;height:5px;border-radius:50%;background:rgba(139,154,185,.5)}
+.route-stop.current .stop-dot{border-color:#bfdbfe;box-shadow:0 0 0 4px rgba(96,165,250,.14),0 0 18px rgba(96,165,250,.7);animation:beacon 1.8s ease-in-out infinite}
+.route-stop.current .stop-dot::after{background:#fff;box-shadow:0 0 8px #fff}
+@keyframes beacon{50%{box-shadow:0 0 0 7px rgba(96,165,250,.07),0 0 24px rgba(96,165,250,.8)}}
+.stop-icon{font-size:14px;flex:0 0 auto;color:#a5b4fc;width:19px;text-align:center}
+.route-stop.current .stop-icon{color:#bfdbfe}
+.stop-copy{min-width:0;flex:1}
+.stop-name{display:block;font-size:12px;color:#dce8ff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.stop-path{display:block;margin-top:2px;font-size:9.5px;color:rgba(139,154,185,.65);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.route-stop.current .stop-name{font-weight:700}.route-stop.current .stop-path{color:#93c5fd}
+.route-beacon{position:absolute;right:15px;top:50%;width:10px;height:10px;border-radius:50%;background:#bfdbfe;box-shadow:0 0 0 6px rgba(96,165,250,.12),0 0 22px rgba(96,165,250,.9);transform:translateY(-50%);animation:floatBeacon 2.4s ease-in-out infinite}
+@keyframes floatBeacon{50%{transform:translate(5px,-53%);opacity:.65}}
+.branch-note{position:relative;z-index:1;margin:9px 4px 0 38px;padding:6px 8px;border-left:2px solid var(--gold);color:#fcd34d;font-size:10px;line-height:1.5;background:rgba(251,191,36,.06);border-radius:0 7px 7px 0}
+@keyframes routeIn{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:none}}
+.facts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin-bottom:11px}
+.fact{min-width:0;padding:8px 9px;border-radius:10px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.065)}
+.fact b{display:block;color:rgba(139,154,185,.65);font-size:9px;font-weight:400;letter-spacing:.08em;text-transform:uppercase}
+.fact span{display:block;margin-top:4px;color:#dbeafe;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.trail{border:1px solid rgba(255,255,255,.07);border-radius:13px;padding:10px 10px 9px;background:rgba(0,0,0,.19);margin-bottom:11px}
+.trail-head{display:flex;align-items:center;justify-content:space-between;gap:8px;color:rgba(139,154,185,.66);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase}
+.trail-head span{color:#60a5fa;letter-spacing:.03em;text-transform:none}
+.trail-list{display:flex;flex-direction:column;gap:3px;margin-top:7px}
+.trail-row{display:flex;align-items:center;gap:7px;min-width:0;color:var(--dim);font-size:10.5px;animation:trailIn .35s ease both}
+.trail-row .trail-dot{width:6px;height:6px;border-radius:50%;background:#64748b;flex:0 0 auto}
+.trail-row.current .trail-dot{background:var(--mint);box-shadow:0 0 10px rgba(94,234,212,.7)}
+.trail-row .trail-text{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.trail-row .trail-text b{color:#bfdbfe;font-weight:400}
+@keyframes trailIn{from{opacity:0;transform:translateX(-7px)}to{opacity:1;transform:none}}
+.children-head{display:flex;align-items:center;gap:8px;padding:0 2px 7px;color:rgba(139,154,185,.65);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase}
+.children-head span{margin-left:auto;color:#60a5fa;letter-spacing:.03em;text-transform:none}
+.children{display:flex;gap:7px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
+.children::-webkit-scrollbar{display:none}
+.child-card{font:inherit;font-size:11px;white-space:nowrap;color:#bfdbfe;background:rgba(96,165,250,.09);border:1px solid rgba(96,165,250,.2);padding:7px 10px;border-radius:9px;cursor:pointer;transition:.2s;animation:childIn .4s ease both;animation-delay:calc(var(--i) * 45ms)}
+.child-card:hover{color:#fff;background:rgba(96,165,250,.2);border-color:rgba(96,165,250,.48);transform:translateY(-2px);box-shadow:0 8px 17px -13px rgba(96,165,250,.9)}
+.child-card:active{transform:translateY(0) scale(.97)}
+@keyframes childIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+.empty-children{color:rgba(139,154,185,.65);font-size:11px;padding:7px 3px}
+.term{
+  flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:12px 13px;border-radius:12px;background:rgba(0,0,0,.36);
+  border:1px solid rgba(255,255,255,.055);font-size:12.5px;line-height:1.7;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.16) transparent;-webkit-overflow-scrolling:touch;
+}
+.term::-webkit-scrollbar{width:8px;height:8px}.term::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:99px}.term::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.26)}
+.line{white-space:pre-wrap;word-break:break-word;animation:lineIn .22s ease-out}
+@keyframes lineIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+.line .p{color:#a7f3d0;opacity:.9}.line .c{color:#f8fbff;font-weight:600}.line.err{color:var(--err)}.line .dim{color:var(--dim)}.line .ok{color:#86efac}.line .hl{color:#bfdbfe;font-weight:700}
+.line .code{color:#fde68a;background:rgba(251,191,36,.11);padding:1px 7px;border-radius:6px;border:1px solid rgba(251,191,36,.2)}
+.pwd-path{display:inline-block;color:#bfdbfe;background:rgba(96,165,250,.1);border:1px solid rgba(96,165,250,.25);border-radius:7px;padding:2px 8px;overflow-wrap:anywhere;box-shadow:0 0 18px rgba(96,165,250,.1)}
+.physical-output{color:#5eeadd;background:rgba(94,234,212,.1);border-color:rgba(94,234,212,.28)}
+.tip-line{margin-top:5px;padding:7px 10px;border-radius:8px;background:rgba(251,191,36,.08);border-left:3px solid rgba(251,191,36,.55);color:#fcd34d;font-size:12px}
+.chips{display:flex;gap:7px;overflow-x:auto;padding:10px 1px 2px;scrollbar-width:none;-ms-overflow-style:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{font:inherit;font-size:11.5px;white-space:nowrap;cursor:pointer;padding:6px 11px;border-radius:9px;color:#bfdbfe;background:rgba(96,165,250,.09);border:1px solid rgba(96,165,250,.24);transition:.18s;-webkit-tap-highlight-color:transparent}
+.chip:hover{background:rgba(96,165,250,.2);transform:translateY(-1px);box-shadow:0 6px 16px -12px rgba(96,165,250,.9)}.chip:active{transform:translateY(0) scale(.96)}
+.input-row{display:flex;align-items:center;gap:8px;margin-top:9px;padding:9px 10px;border-radius:12px;background:rgba(0,0,0,.4);border:1px solid rgba(96,165,250,.25);transition:border-color .2s,box-shadow .2s}
+.input-row:focus-within{border-color:rgba(96,165,250,.7);box-shadow:0 0 0 3px rgba(96,165,250,.13)}.input-row.shake{animation:shake .4s}
+@keyframes shake{10%,90%{transform:translateX(-2px)}20%,80%{transform:translateX(4px)}30%,50%,70%{transform:translateX(-6px)}40%,60%{transform:translateX(6px)}}
+.ps1{font-size:12.5px;color:#a7f3d0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:0 1 auto}.ps1 .ps-user{opacity:.8}
+.input-row input{flex:1;min-width:40px;background:none;border:none;outline:none;color:#f1f7ff;font:inherit;font-size:13px;padding:0}.input-row input::placeholder{color:rgba(139,154,185,.5)}
+.send{font:inherit;font-size:14px;line-height:1;cursor:pointer;width:30px;height:30px;flex:0 0 auto;border-radius:9px;color:#06152e;background:linear-gradient(150deg,#c7d2fe,#60a5fa);border:none;display:grid;place-items:center;transition:.18s;box-shadow:0 4px 14px -4px rgba(96,165,250,.8)}
+.send:hover{transform:translateY(-1px);box-shadow:0 6px 18px -4px rgba(96,165,250,1)}.send:active{transform:scale(.93)}
+.confetti{position:fixed;top:-14px;width:8px;height:13px;border-radius:2px;z-index:999;pointer-events:none;animation:fall linear forwards}
+@keyframes fall{to{transform:translateY(108vh) rotate(var(--rot,360deg));opacity:.05}}
+@media (min-width:901px){.term{flex:0 0 clamp(240px,42vh,420px);overflow-y:auto}}
+@media (max-width:900px){
+  .app{padding:12px 12px 16px;gap:10px}main{grid-template-columns:1fr;grid-template-rows:auto auto;flex:none}.panel{min-height:0}
+  .observatory-panel{max-height:58vh}.observatory-body{max-height:43vh}.tree-scroll{height:38vh;max-height:360px;min-height:220px}.term{min-height:155px;max-height:34vh}
+  .brand h1{font-size:15px}.brand p,.sub{display:none}.mission-text{font-size:12.5px}.ps1 .ps-user{display:none}
+}
+@media (max-width:480px){
+  .logo{width:34px;height:34px;font-size:18px}.badge{font-size:9px;padding:4px 7px}.mission{gap:8px;padding:9px 11px}.hint-btn{padding:5px 9px;font-size:10.5px}
+  .coordinate-card{padding:11px}.coordinate-path{font-size:15px}.coordinate-bottom{gap:5px}.coordinate-bottom .shell-path,.coordinate-bottom .physical-note{max-width:42%}.copy-btn{font-size:9px;padding:4px 6px}
+  .facts{grid-template-columns:repeat(2,minmax(0,1fr))}.route-shell{padding:9px 7px 9px 5px}.stop-icon{width:16px}.route-beacon{right:9px}
+  .trail{padding:8px}.view-note{width:100%;margin-left:0;text-align:left}
+}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <div class="logo">⌖</div>
+      <div>
+        <h1>Learn <code>pwd</code></h1>
+        <p>Know exactly where you are in the filesystem.</p>
+      </div>
+    </div>
+    <div class="steps" id="steps"></div>
+  </header>
+
+  <div class="mission" id="mission">
+    <span class="badge" id="missionBadge">Mission 1 / 6</span>
+    <span class="mission-text" id="missionText">Loading…</span>
+    <button class="hint-btn" id="hintBtn" type="button">Hint</button>
+  </div>
+  <div class="hint" id="hintBar"></div>
+
+  <main>
+    <section class="panel observatory-panel">
+      <div class="panel-head">
+        <span class="title">Path observatory</span>
+        <span class="sub">watch your location change</span>
+        <span class="live"><i></i> live</span>
+      </div>
+      <div class="coordinate-card" id="coordinateCard">
+        <div class="coordinate-top">
+          <span class="live-dot"></span>
+          <span>ABSOLUTE COORDINATE</span>
+          <div class="path-mode-tabs">
+            <button type="button" data-path-mode="logical" class="active">logical</button>
+            <button type="button" data-path-mode="physical">physical</button>
+          </div>
+        </div>
+        <div class="coordinate-path" id="coordinatePath">/home/you</div>
+        <div class="coordinate-bottom">
+          <span class="shell-path" id="shellPath">~</span>
+          <span class="physical-note" id="physicalNote">logical and physical match</span>
+          <button class="copy-btn" id="copyPath" type="button">copy</button>
+        </div>
+      </div>
+      <div class="observatory-body">
+        <div class="filesystem-map">
+          <div class="map-head">
+            <div class="map-heading">
+              <span class="map-title">Filesystem map</span>
+              <span class="map-sub">tap folders to move</span>
+            </div>
+            <span class="map-status" id="mapStatus">current · ~</span>
+          </div>
+          <div class="map-tree">
+            <div class="tree-scroll" id="treeScroll">
+              <div class="tree" id="tree"></div>
+            </div>
+          </div>
+          <div class="map-footer">
+            <div class="map-legend">
+              <span><i class="folder"></i>folder</span>
+              <span><i class="file"></i>file</span>
+              <span><i class="you-dot"></i>you</span>
+            </div>
+            <span class="map-footer-note">blue blob follows your location</span>
+          </div>
+        </div>
+        <div class="section-label">Breadcrumb trail</div>
+        <div class="breadcrumbs" id="breadcrumbs"></div>
+        <div class="route-shell">
+          <div class="section-label">Route history</div>
+          <div class="route" id="route"></div>
+          <div class="route-beacon" aria-hidden="true"></div>
+          <div class="branch-note" id="branchNote" hidden></div>
+        </div>
+        <div class="facts" id="facts"></div>
+        <div class="trail">
+          <div class="trail-head"><span>recent moves</span><span id="trailCount">0 moves</span></div>
+          <div class="trail-list" id="trailList"></div>
+        </div>
+        <div class="children-head"><span>next folders</span><span id="childCount">0 folders</span></div>
+        <div class="children" id="children"></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <span class="dots"><i></i><i></i><i></i></span>
+        <span class="title">Terminal</span>
+      </div>
+      <div class="term" id="term"></div>
+      <div class="chips" id="chips"></div>
+      <form class="input-row" id="form" autocomplete="off">
+        <span class="ps1"><span class="ps-user">you@linux:</span><span id="psPath">~</span>$</span>
+        <input id="cmd" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="type pwd…">
+        <button class="send" type="submit" aria-label="Run command">↵</button>
+      </form>
+    </section>
+  </main>
+</div>
+<script>
+let nodeClock = 1700000000000;
+const makeNode = (name, type = 'file', extra = {}) => ({name, type, children:type === 'dir' ? [] : null, hidden:name.startsWith('.'), linkTarget:null, mtime:nodeClock++, size:type === 'dir' ? 4096 : 1, ...extra});
+const ROOT = makeNode('/', 'dir');
+const HOME_PARENT = makeNode('home', 'dir');
+const HOME = makeNode('you', 'dir');
+const PROJECTS = makeNode('projects', 'dir');
+const API = makeNode('api', 'dir');
+const DESIGN = makeNode('design-system', 'dir');
+const ROUTES = makeNode('routes', 'dir');
+const COMPONENTS = makeNode('components', 'dir');
+const SHORTCUT = makeNode('latest', 'dir', {linkTarget:PROJECTS});
+const ARCHIVE = makeNode('.archive', 'dir');
+const README = makeNode('README.md', 'file');
+const INDEX = makeNode('index.html', 'file');
+const PACKAGE = makeNode('package.json', 'file');
+const NOTES = makeNode('notes.txt', 'file');
+const DOWNLOADS = makeNode('Downloads', 'dir');
+const SERVER = makeNode('server.js', 'file');
+const ROUTES_INDEX = makeNode('index.js', 'file');
+const TOKENS = makeNode('tokens.css', 'file');
+const PREVIEW = makeNode('preview.png', 'file');
+const COMPONENT_BUTTON = makeNode('button.css', 'file');
+const OLD_PLAN = makeNode('old-plan.txt', 'file');
+
+ROOT.children = [HOME_PARENT];
+HOME_PARENT.children = [HOME];
+HOME.children = [PROJECTS, SHORTCUT, NOTES, DOWNLOADS];
+PROJECTS.children = [API, DESIGN, ARCHIVE, README, INDEX, PACKAGE];
+API.children = [ROUTES, SERVER];
+ROUTES.children = [ROUTES_INDEX];
+DESIGN.children = [COMPONENTS, TOKENS, PREVIEW];
+COMPONENTS.children = [COMPONENT_BUTTON];
+ARCHIVE.children = [OLD_PLAN];
+
+const allNodes = [];
+function link(node, parent) {
+  node.parent = parent;
+  allNodes.push(node);
+  if (node.children) node.children.forEach(child => link(child, node));
+}
+ROOT.children.forEach(child => link(child, ROOT));
+
+const esc = value => String(value).replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+const pathFromSegments = segments => '/' + segments.join('/');
+const locationSegments = path => path === '/' ? [] : path.slice(1).split('/').filter(Boolean);
+const shellPath = path => {
+  if (path === '/home/you') return '~';
+  if (path.startsWith('/home/you/')) return '~' + path.slice(9);
+  return path;
+};
+const absPath = node => {
+  if (node === ROOT) return '/';
+  const parts = [];
+  let current = node;
+  while (current && current !== ROOT) { parts.unshift(current.name); current = current.parent; }
+  return pathFromSegments(parts);
+};
+const prettyPath = node => shellPath(absPath(node));
+const homeLocation = () => ({logicalPath:'/home/you', physical:HOME});
+let cwd = homeLocation();
+let previousLocation = cwd;
+let pathMode = 'logical';
+let lastMoveCommand = '';
+let lastContext = null;
+let history = [];
+let historyIndex = -1;
+let trail = [{kind:'start',command:'start',from:null,to:'~'}];
+
+const coordinateCard = document.getElementById('coordinateCard');
+const coordinatePath = document.getElementById('coordinatePath');
+const shellPathEl = document.getElementById('shellPath');
+const physicalNote = document.getElementById('physicalNote');
+const copyPathBtn = document.getElementById('copyPath');
+const treeEl = document.getElementById('tree');
+const treeScroll = document.getElementById('treeScroll');
+const mapStatus = document.getElementById('mapStatus');
+const pathModeButtons = [...document.querySelectorAll('[data-path-mode]')];
+const breadcrumbs = document.getElementById('breadcrumbs');
+const route = document.getElementById('route');
+const branchNote = document.getElementById('branchNote');
+const facts = document.getElementById('facts');
+const trailList = document.getElementById('trailList');
+const trailCount = document.getElementById('trailCount');
+const children = document.getElementById('children');
+const childCount = document.getElementById('childCount');
+const term = document.getElementById('term');
+const chips = document.getElementById('chips');
+const form = document.getElementById('form');
+const input = document.getElementById('cmd');
+const psPath = document.getElementById('psPath');
+const stepsEl = document.getElementById('steps');
+const missionEl = document.getElementById('mission');
+const missionBadge = document.getElementById('missionBadge');
+const missionText = document.getElementById('missionText');
+const hintBtn = document.getElementById('hintBtn');
+const hintBar = document.getElementById('hintBar');
+let treeInner;
+let avatarEl;
+const rowOf = new Map();
+
+function physicalPath(location = cwd) { return absPath(location.physical); }
+function isAlias(location = cwd) { return location.logicalPath !== physicalPath(location); }
+function displayedPath(location = cwd) { return pathMode === 'physical' ? physicalPath(location) : location.logicalPath; }
+function resolveLocation(inputPath) {
+  let logicalSegments;
+  let physical;
+  if (inputPath === '~' || inputPath.startsWith('~/')) {
+    logicalSegments = ['home', 'you'];
+    physical = HOME;
+  } else if (inputPath.startsWith('/')) {
+    logicalSegments = [];
+    physical = ROOT;
+  } else {
+    logicalSegments = locationSegments(cwd.logicalPath);
+    physical = cwd.physical;
+  }
+  let rest = inputPath;
+  if (inputPath === '~' || inputPath.startsWith('~/')) rest = inputPath.slice(1);
+  if (inputPath.startsWith('/')) rest = inputPath.slice(1);
+  const segments = rest.split('/').filter(Boolean);
+  for (const segment of segments) {
+    if (segment === '.') continue;
+    if (segment === '..') {
+      logicalSegments.pop();
+      physical = physical.parent || ROOT;
+      continue;
+    }
+    if (!physical.children) return {error:'notdir', name:segment};
+    const next = physical.children.find(child => child.name === segment);
+    if (!next) return {error:'missing', name:segment};
+    physical = next.linkTarget || next;
+    logicalSegments.push(segment);
+  }
+  if (physical.type !== 'dir') return {error:'notdir', name:inputPath};
+  return {location:{logicalPath:pathFromSegments(logicalSegments), physical}};
+}
+function log(html, className = '') {
+  const line = document.createElement('div');
+  line.className = 'line' + (className ? ' ' + className : '');
+  line.innerHTML = html;
+  term.appendChild(line);
+  term.scrollTop = term.scrollHeight;
+}
+function shakeInput() {
+  form.classList.remove('shake');
+  void form.offsetWidth;
+  form.classList.add('shake');
+}
+function updatePathElements() {
+  const shown = displayedPath();
+  coordinatePath.textContent = shown;
+  shellPathEl.textContent = shellPath(cwd.logicalPath);
+  const alias = isAlias();
+  physicalNote.textContent = alias ? `physical: ${physicalPath()}` : 'logical and physical match';
+  coordinateCard.classList.toggle('physical-mode', pathMode === 'physical');
+  pathModeButtons.forEach(button => button.classList.toggle('active', button.dataset.pathMode === pathMode));
+  psPath.textContent = shellPath(cwd.logicalPath);
+}
+function renderBreadcrumbs(segments) {
+  breadcrumbs.innerHTML = '';
+  const root = document.createElement('button');
+  root.type = 'button';
+  root.className = 'crumb-node' + (segments.length === 0 ? ' current' : '');
+  root.style.setProperty('--i', 0);
+  root.textContent = '/';
+  root.addEventListener('click', () => { execute('cd /'); input.focus(); });
+  breadcrumbs.appendChild(root);
+  segments.forEach((segment, index) => {
+    const separator = document.createElement('span');
+    separator.className = 'crumb-sep';
+    separator.textContent = '›';
+    breadcrumbs.appendChild(separator);
+    const path = pathFromSegments(segments.slice(0, index + 1));
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'crumb-node' + (index === segments.length - 1 ? ' current' : '');
+    button.style.setProperty('--i', index + 1);
+    button.textContent = segment === 'you' ? '~' : segment;
+    button.addEventListener('click', () => { execute(`cd ${path}`); input.focus(); });
+    breadcrumbs.appendChild(button);
+  });
+}
+function renderRoute(segments) {
+  route.innerHTML = '';
+  const prefixes = [[]];
+  segments.forEach((_, index) => prefixes.push(segments.slice(0, index + 1)));
+  prefixes.forEach((prefix, index) => {
+    const path = pathFromSegments(prefix);
+    const stop = document.createElement('button');
+    stop.type = 'button';
+    stop.className = 'route-stop' + (index === prefixes.length - 1 ? ' current' : '');
+    stop.style.setProperty('--i', index);
+    const icon = index === 0 ? '⌂' : prefix[index - 1] === 'you' ? '◉' : '▱';
+    const name = index === 0 ? '/' : prefix[index - 1] === 'you' ? '~' : prefix[index - 1];
+    stop.innerHTML = `<span class="stop-dot"></span><span class="stop-icon">${icon}</span><span class="stop-copy"><span class="stop-name">${esc(name)}</span><span class="stop-path">${esc(path === '/home/you' ? '~' : path)}</span></span>`;
+    stop.addEventListener('click', () => { execute(`cd ${path}`); input.focus(); });
+    route.appendChild(stop);
+  });
+  branchNote.hidden = !isAlias();
+  if (isAlias()) branchNote.textContent = `logical ${shellPath(cwd.logicalPath)} resolves to physical ${physicalPath()}`;
+}
+function renderFacts(segments) {
+  const parentPath = segments.length ? pathFromSegments(segments.slice(0, -1)) : '/';
+  const depth = segments.length;
+  const alias = isAlias() ? 'link' : 'directory';
+  facts.innerHTML = `<div class="fact"><b>path type</b><span>absolute</span></div><div class="fact"><b>depth</b><span>${depth} level${depth === 1 ? '' : 's'}</span></div><div class="fact"><b>parent</b><span>${esc(shellPath(parentPath))}</span></div><div class="fact"><b>location</b><span>${alias}</span></div>`;
+}
+function renderTrail() {
+  trailList.innerHTML = '';
+  trail.slice(-4).forEach((entry, index) => {
+    const row = document.createElement('div');
+    row.className = 'trail-row' + (index === trail.slice(-4).length - 1 ? ' current' : '');
+    row.style.animationDelay = `${index * 55}ms`;
+    if (entry.kind === 'start') {
+      row.innerHTML = `<i class="trail-dot"></i><span class="trail-text"><b>start</b> · ${esc(entry.to)}</span>`;
+    } else {
+      row.innerHTML = `<i class="trail-dot"></i><span class="trail-text"><b>${esc(entry.command)}</b> · ${esc(entry.from)} → ${esc(entry.to)}</span>`;
+    }
+    trailList.appendChild(row);
+  });
+  const moves = Math.max(0, trail.length - 1);
+  trailCount.textContent = `${moves} move${moves === 1 ? '' : 's'}`;
+}
+function renderChildren() {
+  children.innerHTML = '';
+  const folders = cwd.physical.children.filter(child => child.type === 'dir' && !child.hidden);
+  childCount.textContent = `${folders.length} folder${folders.length === 1 ? '' : 's'}`;
+  if (!folders.length) {
+    const empty = document.createElement('span');
+    empty.className = 'empty-children';
+    empty.textContent = 'No child folders here.';
+    children.appendChild(empty);
+    return;
+  }
+  folders.forEach((folder, index) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'child-card';
+    button.style.setProperty('--i', index);
+    button.textContent = `↳ ${folder.name}/`;
+    button.addEventListener('click', () => { execute(`cd ${folder.name}`); input.focus(); });
+    children.appendChild(button);
+  });
+}
+function buildTree() {
+  treeInner = document.createElement('div');
+  treeInner.className = 'tree-inner';
+  treeEl.appendChild(treeInner);
+  avatarEl = document.createElement('div');
+  avatarEl.className = 'avatar';
+  avatarEl.innerHTML = '<div class="body"><span class="eyes"><i></i><i></i></span></div>';
+  renderNode(ROOT, treeInner);
+  treeInner.appendChild(avatarEl);
+}
+function renderNode(node, parentEl) {
+  const wrap = document.createElement('div');
+  wrap.className = 'node';
+  const row = document.createElement('div');
+  row.className = 'row' + (node.type === 'file' ? ' file' : '') + (node.linkTarget ? ' link' : '');
+  const icon = document.createElement('span');
+  icon.className = 'icon ' + node.type;
+  const label = document.createElement('span');
+  label.className = 'label';
+  label.textContent = node === ROOT ? '/' : node.name;
+  row.append(icon, label);
+  if (node === HOME) {
+    const tag = document.createElement('span');
+    tag.className = 'tag-home';
+    tag.textContent = '~';
+    row.appendChild(tag);
+  }
+  row.addEventListener('click', () => onTreeClick(node));
+  wrap.appendChild(row);
+  rowOf.set(node, row);
+  if (node.children && node.children.length) {
+    const kids = document.createElement('div');
+    kids.className = 'children';
+    node.children.forEach(child => renderNode(child, kids));
+    wrap.appendChild(kids);
+  }
+  parentEl.appendChild(wrap);
+}
+function updateTreeState() {
+  rowOf.forEach((row, node) => {
+    row.classList.toggle('current', node === cwd.physical);
+    row.classList.toggle('selected', node === SHORTCUT && cwd.logicalPath.startsWith('/home/you/latest'));
+  });
+  mapStatus.textContent = `${displayedPath()} · ${isAlias() ? 'logical link' : 'current folder'}`;
+}
+function avatarTarget(node) {
+  const row = rowOf.get(node);
+  const label = row.querySelector('.label');
+  const innerRect = treeInner.getBoundingClientRect();
+  const labelRect = label.getBoundingClientRect();
+  return {x:labelRect.right - innerRect.left + 9, y:labelRect.top - innerRect.top + labelRect.height / 2 - 15};
+}
+function moveAvatar(animate, node = cwd.physical) {
+  const target = avatarTarget(node);
+  if (!animate) avatarEl.style.transition = 'none';
+  avatarEl.style.transform = `translate(${target.x}px, ${target.y}px)`;
+  if (!animate) requestAnimationFrame(() => { avatarEl.style.transition = ''; });
+}
+function ping(x, y) {
+  const element = document.createElement('div');
+  element.className = 'ping';
+  element.style.transform = `translate(${x}px, ${y}px)`;
+  element.innerHTML = '<i></i>';
+  treeInner.appendChild(element);
+  window.setTimeout(() => element.remove(), 800);
+}
+function scrollToRow(node) {
+  const row = rowOf.get(node);
+  const rowRect = row.getBoundingClientRect();
+  const innerRect = treeInner.getBoundingClientRect();
+  const target = rowRect.top - innerRect.top + rowRect.height / 2 - treeScroll.clientHeight / 2;
+  treeScroll.scrollTo({top:Math.max(0, target), behavior:'smooth'});
+}
+function animateTreeMove(node) {
+  const row = rowOf.get(node);
+  if (!row) return;
+  moveAvatar(true, node);
+  avatarEl.classList.remove('hop');
+  void avatarEl.offsetWidth;
+  avatarEl.classList.add('hop');
+  const rowRect = row.getBoundingClientRect();
+  const innerRect = treeInner.getBoundingClientRect();
+  ping(rowRect.left - innerRect.left + 14, rowRect.top - innerRect.top + rowRect.height / 2);
+  row.classList.remove('flash');
+  void row.offsetWidth;
+  row.classList.add('flash');
+  scrollToRow(node);
+}
+function onTreeClick(node) {
+  if (node.type === 'file') execute(`ls ${prettyPath(node)}`);
+  else execute(`cd ${prettyPath(node)}`);
+}
+function renderLocation() {
+  const segments = locationSegments(cwd.logicalPath);
+  updatePathElements();
+  renderBreadcrumbs(segments);
+  renderRoute(segments);
+  renderFacts(segments);
+  renderTrail();
+  renderChildren();
+  updateTreeState();
+  coordinateCard.classList.remove('refresh');
+  void coordinateCard.offsetWidth;
+  coordinateCard.classList.add('refresh');
+}
+function setPathMode(mode) {
+  pathMode = mode;
+  renderLocation();
+}
+function parsePwd(args) {
+  let mode = 'L';
+  for (const arg of args) {
+    if (arg === '-L' || arg === '--logical') mode = 'L';
+    else if (arg === '-P' || arg === '--physical') mode = 'P';
+    else if (arg === '--help' || arg === '-h') return {help:true};
+    else return {error:`invalid option -- '${arg.replace(/^--?/, '')}'`};
+  }
+  return {mode};
+}
+function doPwd(args) {
+  const parsed = parsePwd(args);
+  if (parsed.help) { doHelp(); return; }
+  if (parsed.error) {
+    log(`pwd: ${esc(parsed.error)}`, 'err');
+    log('<span class="tip-line">Use <b>pwd</b>, <b>pwd -L</b>, or <b>pwd -P</b>.</span>', 'tip-line-wrap');
+    shakeInput();
+    return;
+  }
+  const mode = parsed.mode === 'P' ? 'physical' : 'logical';
+  setPathMode(mode);
+  const output = displayedPath();
+  log(`<span class="pwd-path${mode === 'physical' ? ' physical-output' : ''}">${esc(output)}</span>`);
+  if (isAlias()) log(`<span class="dim">${mode === 'physical' ? 'Physical path resolved the link.' : 'This is the logical path you are standing in.'}</span>`);
+  lastContext = {command:'pwd', mode, location:{logicalPath:cwd.logicalPath, physical:cwd.physical}, lastMoveCommand};
+  checkMission();
+}
+function recordMove(command, from, to) {
+  trail.push({kind:'move', command, from:shellPath(from), to:shellPath(to)});
+  if (trail.length > 5) trail.shift();
+}
+function doCd(args) {
+  if (args.length > 1) { log('bash: cd: too many arguments', 'err'); shakeInput(); return; }
+  let target;
+  let moveCommand;
+  if (!args.length) { target = homeLocation(); moveCommand = '~'; }
+  else if (args[0] === '-') {
+    if (!previousLocation) { log('bash: cd: OLDPWD not set', 'err'); shakeInput(); return; }
+    target = previousLocation;
+    moveCommand = '-';
+    log(`<span class="dim">${esc(shellPath(target.logicalPath))}</span>`);
+  } else {
+    const resolved = resolveLocation(args[0]);
+    if (resolved.error) {
+      if (resolved.error === 'missing') log(`bash: cd: ${esc(args[0])}: No such file or directory`, 'err');
+      else log(`bash: cd: ${esc(args[0])}: Not a directory`, 'err');
+      shakeInput();
+      return;
+    }
+    target = resolved.location;
+    moveCommand = args[0];
+  }
+  const same = target.logicalPath === cwd.logicalPath && target.physical === cwd.physical;
+  if (same) { log('<span class="dim">You are already there.</span>'); return; }
+  const from = cwd;
+  previousLocation = from;
+  cwd = target;
+  lastMoveCommand = moveCommand;
+  recordMove(moveCommand, from.logicalPath, cwd.logicalPath);
+  renderLocation();
+  animateTreeMove(target.physical);
+  log(`<span class="ok">Now at ${esc(shellPath(cwd.logicalPath))}</span>`);
+  if (isAlias()) log('<span class="tip-line">The link keeps its logical name, but its real target is <b>' + esc(physicalPath()) + '</b>.</span>', 'tip-line-wrap');
+}
+function parseLs(args) {
+  const flags = {a:false, l:false, t:false, r:false, one:false, h:false};
+  const paths = [];
+  let optionsEnded = false;
+  for (const arg of args) {
+    if (arg === '--help') return {help:true};
+    if (!optionsEnded && arg === '--') { optionsEnded = true; continue; }
+    if (!optionsEnded && arg.startsWith('--')) {
+      const names = {all:'a','almost-all':'a',long:'l','time-sort':'t',reverse:'r',oneline:'one','human-readable':'h'};
+      const key = arg.slice(2).split('=')[0];
+      if (!(key in names)) return {error:`unsupported option -- '${arg.slice(2)}'`};
+      flags[names[key]] = true;
+      continue;
+    }
+    if (!optionsEnded && arg.startsWith('-') && arg.length > 1) {
+      for (const flag of arg.slice(1)) {
+        if (flag === 'A') { flags.a = true; continue; }
+        if (!(flag in flags)) return {error:`invalid option -- '${flag}'`};
+        flags[flag] = true;
+      }
+      continue;
+    }
+    paths.push(arg);
+  }
+  if (paths.length > 1) return {error:'this playground lists one path at a time'};
+  return {flags, path:paths[0] || '.'};
+}
+function resolveLsNode(inputPath) {
+  let current = inputPath === '~' || inputPath.startsWith('~/') ? HOME : inputPath.startsWith('/') ? ROOT : cwd.physical;
+  let rest = inputPath;
+  if (inputPath === '~' || inputPath.startsWith('~/')) rest = inputPath.slice(1);
+  if (inputPath.startsWith('/')) rest = inputPath.slice(1);
+  const segments = rest.split('/').filter(Boolean);
+  for (let index = 0; index < segments.length; index++) {
+    const segment = segments[index];
+    if (segment === '.') continue;
+    if (segment === '..') { current = current.parent || ROOT; continue; }
+    if (!current.children) return {error:'notdir', name:segment};
+    const next = current.children.find(child => child.name === segment);
+    if (!next) return {error:'missing', name:segment};
+    if (next.type !== 'dir' && index < segments.length - 1) return {error:'notdir', name:segment};
+    current = next.linkTarget || next;
+  }
+  return {node:current};
+}
+function listEntries(node, flags) {
+  if (node.type !== 'dir') return [node];
+  let entries = node.children.slice();
+  if (!flags.a) entries = entries.filter(entry => !entry.name.startsWith('.'));
+  entries.sort((left, right) => left.name.localeCompare(right.name, undefined, {numeric:true, sensitivity:'base'}));
+  if (flags.t) entries.sort((left, right) => right.mtime - left.mtime);
+  if (flags.r) entries.reverse();
+  return entries;
+}
+function lsMode(node) { return node.type === 'dir' ? 'drwxr-xr-x' : node.name.startsWith('.') ? '-rw-------' : '-rw-r--r--'; }
+function lsSize(node, human) { const bytes = node.size || 1; if (human && bytes >= 1024) return (bytes / 1024).toFixed(1) + 'K'; return node.type === 'dir' ? '4.0K' : bytes + 'B'; }
+function lsDate(node) { return new Date(node.mtime).toLocaleDateString('en-US', {month:'short', day:'2-digit', year:'numeric'}); }
+function doLs(args) {
+  const parsed = parseLs(args);
+  if (parsed.help) { doHelp(); return; }
+  if (parsed.error) { log(`ls: ${esc(parsed.error)}`, 'err'); shakeInput(); return; }
+  const resolved = resolveLsNode(parsed.path);
+  if (resolved.error) {
+    log(resolved.error === 'missing' ? `ls: cannot access '${esc(parsed.path)}': No such file or directory` : `ls: cannot access '${esc(parsed.path)}': Not a directory`, 'err');
+    shakeInput();
+    return;
+  }
+  const node = resolved.node;
+  const entries = listEntries(node, parsed.flags);
+  if (!entries.length) { log('<span class="dim">(empty)</span>'); return; }
+  if (parsed.flags.l) entries.forEach(entry => log(`${lsMode(entry)}  you  you  ${lsSize(entry, parsed.flags.h)}  ${lsDate(entry)}  ${entry.name + (entry.type === 'dir' ? '/' : '')}`));
+  else if (parsed.flags.one) entries.forEach(entry => log(`<span class="${entry.name.startsWith('.') ? 'code' : entry.type === 'dir' ? 'hl' : 'dim'}">${esc(entry.name + (entry.type === 'dir' ? '/' : ''))}</span>`));
+  else log(entries.map(entry => `<span class="${entry.name.startsWith('.') ? 'code' : entry.type === 'dir' ? 'hl' : 'dim'}">${esc(entry.name + (entry.type === 'dir' ? '/' : ''))}</span>`).join('   '));
+  log(`<span class="dim">${entries.length} ${entries.length === 1 ? 'entry' : 'entries'} in ${esc(shellPath(cwd.logicalPath))}</span>`);
+}
+function doHelp() {
+  log('<span class="ok">Location commands you can try:</span>');
+  log('  <span class="hl">pwd</span>             print the absolute current path');
+  log('  <span class="hl">pwd -L</span>          keep the logical path');
+  log('  <span class="hl">pwd -P</span>          resolve the physical path');
+  log('  <span class="hl">cd PATH</span>          move to a folder');
+  log('  <span class="hl">cd ..</span>            move one level up');
+  log('  <span class="hl">cd -</span>             return to the previous folder');
+  log('  <span class="hl">cd ~</span>             jump home');
+  log('  <span class="hl">ls</span>               list the current folder');
+  log('  <span class="hl">ls -a</span>            include hidden entries');
+  log('  <span class="hl">ls -l</span>            show long details');
+  log('  <span class="hl">ls -t / -r</span>        sort by time or reverse');
+}
+function execute(raw) {
+  const commandLine = raw.trim();
+  if (!commandLine) return;
+  history.push(commandLine);
+  historyIndex = -1;
+  const prompt = `you@linux:${shellPath(cwd.logicalPath)}$`;
+  log(`<span class="p">${esc(prompt)}</span> <span class="c">${esc(commandLine)}</span>`);
+  if (commandLine === 'clear') { term.innerHTML = ''; return; }
+  if (commandLine === 'help' || commandLine === '--help') { doHelp(); return; }
+  const parts = commandLine.match(/(?:[^\s"']+|"[^"]*"|'[^']*')+/g) || [];
+  const command = parts[0];
+  const args = parts.slice(1).map(arg => arg.replace(/^"|"$/g, '').replace(/^'|'$/g, ''));
+  if (command === 'pwd') doPwd(args);
+  else if (command === 'cd') doCd(args);
+  else if (command === 'ls') doLs(args);
+  else {
+    log(`bash: ${esc(command)}: command not found`, 'err');
+    log('<span class="dim">This playground is learning <b>pwd</b>. Try moving with <b>cd</b> or print your location with <b>pwd</b>.</span>');
+    shakeInput();
+  }
+}
+const missions = [
+  {text:'Print the absolute path of your starting folder.', hint:'Type: <code>pwd</code>', answer:'pwd', check:context => context.command === 'pwd' && context.mode === 'logical' && context.location.logicalPath === '/home/you'},
+  {text:'Move into <b>projects</b>, then print your new location.', hint:'Run <code>cd projects</code>, then <code>pwd</code>.', answer:'pwd', check:context => context.command === 'pwd' && context.location.logicalPath === '/home/you/projects'},
+  {text:'Step into the <b>api</b> folder and check the path.', hint:'Run <code>cd api</code>, then <code>pwd</code>.', answer:'pwd', check:context => context.command === 'pwd' && context.location.logicalPath === '/home/you/projects/api'},
+  {text:'Climb back up one directory and print the path.', hint:'Run <code>cd ..</code>, then <code>pwd</code>.', answer:'cd ..', check:context => context.command === 'pwd' && context.lastMoveCommand === '..' && context.location.logicalPath === '/home/you/projects'},
+  {text:'Use the remembered folder to go back, then print it.', hint:'Run <code>cd -</code>, then <code>pwd</code>.', answer:'cd -', check:context => context.command === 'pwd' && context.lastMoveCommand === '-' && context.location.logicalPath === '/home/you/projects/api'},
+  {text:'Jump home with the tilde shortcut and print the path.', hint:'Run <code>cd ~</code>, then <code>pwd</code>.', answer:'cd ~', check:context => context.command === 'pwd' && context.lastMoveCommand === '~' && context.location.logicalPath === '/home/you'}
+];
+let missionIndex = 0;
+let missionLocked = false;
+missions.forEach(() => stepsEl.appendChild(document.createElement('i')));
+function renderMission() {
+  const mission = missions[missionIndex];
+  missionBadge.textContent = `Mission ${missionIndex + 1} / ${missions.length}`;
+  missionText.innerHTML = mission.text;
+  hintBar.classList.remove('show');
+  hintBar.textContent = '';
+  renderChips();
+}
+function checkMission() {
+  if (missionLocked || missionIndex >= missions.length || !lastContext) return;
+  if (missions[missionIndex].check(lastContext)) completeMission();
+}
+function completeMission() {
+  missionLocked = true;
+  stepsEl.children[missionIndex].classList.add('done');
+  missionEl.classList.add('complete');
+  window.setTimeout(() => {
+    missionEl.classList.remove('complete');
+    missionIndex++;
+    missionLocked = false;
+    if (missionIndex >= missions.length) finishAll();
+    else renderMission();
+  }, 950);
+}
+function finishAll() {
+  missionBadge.textContent = 'All done';
+  missionText.innerHTML = 'You always know where you are. Keep exploring!';
+  hintBtn.style.display = 'none';
+  hintBar.classList.remove('show');
+  renderChips();
+  confetti();
+  log('<span class="ok">All missions complete — nicely done!</span>');
+}
+function confetti() {
+  const colors = ['#60a5fa','#a5b4fc','#5eead4','#fbbf24','#f472b6','#86efac'];
+  for (let i = 0; i < 55; i++) {
+    const piece = document.createElement('i');
+    piece.className = 'confetti';
+    piece.style.left = Math.random() * 100 + '%';
+    piece.style.background = colors[i % colors.length];
+    piece.style.animationDelay = (Math.random() * .45) + 's';
+    piece.style.animationDuration = (1.7 + Math.random() * 1.3) + 's';
+    piece.style.setProperty('--rot', (Math.random() * 900 - 450) + 'deg');
+    document.body.appendChild(piece);
+    window.setTimeout(() => piece.remove(), 3600);
+  }
+}
+const missionRecipes = [
+  ['pwd','ls','help'],
+  ['cd projects','pwd','ls','help'],
+  ['cd api','pwd','ls','help'],
+  ['cd ..','pwd','ls','help'],
+  ['cd -','pwd','ls','help'],
+  ['cd ~','pwd','ls','help']
+];
+function renderChips() {
+  chips.innerHTML = '';
+  const mission = missions[Math.min(missionIndex, missions.length - 1)];
+  const list = missionRecipes[Math.min(missionIndex, missionRecipes.length - 1)].slice();
+  if (hintBar.classList.contains('show') && !list.includes(mission.answer)) list.unshift(mission.answer);
+  list.forEach(command => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'chip';
+    button.textContent = command;
+    button.addEventListener('click', () => { execute(command); input.focus(); });
+    chips.appendChild(button);
+  });
+}
+hintBtn.addEventListener('click', () => {
+  if (hintBar.classList.contains('show')) {
+    hintBar.classList.remove('show');
+    renderChips();
+    return;
+  }
+  const mission = missions[Math.min(missionIndex, missions.length - 1)];
+  hintBar.innerHTML = mission.hint;
+  hintBar.classList.add('show');
+  renderChips();
+});
+form.addEventListener('submit', event => {
+  event.preventDefault();
+  const value = input.value;
+  input.value = '';
+  execute(value);
+  input.focus();
+});
+input.addEventListener('keydown', event => {
+  if (event.key === 'ArrowUp') {
+    event.preventDefault();
+    if (historyIndex < history.length - 1) {
+      historyIndex++;
+      input.value = history[history.length - 1 - historyIndex];
+      input.setSelectionRange(input.value.length, input.value.length);
+    }
+  } else if (event.key === 'ArrowDown') {
+    event.preventDefault();
+    if (historyIndex > 0) {
+      historyIndex--;
+      input.value = history[history.length - 1 - historyIndex];
+    } else {
+      historyIndex = -1;
+      input.value = '';
+    }
+  }
+});
+pathModeButtons.forEach(button => button.addEventListener('click', () => {
+  setPathMode(button.dataset.pathMode);
+  input.focus();
+}));
+copyPathBtn.addEventListener('click', async () => {
+  const value = displayedPath();
+  try {
+    if (navigator.clipboard) await navigator.clipboard.writeText(value);
+  } catch (error) {}
+  copyPathBtn.textContent = 'copied';
+  window.setTimeout(() => { copyPathBtn.textContent = 'copy'; }, 1100);
+});
+
+buildTree();
+renderLocation();
+requestAnimationFrame(() => moveAvatar(false, cwd.physical));
+renderMission();
+log('<span class="hl">Welcome to the path observatory.</span>');
+log('<b>pwd</b> prints the absolute folder where your shell is standing.');
+log('Move with <b>cd</b> and watch the path trail react in real time.');
+log('');
+log('<span class="dim">Try this first:</span> <span class="code">pwd</span>');
+window.addEventListener('resize', () => moveAvatar(false, cwd.physical));
+if (!('ontouchstart' in window) && window.innerWidth > 900) window.setTimeout(() => input.focus(), 400);
+</script>
+</body>
+</html>

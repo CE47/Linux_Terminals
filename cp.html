@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Learn `cp` — Visual Linux</title>
+<style>
+:root{
+  --bg:#071019;
+  --txt:#e7f3ff;
+  --dim:#8ca4bb;
+  --accent:#67e8f9;
+  --accent2:#a3e635;
+  --gold:#fbbf24;
+  --pink:#f472b6;
+  --err:#fb7185;
+  --line:rgba(255,255,255,.11);
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;min-height:100dvh;font-family:var(--mono);color:var(--txt);background:var(--bg);overflow-x:hidden;-webkit-font-smoothing:antialiased}
+body::before{content:'';position:fixed;inset:0;z-index:-2;background:radial-gradient(900px 620px at 8% -12%,rgba(103,232,249,.17),transparent 62%),radial-gradient(820px 600px at 100% 2%,rgba(163,230,53,.1),transparent 60%),radial-gradient(760px 700px at 48% 118%,rgba(251,191,36,.1),transparent 63%),#071019}
+body::after{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;background-image:linear-gradient(rgba(255,255,255,.027) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.027) 1px,transparent 1px);background-size:46px 46px;-webkit-mask-image:radial-gradient(ellipse at 50% 0%,#000 14%,transparent 74%);mask-image:radial-gradient(ellipse at 50% 0%,#000 14%,transparent 74%)}
+.app{max-width:1320px;margin:0 auto;min-height:100dvh;display:flex;flex-direction:column;padding:14px 16px 16px;gap:11px}
+.top{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:11px}
+.logo{width:38px;height:38px;flex:0 0 auto;border-radius:11px;display:grid;place-items:center;font-size:16px;font-weight:800;letter-spacing:-.08em;color:#06212a;background:linear-gradient(150deg,#a5f3fc,#67e8f9 45%,#22d3ee);box-shadow:0 8px 22px -8px rgba(103,232,249,.9),inset 0 1px 0 rgba(255,255,255,.7);animation:logoPulse 3.2s ease-in-out infinite}
+@keyframes logoPulse{0%,100%{box-shadow:0 8px 22px -8px rgba(103,232,249,.9),inset 0 1px 0 rgba(255,255,255,.7)}50%{box-shadow:0 8px 32px -6px rgba(103,232,249,1),inset 0 1px 0 rgba(255,255,255,.7)}}
+.brand h1{margin:0;font-size:16px;letter-spacing:.01em;font-weight:700}
+.brand h1 code{color:#a5f3fc;background:rgba(103,232,249,.14);padding:1px 7px;border-radius:6px;border:1px solid rgba(103,232,249,.3)}
+.brand p{margin:2px 0 0;font-size:11.5px;color:var(--dim)}
+.steps{display:flex;gap:7px;align-items:center}
+.steps i{width:9px;height:9px;border-radius:50%;display:block;background:rgba(255,255,255,.13);transition:all .45s cubic-bezier(.34,1.56,.64,1)}
+.steps i.done{background:var(--accent2);box-shadow:0 0 0 4px rgba(163,230,53,.14),0 0 14px rgba(163,230,53,.7);transform:scale(1.15)}
+.mission{display:flex;align-items:center;gap:12px;padding:10px 13px;border-radius:14px;background:linear-gradient(90deg,rgba(103,232,249,.11),rgba(103,232,249,.02));border:1px solid rgba(103,232,249,.22);transition:background .35s,border-color .35s,transform .35s,box-shadow .35s}
+.mission.complete{background:linear-gradient(90deg,rgba(163,230,53,.24),rgba(163,230,53,.05));border-color:rgba(163,230,53,.55);transform:scale(1.012);box-shadow:0 0 30px -8px rgba(163,230,53,.5)}
+.badge{font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;padding:5px 9px;border-radius:999px;white-space:nowrap;color:#a5f3fc;background:rgba(103,232,249,.16);border:1px solid rgba(103,232,249,.3);transition:all .3s}
+.mission.complete .badge{color:#bef264;background:rgba(163,230,53,.2);border-color:rgba(163,230,53,.45)}
+.mission-text{flex:1;font-size:13px;line-height:1.4;min-width:0}
+.mission-text b{color:#a5f3fc}
+.mission.complete .mission-text b{color:#bef264}
+.hint-btn{font:inherit;font-size:11px;color:var(--dim);cursor:pointer;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);padding:6px 11px;border-radius:9px;white-space:nowrap;transition:.2s}
+.hint-btn:hover{color:var(--txt);background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.24)}
+.hint{max-height:0;overflow:hidden;opacity:0;font-size:12.5px;color:var(--dim);padding:0 14px;border-radius:12px;transition:max-height .3s ease,opacity .3s ease,padding .3s ease,background .3s}
+.hint.show{max-height:80px;opacity:1;padding:9px 14px;background:rgba(255,255,255,.035)}
+.hint code{color:#fde68a;background:rgba(251,191,36,.13);padding:1px 6px;border-radius:5px}
+main{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1.08fr) minmax(0,1fr);gap:13px}
+.panel{background:linear-gradient(180deg,rgba(255,255,255,.048),rgba(255,255,255,.014));border:1px solid rgba(255,255,255,.08);border-radius:17px;padding:12px;display:flex;flex-direction:column;min-height:0;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:0 22px 44px -24px rgba(0,0,0,.9),inset 0 1px 0 rgba(255,255,255,.055)}
+.panel-head{display:flex;align-items:center;gap:9px;padding:1px 4px 9px}
+.title{font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:var(--dim);font-weight:700}
+.sub{font-size:11px;color:rgba(140,164,187,.65);margin-left:auto}
+.dots{display:flex;gap:5px;margin-right:2px}
+.dots i{width:9px;height:9px;border-radius:50%;display:block}
+.dots i:nth-child(1){background:#fb7185}
+.dots i:nth-child(2){background:#fbbf24}
+.dots i:nth-child(3){background:#a3e635}
+.crumbs{display:flex;align-items:center;flex-wrap:wrap;gap:3px;padding:7px 9px;margin-bottom:8px;border-radius:11px;background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.055);min-height:37px}
+.crumb{font-size:12px;padding:3px 9px;border-radius:7px;background:rgba(103,232,249,.13);color:#a5f3fc;border:1px solid rgba(103,232,249,.22);animation:crumbIn .32s cubic-bezier(.34,1.56,.64,1) backwards}
+.crumb:last-child{color:#bef264;background:rgba(163,230,53,.1);border-color:rgba(163,230,53,.24)}
+@keyframes crumbIn{from{opacity:0;transform:translateY(-5px) scale(.85)}to{opacity:1;transform:none}}
+.sep{color:rgba(140,164,187,.5);font-size:11px;padding:0 1px}
+.transfer-card{position:relative;display:flex;flex-direction:column;gap:9px;padding:10px 11px 9px;margin-bottom:8px;border-radius:13px;background:linear-gradient(120deg,rgba(103,232,249,.1),rgba(251,191,36,.04) 48%,rgba(163,230,53,.1));border:1px solid rgba(103,232,249,.22);overflow:hidden;transition:background .35s,border-color .35s,box-shadow .35s,transform .35s}
+.transfer-card::before{content:'';position:absolute;inset:0;pointer-events:none;background:linear-gradient(105deg,transparent 0%,rgba(255,255,255,.09) 45%,transparent 70%);transform:translateX(-110%);animation:laneShimmer 5s ease-in-out infinite}
+@keyframes laneShimmer{0%,55%{transform:translateX(-110%)}78%,100%{transform:translateX(110%)}}
+.transfer-card.in-flight{border-color:rgba(103,232,249,.72);box-shadow:0 0 34px -14px rgba(103,232,249,.95)}
+.transfer-card.success{border-color:rgba(163,230,53,.7);box-shadow:0 0 34px -14px rgba(163,230,53,.9)}
+.transfer-top{display:flex;align-items:center;justify-content:space-between;gap:8px;position:relative;z-index:1}
+.transfer-label{font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:#a5f3fc;font-weight:700}
+.transfer-status{font-size:9.5px;color:var(--dim);white-space:nowrap}
+.transfer-status.live{color:#a5f3fc}
+.transfer-status.done{color:#bef264}
+.transfer-grid{display:grid;grid-template-columns:minmax(0,1fr) 70px minmax(0,1fr);align-items:stretch;gap:7px;position:relative;z-index:1}
+.lane{min-width:0;min-height:67px;padding:8px 9px;border-radius:10px;background:rgba(0,0,0,.22);border:1px solid rgba(255,255,255,.08);transition:background .3s,border-color .3s,box-shadow .3s}
+.lane.source{border-color:rgba(103,232,249,.25);background:linear-gradient(145deg,rgba(103,232,249,.1),rgba(0,0,0,.2))}
+.lane.destination{border-color:rgba(163,230,53,.25);background:linear-gradient(145deg,rgba(163,230,53,.1),rgba(0,0,0,.2))}
+.lane.empty{opacity:.62}
+.lane-label{display:flex;align-items:center;gap:5px;font-size:8.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--dim);font-weight:700}
+.lane-dot{width:6px;height:6px;border-radius:50%;display:block}
+.lane-dot.source{background:var(--accent);box-shadow:0 0 9px rgba(103,232,249,.8)}
+.lane-dot.destination{background:var(--accent2);box-shadow:0 0 9px rgba(163,230,53,.8)}
+.lane-path{display:block;margin-top:8px;color:#f7fbff;font-size:12px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lane.destination .lane-path{color:#ecfeff}
+.lane-meta{display:block;margin-top:4px;color:var(--dim);font-size:9.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.transfer-arrow{position:relative;min-height:67px;display:grid;place-items:center}
+.transfer-arrow::before{content:'';position:absolute;left:5px;right:8px;top:33px;height:2px;border-radius:2px;background:linear-gradient(90deg,var(--accent),rgba(103,232,249,.22) 50%,var(--accent2));box-shadow:0 0 12px rgba(103,232,249,.45)}
+.transfer-arrow::after{content:'';position:absolute;right:2px;top:27px;width:10px;height:10px;border-top:2px solid var(--accent2);border-right:2px solid var(--accent2);transform:rotate(45deg);filter:drop-shadow(0 0 5px rgba(163,230,53,.6))}
+.arrow-word{position:relative;z-index:1;margin-top:25px;padding:1px 4px;border-radius:4px;background:#071019;color:#a5f3fc;font-size:8px;letter-spacing:.08em}
+.copy-packet{position:absolute;z-index:3;left:8px;top:27px;width:12px;height:12px;border-radius:3px;background:linear-gradient(145deg,#f0fdff,#67e8f9);border:1px solid rgba(255,255,255,.85);box-shadow:0 0 14px rgba(103,232,249,.95);opacity:0;transform:translateX(0) rotate(45deg)}
+.transfer-card.in-flight .copy-packet{animation:packetFlight .78s cubic-bezier(.2,.8,.2,1) forwards}
+@keyframes packetFlight{0%{opacity:0;transform:translateX(0) rotate(45deg) scale(.7)}18%{opacity:1}78%{opacity:1}100%{opacity:0;transform:translateX(51px) rotate(45deg) scale(1.2)}}
+.transfer-foot{position:relative;z-index:1;padding-top:7px;border-top:1px solid rgba(255,255,255,.07);color:var(--dim);font-size:9.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tree-scroll{flex:1;min-height:0;overflow:auto;padding:4px 2px 6px;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.16) transparent;-webkit-overflow-scrolling:touch}
+.tree-scroll::-webkit-scrollbar{width:8px;height:8px}
+.tree-scroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:99px}
+.tree-scroll::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.26)}
+.tree-inner{position:relative;display:inline-block;vertical-align:top;min-width:100%;padding:6px 58px 16px 2px}
+.node{position:relative}
+.children{margin-left:16px;padding-left:12px;border-left:2px solid var(--line)}
+.children>.node::before{content:'';position:absolute;left:-14px;top:17px;width:14px;height:2px;background:var(--line);border-radius:2px}
+.row{display:inline-flex;align-items:center;gap:8px;min-height:34px;padding:5px 11px 5px 9px;border-radius:10px;cursor:pointer;white-space:nowrap;position:relative;transition:background .22s,box-shadow .22s,transform .18s;-webkit-tap-highlight-color:transparent}
+.row:hover{background:rgba(255,255,255,.055);transform:translateX(2px)}
+.row.current{background:linear-gradient(90deg,rgba(103,232,249,.22),rgba(103,232,249,.03));box-shadow:inset 0 0 0 1px rgba(103,232,249,.4)}
+.row.current .label{color:#fff;font-weight:700}
+.row.source{box-shadow:inset 0 0 0 1px rgba(103,232,249,.48);background:rgba(103,232,249,.09)}
+.row.destination{box-shadow:inset 0 0 0 1px rgba(163,230,53,.55);background:rgba(163,230,53,.11)}
+.row.copied{animation:rowCopied 1.15s cubic-bezier(.34,1.56,.64,1)}
+@keyframes rowCopied{0%{opacity:.25;transform:translateX(-12px) scale(.86);box-shadow:0 0 0 1px rgba(163,230,53,.95),0 0 32px rgba(163,230,53,.72)}55%{opacity:1;background:rgba(163,230,53,.25);transform:translateX(2px) scale(1.03)}100%{opacity:1;transform:none;box-shadow:inset 0 0 0 1px rgba(163,230,53,.35)}}
+.row.flash{animation:flashRow .75s ease}
+@keyframes flashRow{0%{background:rgba(163,230,53,.42);box-shadow:inset 0 0 0 1px rgba(163,230,53,.8)}100%{background:transparent;box-shadow:inset 0 0 0 1px transparent}}
+.row.file{opacity:.78}
+.row.file:hover{transform:translateX(2px)}
+.icon{width:18px;height:14px;flex:0 0 auto;position:relative;border-radius:3px;transition:box-shadow .3s}
+.icon.dir{background:linear-gradient(180deg,#fcd34d,#f59e0b);box-shadow:0 2px 7px rgba(251,191,36,.22)}
+.icon.dir::before{content:'';position:absolute;top:-4px;left:0;width:8px;height:6px;background:#fcd34d;border-radius:3px 3px 0 0}
+.icon.file{background:linear-gradient(180deg,#c4f1f8,#67a6b5);border-radius:2px 5px 2px 2px;box-shadow:0 2px 8px rgba(103,232,249,.2)}
+.row.current .icon.dir{box-shadow:0 0 0 3px rgba(103,232,249,.28),0 2px 12px rgba(251,191,36,.75)}
+.row.source .icon.file{box-shadow:0 0 0 3px rgba(103,232,249,.2),0 2px 13px rgba(103,232,249,.48)}
+.row.destination .icon.file,.row.destination .icon.dir{box-shadow:0 0 0 3px rgba(163,230,53,.2),0 2px 14px rgba(163,230,53,.5)}
+.label{font-size:13.5px;letter-spacing:.01em}
+.tag{font-size:9.5px;padding:2px 6px;border-radius:99px;font-weight:700;background:rgba(163,230,53,.16);color:#bef264;border:1px solid rgba(163,230,53,.3)}
+.copy-tag{font-size:8.5px;padding:2px 5px;border-radius:99px;font-weight:700;background:rgba(163,230,53,.16);color:#bef264;border:1px solid rgba(163,230,53,.28)}
+.avatar{position:absolute;left:0;top:0;width:30px;height:30px;z-index:6;pointer-events:none;transition:transform .62s cubic-bezier(.34,1.3,.64,1);will-change:transform}
+.avatar .body{width:100%;height:100%;border-radius:50% 50% 46% 46%;background:radial-gradient(circle at 34% 28%,#cffafe,#67e8f9 52%,#0891b2);box-shadow:0 0 0 3px rgba(103,232,249,.16),0 9px 20px -4px rgba(8,145,178,.75);display:grid;place-items:center;animation:idle 2.8s ease-in-out infinite}
+@keyframes idle{0%,100%{transform:translateY(0)}50%{transform:translateY(-2.5px)}}
+.avatar.hop .body{animation:hop .58s cubic-bezier(.34,1.3,.64,1)}
+@keyframes hop{0%{transform:translateY(0) scale(1,1)}28%{transform:translateY(-11px) scale(.9,1.12)}58%{transform:translateY(0) scale(1.12,.88)}80%{transform:translateY(-3px) scale(.98,1.03)}100%{transform:translateY(0) scale(1,1)}}
+.eyes{display:flex;gap:5px}
+.eyes i{width:4px;height:6.5px;background:#082f49;border-radius:50%;display:block;animation:blink 4.6s infinite}
+@keyframes blink{0%,92%,100%{transform:scaleY(1)}95%{transform:scaleY(.1)}}
+.ping{position:absolute;left:0;top:0;width:0;height:0;pointer-events:none;z-index:4}
+.ping i{position:absolute;left:-17px;top:-17px;width:34px;height:34px;border-radius:50%;border:2px solid rgba(163,230,53,.85);display:block;animation:pingA .75s ease-out forwards}
+@keyframes pingA{0%{transform:scale(.2);opacity:1}100%{transform:scale(1.9);opacity:0}}
+.copy-flight{position:absolute;height:2px;z-index:5;pointer-events:none;transform-origin:0 50%;background:linear-gradient(90deg,rgba(103,232,249,.12),var(--accent),var(--accent2));box-shadow:0 0 13px rgba(103,232,249,.85);animation:flightBeam .82s cubic-bezier(.2,.8,.2,1) forwards}
+.copy-flight::after{content:'';position:absolute;right:-2px;top:-4px;width:8px;height:8px;border-top:2px solid var(--accent2);border-right:2px solid var(--accent2);transform:rotate(45deg)}
+.copy-flight i{position:absolute;left:50%;top:-5px;width:12px;height:12px;border-radius:3px;background:#cffafe;border:1px solid #fff;box-shadow:0 0 14px rgba(103,232,249,.95);transform:translateX(-50%) rotate(45deg);animation:flightDot .82s cubic-bezier(.2,.8,.2,1) forwards}
+@keyframes flightBeam{0%{opacity:0;filter:brightness(1.8)}18%{opacity:1}72%{opacity:1}100%{opacity:0;filter:brightness(1.1)}}
+@keyframes flightDot{0%{left:0;opacity:0;transform:translateX(-50%) rotate(45deg) scale(.65)}18%{opacity:1}100%{left:100%;opacity:0;transform:translateX(-50%) rotate(45deg) scale(1.2)}}
+.term{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:12px 13px;border-radius:12px;background:rgba(0,0,0,.36);border:1px solid rgba(255,255,255,.055);font-size:12.5px;line-height:1.7;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.16) transparent;-webkit-overflow-scrolling:touch}
+.term::-webkit-scrollbar{width:8px}
+.term::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:99px}
+.term::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.26)}
+.line{white-space:pre-wrap;word-break:break-word;animation:lineIn .22s ease-out}
+@keyframes lineIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+.line .p{color:#a7f3d0;opacity:.9}
+.line .c{color:#f8faff;font-weight:600}
+.line.err{color:var(--err)}
+.line .d{color:#a5f3fc;font-weight:600}
+.line .f{color:#cbd5e1}
+.line .hl{color:#a5f3fc;font-weight:700}
+.line .ok{color:#bef264}
+.line .dim{color:var(--dim)}
+.line .code{color:#fde68a;background:rgba(251,191,36,.11);padding:1px 7px;border-radius:6px;border:1px solid rgba(251,191,36,.2)}
+.tip-line{margin-top:4px;padding:6px 10px;border-radius:8px;background:rgba(251,191,36,.08);border-left:3px solid rgba(251,191,36,.55);color:#fcd34d;font-size:12px}
+.chips{display:flex;gap:7px;overflow-x:auto;padding:10px 1px 2px;scrollbar-width:none;-ms-overflow-style:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{font:inherit;font-size:11.5px;white-space:nowrap;cursor:pointer;padding:6px 11px;border-radius:9px;color:#a5f3fc;background:rgba(103,232,249,.1);border:1px solid rgba(103,232,249,.25);transition:.18s;-webkit-tap-highlight-color:transparent}
+.chip:hover{background:rgba(103,232,249,.22);color:#ecfeff;transform:translateY(-1px);box-shadow:0 6px 16px -12px rgba(103,232,249,.9)}
+.chip:active{transform:translateY(0) scale(.96)}
+.input-row{display:flex;align-items:center;gap:8px;margin-top:9px;padding:9px 10px;border-radius:12px;background:rgba(0,0,0,.4);border:1px solid rgba(103,232,249,.25);transition:border-color .2s,box-shadow .2s}
+.input-row:focus-within{border-color:rgba(103,232,249,.7);box-shadow:0 0 0 3px rgba(103,232,249,.13)}
+.input-row.shake{animation:shake .4s}
+@keyframes shake{10%,90%{transform:translateX(-2px)}20%,80%{transform:translateX(4px)}30%,50%,70%{transform:translateX(-6px)}40%,60%{transform:translateX(6px)}}
+.ps1{font-size:12.5px;color:#a7f3d0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:0 1 auto}
+.ps1 .ps-user{color:#a7f3d0;opacity:.85}
+.input-row input{flex:1;min-width:40px;background:none;border:none;outline:none;color:#f1f5f9;font:inherit;font-size:13px;padding:0}
+.input-row input::placeholder{color:rgba(140,164,187,.5)}
+.send{font:inherit;font-size:14px;line-height:1;cursor:pointer;width:30px;height:30px;flex:0 0 auto;border-radius:9px;color:#06212a;background:linear-gradient(150deg,#a5f3fc,#67e8f9);border:none;display:grid;place-items:center;transition:.18s;box-shadow:0 4px 14px -4px rgba(103,232,249,.8)}
+.send:hover{transform:translateY(-1px);box-shadow:0 6px 18px -4px rgba(103,232,249,1)}
+.send:active{transform:scale(.93)}
+.confetti{position:fixed;top:-14px;width:8px;height:13px;border-radius:2px;z-index:999;pointer-events:none;animation:fall linear forwards}
+@keyframes fall{to{transform:translateY(108vh) rotate(var(--rot,360deg));opacity:.05}}
+@media (min-width:901px){.term{flex:0 0 clamp(240px,42vh,420px);overflow-y:auto}}
+@media (max-width:900px){.app{padding:12px 12px 16px;gap:10px}main{grid-template-columns:1fr;grid-template-rows:auto auto;flex:none}.panel{min-height:0}.tree-scroll{max-height:40vh}.term{min-height:150px;max-height:32vh}.brand h1{font-size:15px}.brand p,.sub{display:none}.mission-text{font-size:12.5px}.ps1 .ps-user{display:none}.transfer-grid{grid-template-columns:minmax(0,1fr) 52px minmax(0,1fr)}}
+@media (max-width:420px){.logo{width:34px;height:34px;font-size:14px}.badge{font-size:9px;padding:4px 7px}.mission{gap:8px;padding:9px 11px}.hint-btn{padding:5px 9px;font-size:10.5px}.label{font-size:13px}.tree-inner{padding-right:48px}.transfer-grid{grid-template-columns:1fr;gap:5px}.transfer-arrow{min-height:28px}.transfer-arrow::before{left:18px;right:18px;top:14px}.transfer-arrow::after{right:18px;top:8px}.arrow-word{display:none}.copy-packet{left:18px;top:8px}.transfer-card.in-flight .copy-packet{animation:packetFlightMobile .78s cubic-bezier(.2,.8,.2,1) forwards}@keyframes packetFlightMobile{0%{opacity:0;transform:translate(0,0) rotate(45deg) scale(.7)}18%{opacity:1}100%{opacity:0;transform:translateY(35px) rotate(45deg) scale(1.2)}}.lane{min-height:55px}.lane-path{margin-top:5px}.lane-meta{margin-top:2px}}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <div class="logo">cp</div>
+      <div>
+        <h1>Learn <code>cp</code></h1>
+        <p>Copy files and folders without losing the original.</p>
+      </div>
+    </div>
+    <div class="steps" id="steps"></div>
+  </header>
+  <div class="mission" id="mission">
+    <span class="badge" id="missionBadge">Mission 1 / 6</span>
+    <span class="mission-text" id="missionText">Loading…</span>
+    <button class="hint-btn" id="hintBtn" type="button">Hint</button>
+  </div>
+  <div class="hint" id="hintBar"></div>
+  <main>
+    <section class="panel">
+      <div class="panel-head">
+        <span class="title">Filesystem map</span>
+        <span class="sub">tap a file to source · tap a folder to move</span>
+      </div>
+      <div class="crumbs" id="crumbs"></div>
+      <div class="transfer-card" id="transferCard" aria-live="polite">
+        <div class="transfer-top"><span class="transfer-label">Copy lane</span><span class="transfer-status" id="transferStatus">select a source</span></div>
+        <div class="transfer-grid">
+          <div class="lane source empty" id="sourceLane">
+            <div class="lane-label"><span class="lane-dot source"></span>Source</div>
+            <span class="lane-path" id="sourcePath">select a file</span>
+            <span class="lane-meta" id="sourceMeta">the original stays here</span>
+          </div>
+          <div class="transfer-arrow" aria-hidden="true"><span class="arrow-word">COPY</span><span class="copy-packet" id="copyPacket"></span></div>
+          <div class="lane destination empty" id="destinationLane">
+            <div class="lane-label"><span class="lane-dot destination"></span>Destination</div>
+            <span class="lane-path" id="destinationPath">choose a target</span>
+            <span class="lane-meta" id="destinationMeta">a new copy appears here</span>
+          </div>
+        </div>
+        <div class="transfer-foot" id="transferFoot">Type a cp command to send a file across the map.</div>
+      </div>
+      <div class="tree-scroll" id="treeScroll">
+        <div class="tree" id="tree"></div>
+      </div>
+    </section>
+    <section class="panel">
+      <div class="panel-head">
+        <span class="dots"><i></i><i></i><i></i></span>
+        <span class="title">Terminal</span>
+      </div>
+      <div class="term" id="term" aria-live="polite"></div>
+      <div class="chips" id="chips"></div>
+      <form class="input-row" id="form" autocomplete="off">
+        <span class="ps1" id="ps1"><span class="ps-user">you@linux:</span><span id="psPath">~</span>$</span>
+        <input id="cmd" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="type cp…">
+        <button class="send" type="submit" aria-label="Run command">↵</button>
+      </form>
+    </section>
+  </main>
+</div>
+<script>
+let uid = 0;
+let clock = 1700000000000;
+const mk = (name, type = 'dir', extra = {}) => ({id:++uid,name,type,children:type === 'dir' ? [] : null,parent:null,content:type === 'file' ? null : null,size:type === 'dir' ? 4096 : 1,mtime:clock++,...extra});
+const ROOT = mk('/');
+const homeDir = mk('home');
+const HOME = mk('you');
+const documents = mk('documents');
+const projects = mk('projects');
+const pictures = mk('pictures');
+const music = mk('music');
+const backups = mk('backups');
+const etc = mk('etc');
+const notes = mk('notes.txt','file',{size:1840,content:['Welcome to the command lab.','Keep these lines short.','cp makes a duplicate, not a move.','The original stays exactly where it was.']});
+const readme = mk('README.md','file',{size:980,content:['# Command Lab','Files are little containers for text.','cp can copy a file into a folder.']});
+const projectFile = mk('project.txt','file',{size:760,content:['Project Atlas','The file lives inside documents.','This is the source for mission three.','Copy it to a new name when ready.']});
+const draftFile = mk('draft.txt','file',{size:520,content:['A short draft.','Ready for a duplicate.']});
+const appFile = mk('app.js','file',{size:2320,content:['const answer = 42;','console.log(answer);']});
+const themeFile = mk('theme.css','file',{size:1420,content:['body { color: white; }','.button { border-radius: 8px; }']});
+const hosts = mk('hosts','file',{size:220,content:['127.0.0.1 localhost','::1 localhost ip6-localhost']});
+const pictureFile = mk('mountains.txt','file',{size:610,content:['blue ridge','morning light']});
+const musicFile = mk('playlist.txt','file',{size:510,content:['ambient focus','night drive']});
+ROOT.children = [homeDir,etc];
+homeDir.children = [HOME];
+HOME.children = [documents,projects,pictures,music,backups,notes,readme];
+documents.children = [projectFile,draftFile];
+projects.children = [appFile,themeFile];
+pictures.children = [pictureFile];
+music.children = [musicFile];
+backups.children = [];
+etc.children = [hosts];
+const rowOf = new Map();
+const copiedNodes = new Set();
+function link(node,parent){node.parent=parent;if(node.children)node.children.forEach(child=>link(child,node));}
+ROOT.children.forEach(child=>link(child,ROOT));
+let cwd = HOME;
+let previousDir = HOME;
+let focusNode = HOME;
+let selectedSource = null;
+let lastContext = null;
+let history = [];
+let historyIndex = -1;
+const esc = value => String(value).replace(/[&<>"']/g,char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+const treeEl = document.getElementById('tree');
+const treeScroll = document.getElementById('treeScroll');
+const crumbs = document.getElementById('crumbs');
+const term = document.getElementById('term');
+const chips = document.getElementById('chips');
+const form = document.getElementById('form');
+const input = document.getElementById('cmd');
+const psPath = document.getElementById('psPath');
+const stepsEl = document.getElementById('steps');
+const missionEl = document.getElementById('mission');
+const missionBadge = document.getElementById('missionBadge');
+const missionText = document.getElementById('missionText');
+const hintBtn = document.getElementById('hintBtn');
+const hintBar = document.getElementById('hintBar');
+const transferCard = document.getElementById('transferCard');
+const transferStatus = document.getElementById('transferStatus');
+const sourceLane = document.getElementById('sourceLane');
+const destinationLane = document.getElementById('destinationLane');
+const sourcePath = document.getElementById('sourcePath');
+const sourceMeta = document.getElementById('sourceMeta');
+const destinationPath = document.getElementById('destinationPath');
+const destinationMeta = document.getElementById('destinationMeta');
+const transferFoot = document.getElementById('transferFoot');
+let treeInner;
+let avatarEl;
+const missions = [
+  {text:'Make a backup of <b>notes.txt</b> named <b>notes.backup.txt</b>.',hint:'Type: <code>cp notes.txt notes.backup.txt</code>',answer:'cp notes.txt notes.backup.txt',check:context=>context.source===notes&&context.target&&context.target.name==='notes.backup.txt'&&context.destination===HOME},
+  {text:'Copy <b>notes.txt</b> into the <b>documents</b> folder.',hint:'A destination ending in <code>/</code> means “put it in this folder”. Type: <code>cp notes.txt documents/</code>',answer:'cp notes.txt documents/',check:context=>context.source===notes&&context.target&&context.target.name==='notes.txt'&&context.destination===documents},
+  {text:'Move into <b>documents</b>, then copy <b>project.txt</b> to <b>roadmap.txt</b>.',hint:'Run <code>cd documents</code>, then <code>cp project.txt roadmap.txt</code>.',answer:'cp project.txt roadmap.txt',check:context=>context.cwd===documents&&context.source===projectFile&&context.target&&context.target.name==='roadmap.txt'},
+  {text:'Copy <b>/etc/hosts</b> to <b>~/hosts-copy.txt</b>.',hint:'Absolute paths begin with <code>/</code>; <code>~</code> means your home folder. Type: <code>cp /etc/hosts ~/hosts-copy.txt</code>',answer:'cp /etc/hosts ~/hosts-copy.txt',check:context=>context.source===hosts&&context.target&&context.target.name==='hosts-copy.txt'&&context.destination===HOME&&context.rawArgs.some(arg=>arg==='/etc/hosts')},
+  {text:'Return home, then copy the entire <b>projects</b> folder into <b>backups</b>.',hint:'Run <code>cd ..</code>, then use the <code>-r</code> flag: <code>cp -r projects backups/</code>',answer:'cp -r projects backups/',check:context=>context.cwd===HOME&&context.flags.r&&context.source===projects&&context.target&&context.target.name==='projects'&&context.destination===backups},
+  {text:'Make a verbose copy of <b>roadmap.txt</b> at <b>~/roadmap-final.txt</b>.',hint:'The <code>-v</code> flag reports each copy. Type: <code>cp -v documents/roadmap.txt ~/roadmap-final.txt</code>',answer:'cp -v documents/roadmap.txt ~/roadmap-final.txt',check:context=>context.flags.v&&context.source&&context.source.name==='roadmap.txt'&&context.target&&context.target.name==='roadmap-final.txt'&&context.destination===HOME}
+];
+const missionCount = missions.length;
+missions.forEach(()=>stepsEl.appendChild(document.createElement('i')));
+let missionIndex = 0;
+let missionLocked = false;
+function absPath(node){if(node===ROOT)return '/';const parts=[];let current=node;while(current&&current!==ROOT){parts.unshift(current.name);current=current.parent;}return '/'+parts.join('/');}
+function prettyPath(node){const path=absPath(node);if(path==='/home/you')return '~';if(path.startsWith('/home/you/'))return '~'+path.slice(9);return path;}
+function resolvePath(input,base=cwd){let current;let rest=input;if(input==='~'||input.startsWith('~/')){current=HOME;rest=input.slice(1);}else if(input.startsWith('/')){current=ROOT;rest=input.slice(1);}else current=base;const segments=rest.split('/').filter(Boolean);for(const segment of segments){if(segment==='.')continue;if(segment==='..'){current=current.parent||ROOT;continue;}if(!current.children)return{error:'notdir',name:segment};const next=current.children.find(child=>child.name===segment);if(!next)return{error:'missing',name:segment};current=next;}return{node:current};}
+function isAncestor(node,ancestor){let current=node;while(current){if(current===ancestor)return true;current=current.parent;}return false;}
+function log(html,className=''){const line=document.createElement('div');line.className='line'+(className?' '+className:'');line.innerHTML=html;term.appendChild(line);term.scrollTop=term.scrollHeight;}
+function shakeInput(){form.classList.remove('shake');void form.offsetWidth;form.classList.add('shake');}
+function buildTree(){treeInner=document.createElement('div');treeInner.className='tree-inner';avatarEl=document.createElement('div');avatarEl.className='avatar';avatarEl.innerHTML='<div class="body"><span class="eyes"><i></i><i></i></span></div>';renderNode(ROOT,treeInner);treeInner.appendChild(avatarEl);treeEl.appendChild(treeInner);}
+function renderNode(node,parentEl){const wrap=document.createElement('div');wrap.className='node';const row=document.createElement('div');row.className='row'+(node.type==='file'?' file':'')+(copiedNodes.has(node)?' copied':'');const icon=document.createElement('span');icon.className='icon '+node.type;const label=document.createElement('span');label.className='label';label.textContent=node===ROOT?'/':node.name;row.append(icon,label);if(node===HOME){const tag=document.createElement('span');tag.className='tag';tag.textContent='~';row.appendChild(tag);}if(node.copyOrigin){const tag=document.createElement('span');tag.className='copy-tag';tag.textContent='copy';row.appendChild(tag);}row.addEventListener('click',()=>onNodeClick(node));wrap.appendChild(row);rowOf.set(node,row);if(node.children&&node.children.length){const kids=document.createElement('div');kids.className='children';node.children.forEach(child=>renderNode(child,kids));wrap.appendChild(kids);}parentEl.appendChild(wrap);}
+function rebuildTree(){treeInner.innerHTML='';rowOf.clear();renderNode(ROOT,treeInner);treeInner.appendChild(avatarEl);}
+function avatarTarget(node){const row=rowOf.get(node);const label=row.querySelector('.label');const innerRect=treeInner.getBoundingClientRect();const labelRect=label.getBoundingClientRect();return{x:labelRect.right-innerRect.left+9,y:labelRect.top-innerRect.top+labelRect.height/2-15};}
+function moveAvatar(animate,node=focusNode||cwd){const target=avatarTarget(node);if(!animate)avatarEl.style.transition='none';avatarEl.style.transform='translate('+target.x+'px, '+target.y+'px)';if(!animate)requestAnimationFrame(()=>{avatarEl.style.transition='';});}
+function ping(x,y){const element=document.createElement('div');element.className='ping';element.style.transform='translate('+x+'px, '+y+'px)';element.innerHTML='<i></i>';treeInner.appendChild(element);setTimeout(()=>element.remove(),800);}
+function scrollToRow(node){const row=rowOf.get(node);const rowRect=row.getBoundingClientRect();const innerRect=treeInner.getBoundingClientRect();const target=rowRect.top-innerRect.top+rowRect.height/2-treeScroll.clientHeight/2;treeScroll.scrollTo({top:Math.max(0,target),behavior:'smooth'});}
+function flashRow(node){const row=rowOf.get(node);if(!row)return;row.classList.remove('flash');void row.offsetWidth;row.classList.add('flash');}
+function animateTo(node){moveAvatar(true,node);avatarEl.classList.remove('hop');void avatarEl.offsetWidth;avatarEl.classList.add('hop');const row=rowOf.get(node);if(row){const rowRect=row.getBoundingClientRect();const innerRect=treeInner.getBoundingClientRect();ping(rowRect.left-innerRect.left+14,rowRect.top-innerRect.top+rowRect.height/2);flashRow(node);scrollToRow(node);}}
+function renderCrumbs(){crumbs.innerHTML='';const path=prettyPath(cwd);const parts=path==='/'?['/']:(path.startsWith('~')?['/','home','you',...path.slice(1).split('/').filter(Boolean)]:['/',...path.split('/').filter(Boolean)]);parts.forEach((part,index)=>{if(index){const separator=document.createElement('span');separator.className='sep';separator.textContent='›';crumbs.appendChild(separator);}const crumb=document.createElement('span');crumb.className='crumb';crumb.style.animationDelay=index*45+'ms';crumb.textContent=part==='you'?'~':part;crumbs.appendChild(crumb);});}
+function updateTransferCard(){
+  const context=lastContext;
+  const source=selectedSource||(context?context.source:null);
+  const target=selectedSource?null:context&&context.target;
+  transferCard.classList.remove('in-flight','success');
+  if(context&&!selectedSource){
+    transferCard.classList.add('success');
+    transferStatus.className='transfer-status done';
+    transferStatus.textContent=context.copiedNodes.length===1?'copy complete':'copies complete';
+  }else{
+    transferStatus.className='transfer-status live';
+    transferStatus.textContent=source?'source selected':'select a source';
+  }
+  sourceLane.classList.toggle('empty',!source);
+  destinationLane.classList.toggle('empty',!target);
+  sourcePath.textContent=source?prettyPath(source):'select a file';
+  sourceMeta.textContent=source?(source.type==='file'?(source.content||[]).length+' lines · '+sizeLabel(source):'folder · '+source.children.length+' items'):'the original stays here';
+  destinationPath.textContent=target?prettyPath(target):'choose a target';
+  destinationMeta.textContent=target?(target.type==='file'?(target.content||[]).length+' lines · duplicate created':'folder · '+target.children.length+' items'):'a new copy appears here';
+  transferFoot.textContent=selectedSource?'This file is ready to become the source of your next cp command.':context?('Copied from '+prettyPath(context.source)+' to '+prettyPath(context.target)+'. Original preserved.'):'Type a cp command to send a file across the map.';
+}
+function updateUI(){rowOf.forEach((row,node)=>{row.classList.toggle('current',node===cwd);row.classList.toggle('source',!!selectedSource&&node===selectedSource||!selectedSource&&!!lastContext&&node===lastContext.source);row.classList.toggle('destination',!selectedSource&&!!lastContext&&node===lastContext.target);});psPath.textContent=prettyPath(cwd);renderCrumbs();updateTransferCard();renderChips();}
+function sizeLabel(node){if(node.type==='dir')return'folder';const bytes=node.size||1;if(bytes>=1024)return(bytes/1024).toFixed(1)+' KB';return bytes+' B';}
+function cloneNode(node,parent,origin,name=node.name){const copy=mk(name,node.type,{size:node.size,mtime:clock++,content:node.content?node.content.slice():null,copyOrigin:origin||absPath(node)});copy.parent=parent;if(node.children)node.children.forEach(child=>copy.children.push(cloneNode(child,copy,origin||absPath(node))));return copy;}
+function destinationFor(source,spec){const trailing=spec.endsWith('/');const normalized=trailing?(spec.replace(/\/+$/,'')||'/'):spec;if(trailing){const result=resolvePath(normalized);if(result.error)return{error:'missing',path:spec};if(result.node.type!=='dir')return{error:'notdir',path:spec};return{parent:result.node,name:source.name,existing:result.node.children.find(child=>child.name===source.name),existingDir:true,path:prettyPath(result.node)+'/'+source.name};}const direct=resolvePath(spec);if(!direct.error&&direct.node.type==='dir')return{parent:direct.node,name:source.name,existing:direct.node.children.find(child=>child.name===source.name),existingDir:true,path:prettyPath(direct.node)+'/'+source.name};if(!direct.error){const existing=direct.node;return{parent:existing.parent,name:existing.name,existing,existingDir:false,path:prettyPath(existing)};}const slash=spec.lastIndexOf('/');const parentSpec=slash<0?'.':slash===0?'/':spec.slice(0,slash);const name=slash<0?spec:spec.slice(slash+1);if(!name)return{error:'missing',path:spec};const parentResult=resolvePath(parentSpec);if(parentResult.error)return{error:parentResult.error,path:spec};if(parentResult.node.type!=='dir')return{error:'notdir',path:spec};return{parent:parentResult.node,name,existing:parentResult.node.children.find(child=>child.name===name),existingDir:false,path:prettyPath(parentResult.node)+'/'+name};}
+function markCopied(node){copiedNodes.add(node);if(node.children)node.children.forEach(markCopied);}
+function copyOne(source,info,flags){if(source.type==='dir'&&!flags.r)return{error:'directory',path:prettyPath(source)};if(isAncestor(info.parent,source))return{error:'recursive',path:prettyPath(info.parent)};if(info.existing===source)return{error:'same',path:prettyPath(source)};if(info.existing&&info.existing.type!==source.type)return{error:'type',path:info.path};if(info.existing&&flags.n&&!flags.f)return{skipped:true,target:info.existing};if(info.existing&&flags.u&&info.existing.mtime>=source.mtime)return{skipped:true,target:info.existing};const copy=cloneNode(source,info.parent,prettyPath(source),info.name);if(info.existing){const index=info.parent.children.indexOf(info.existing);info.parent.children[index]=copy;}else info.parent.children.push(copy);markCopied(copy);return{target:copy};}
+function parseCp(args){const flags={r:false,v:false,f:false,n:false,u:false};const operands=[];let optionsEnded=false;for(const arg of args){if(arg==='--help')return{help:true};if(!optionsEnded&&arg==='--'){optionsEnded=true;continue;}if(!optionsEnded&&arg.startsWith('--')){const names={recursive:'r',verbose:'v',force:'f','no-clobber':'n',update:'u'};const key=arg.slice(2).split('=')[0];if(!(key in names))return{error:"unsupported option -- '"+arg.slice(2)+"'"};flags[names[key]]=true;continue;}if(!optionsEnded&&arg.startsWith('-')&&arg.length>1){for(const flag of arg.slice(1)){if(!(flag in flags))return{error:"invalid option -- '"+flag+"'"};flags[flag]=true;}continue;}operands.push(arg);}if(operands.length<2)return{error:operands.length?'missing destination operand':'missing file operand'};return{flags,operands};}
+function doCp(args){const parsed=parseCp(args);if(parsed.help){showHelp();return;}if(parsed.error){log('cp: '+esc(parsed.error),'err');log('<span class="tip-line">Give <b>cp</b> a source and a destination, like <b>cp notes.txt notes.backup.txt</b>.</span>','tip-line-wrap');shakeInput();return;}const sources=[];for(const spec of parsed.operands.slice(0,-1)){const result=resolvePath(spec);if(result.error){log("cp: cannot stat '"+esc(spec)+"': "+(result.error==='missing'?'No such file or directory':'Not a directory'),'err');shakeInput();return;}if(result.node.type==='dir'&&!parsed.flags.r){log("cp: -r not specified; omitting directory '"+esc(spec)+"'",'err');shakeInput();return;}sources.push(result.node);}const destinationSpec=parsed.operands[parsed.operands.length-1];const firstDestination=destinationFor(sources[0],destinationSpec);if(firstDestination.error){log("cp: target '"+esc(destinationSpec)+"': "+(firstDestination.error==='notdir'?'Not a directory':'No such file or directory'),'err');shakeInput();return;}if(sources.length>1&&!firstDestination.existingDir){log('cp: target must be an existing directory when copying multiple sources','err');shakeInput();return;}const copied=[];for(const source of sources){const info=destinationFor(source,destinationSpec);if(info.error){log("cp: target '"+esc(destinationSpec)+"': "+(info.error==='notdir'?'Not a directory':'No such file or directory'),'err');shakeInput();return;}const result=copyOne(source,info,parsed.flags);if(result.error){const messages={directory:'omitting directory',recursive:'cannot copy a directory into itself',same:'are the same file',type:'destination has a different type'};log('cp: '+messages[result.error]+" '"+esc(result.path)+"'",'err');shakeInput();return;}if(result.skipped){log("<span class=\"dim\">cp: skipped existing '"+esc(prettyPath(result.target))+"'</span>");continue;}copied.push(result.target);}if(!copied.length){updateTransferCard();checkMission();return;}const context={command:'cp',flags:parsed.flags,sources,source:sources[0],destination:firstDestination.parent,destinationSpec,target:copied[0],targets:copied,copiedNodes:copied,cwd,rawArgs:args.slice()};lastContext=context;selectedSource=null;focusNode=copied[0];rebuildTree();updateUI();animateCopy(context);if(parsed.flags.v)copied.forEach(target=>log("<span class=\"ok\">copied '"+esc(prettyPath(target))+"'</span>"));else log("<span class=\"ok\">copied '"+esc(prettyPath(context.source))+"'</span> <span class=\"dim\">→</span> <span class=\"ok\">'"+esc(prettyPath(context.target))+"'</span>");log('<span class="dim">Original preserved · '+copied.length+' destination'+(copied.length===1?'':'s')+' updated.</span>');checkMission();}
+function parseLs(args){const flags={a:false,l:false,t:false,r:false,one:false};const paths=[];let optionsEnded=false;for(const arg of args){if(arg==='--help')return{help:true};if(!optionsEnded&&arg==='--'){optionsEnded=true;continue;}if(!optionsEnded&&arg.startsWith('--')){const names={all:'a',long:'l','time-sort':'t',reverse:'r',oneline:'one'};const key=arg.slice(2).split('=')[0];if(!(key in names))return{error:"unsupported option -- '"+arg.slice(2)+"'"};flags[names[key]]=true;continue;}if(!optionsEnded&&arg.startsWith('-')&&arg.length>1){for(const flag of arg.slice(1)){if(!(flag in flags))return{error:"invalid option -- '"+flag+"'"};flags[flag]=true;}continue;}paths.push(arg);}if(paths.length>1)return{error:'this playground lists one path at a time'};return{flags,path:paths[0]||'.'};}
+function doLs(args){const parsed=parseLs(args);if(parsed.help){showHelp();return;}if(parsed.error){log('ls: '+esc(parsed.error),'err');shakeInput();return;}const result=resolvePath(parsed.path);if(result.error){log("ls: cannot access '"+esc(parsed.path)+"': "+(result.error==='missing'?'No such file or directory':'Not a directory'),'err');shakeInput();return;}const node=result.node;let entries=node.type==='dir'?node.children.slice():[node];if(node.type==='dir'&&!parsed.flags.a)entries=entries.filter(entry=>!entry.name.startsWith('.'));entries.sort((left,right)=>left.name.localeCompare(right.name,undefined,{numeric:true,sensitivity:'base'}));if(parsed.flags.t)entries.sort((left,right)=>right.mtime-left.mtime);if(parsed.flags.r)entries.reverse();if(!entries.length){log('<span class="dim">(empty)</span>');return;}entries.forEach(entry=>log("<span class=\""+(entry.type==='dir'?'hl':entry.name.startsWith('.')?'code':'f')+"\">"+esc(entry.name+(entry.type==='dir'?'/':''))+"</span>",'ls-output'));log('<span class="dim">'+entries.length+' '+(entries.length===1?'entry':'entries')+' in '+esc(prettyPath(node))+'</span>');}
+function doCd(args){if(args.length>1){log('bash: cd: too many arguments','err');shakeInput();return;}const arg=args[0]===undefined?'':args[0];let target;if(!arg)target=HOME;else if(arg==='-'){target=previousDir;log('<span class="dim">'+esc(prettyPath(target))+'</span>');}else{const result=resolvePath(arg);if(result.error){log('bash: cd: '+esc(arg)+': '+(result.error==='missing'?'No such file or directory':'Not a directory'),'err');shakeInput();return;}if(result.node.type!=='dir'){log('bash: cd: '+esc(arg)+': Not a directory','err');shakeInput();return;}target=result.node;}if(target===cwd){log('<span class="ok">You are already in '+esc(prettyPath(cwd))+'.</span>');return;}previousDir=cwd;cwd=target;focusNode=cwd;selectedSource=null;updateUI();animateTo(cwd);log('<span class="ok">Now in '+esc(prettyPath(cwd))+'</span>');}
+function doPwd(){log(esc(absPath(cwd)));}
+function parseCat(args){const flags={n:false};const operands=[];let optionsEnded=false;for(const arg of args){if(arg==='--help')return{help:true};if(!optionsEnded&&arg==='--'){optionsEnded=true;continue;}if(!optionsEnded&&arg.startsWith('--')){const names={number:'n'};const key=arg.slice(2).split('=')[0];if(!(key in names))return{error:"unsupported option -- '"+arg.slice(2)+"'"};flags[names[key]]=true;continue;}if(!optionsEnded&&arg.startsWith('-')&&arg.length>1){for(const flag of arg.slice(1)){if(!(flag in flags))return{error:"invalid option -- '"+flag+"'"};flags[flag]=true;}continue;}operands.push(arg);}if(!operands.length)return{error:'missing file operand'};return{flags,operands};}
+function doCat(args){const parsed=parseCat(args);if(parsed.help){showHelp();return;}if(parsed.error){log('cat: '+esc(parsed.error),'err');shakeInput();return;}const files=[];for(const spec of parsed.operands){const result=resolvePath(spec);if(result.error||result.node.type!=='file'){log("cat: '"+esc(spec)+"': "+(result.error==='missing'?'No such file or directory':'Is a directory'),'err');shakeInput();return;}files.push(result.node);}const file=files[0];focusNode=file;selectedSource=file;updateUI();animateTo(file);files.forEach((current,fileIndex)=>{if(files.length>1)log('<span class="dim">── '+esc(current.name)+' ──</span>');current.content.forEach((text,index)=>log((parsed.flags.n?'<span class="code">'+String(index+1).padStart(3,' ')+'</span> ':'')+esc(text)));if(fileIndex<files.length-1)log('');});}
+function showHelp(){log('<span class="ok">Commands you can try:</span>');log('  <span class="hl">cp SOURCE DEST</span>       copy a file or folder');log('  <span class="hl">cp -r SOURCE DEST</span>    copy a directory recursively');log('  <span class="hl">cp -v SOURCE DEST</span>    report each copy');log('  <span class="hl">cp -n SOURCE DEST</span>    skip an existing target');log('  <span class="hl">cd / pwd</span>            move and locate');log('  <span class="hl">ls / cat</span>             inspect the result');}
+function tokenize(commandLine){return commandLine.match(/(?:[^\s"']+|"[^"]*"|'[^']*')+/g)||[];}
+function execute(raw){const commandLine=raw.trim();if(!commandLine)return;history.push(commandLine);historyIndex=-1;const prompt='you@linux:'+prettyPath(cwd)+'$';log('<span class="p">'+esc(prompt)+'</span> <span class="c">'+esc(commandLine)+'</span>');if(commandLine==='clear'){term.innerHTML='';return;}if(commandLine==='help'||commandLine==='--help'){showHelp();return;}const parts=tokenize(commandLine);const command=parts[0];const args=parts.slice(1).map(arg=>arg.replace(/^"|"$/g,'').replace(/^'|'$/g,''));if(command==='cp')doCp(args);else if(command==='cd')doCd(args);else if(command==='ls')doLs(args);else if(command==='pwd')doPwd(args);else if(command==='cat')doCat(args);else{log('bash: '+esc(command)+': command not found','err');log('<span class="dim">This playground is learning <b>cp</b>. Try a source and destination below.</span>');shakeInput();}}
+function onNodeClick(node){if(node.type==='file'){focusNode=node;selectedSource=node;updateUI();animateTo(node);return;}const command=node.parent===cwd?'cd '+node.name:'cd '+prettyPath(node);execute(command);}
+function renderChips(){chips.innerHTML='';const mission=missions[Math.min(missionIndex,missionCount-1)];const commands=['cp notes.txt notes.backup.txt','cp notes.txt documents/','cp project.txt roadmap.txt','cp /etc/hosts ~/hosts-copy.txt','cp -r projects backups/','cp -v documents/roadmap.txt ~/roadmap-final.txt','cd documents','cd ..','ls','pwd','help'];if(missionIndex===3)commands.unshift('cd documents','cp project.txt roadmap.txt');if(missionIndex===4)commands.unshift('cd ..');const list=[...new Set(commands)].filter(command=>command!==mission.answer).slice(0,5);if(hintBar.classList.contains('show'))list.unshift(mission.answer);list.forEach(command=>{const button=document.createElement('button');button.type='button';button.className='chip';button.textContent=command;button.addEventListener('click',()=>{execute(command);input.focus();});chips.appendChild(button);});}
+function renderMission(){const mission=missions[Math.min(missionIndex,missionCount-1)];missionBadge.textContent='Mission '+(missionIndex+1)+' / '+missionCount;missionText.innerHTML=mission.text;hintBar.textContent='';hintBar.classList.remove('show');renderChips();}
+function checkMission(){if(missionLocked||missionIndex>=missionCount||!lastContext)return;if(missions[missionIndex].check(lastContext))completeMission();}
+function completeMission(){missionLocked=true;stepsEl.children[missionIndex].classList.add('done');missionEl.classList.add('complete');setTimeout(()=>{missionEl.classList.remove('complete');missionIndex++;missionLocked=false;if(missionIndex>=missionCount)finishAll();else renderMission();},950);}
+function finishAll(){missionBadge.textContent='All done';missionText.innerHTML='You can copy files and folders with confidence. Keep exploring!';hintBtn.style.display='none';hintBar.classList.remove('show');renderChips();confetti();log('<span class="ok">All missions complete — nicely done!</span>');}
+function confetti(){const colors=['#67e8f9','#a3e635','#fbbf24','#f472b6','#c4b5fd','#a5f3fc'];for(let i=0;i<55;i++){const piece=document.createElement('i');piece.className='confetti';piece.style.left=Math.random()*100+'%';piece.style.background=colors[i%colors.length];piece.style.animationDelay=Math.random()*.45+'s';piece.style.animationDuration=1.7+Math.random()*1.3+'s';piece.style.setProperty('--rot',Math.random()*900-450+'deg');document.body.appendChild(piece);setTimeout(()=>piece.remove(),3600);}}
+function animateCopy(context){transferCard.classList.remove('success');transferCard.classList.add('in-flight');setTimeout(()=>{transferCard.classList.remove('in-flight');transferCard.classList.add('success');},780);const sourceRow=rowOf.get(context.source);const targetRow=rowOf.get(context.target);if(sourceRow)flashRow(context.source);if(targetRow){flashRow(context.target);scrollToRow(context.target);}setTimeout(()=>{animateTo(context.target);},180);if(sourceRow&&targetRow){const sr=sourceRow.getBoundingClientRect();const tr=targetRow.getBoundingClientRect();const ir=treeInner.getBoundingClientRect();const startX=sr.left-ir.left+sr.width/2;const startY=sr.top-ir.top+sr.height/2;const endX=tr.left-ir.left+tr.width/2;const endY=tr.top-ir.top+tr.height/2;const dx=endX-startX;const dy=endY-startY;const length=Math.max(4,Math.sqrt(dx*dx+dy*dy));const flight=document.createElement('div');flight.className='copy-flight';flight.style.left=startX+'px';flight.style.top=startY+'px';flight.style.width=length+'px';flight.style.transform='rotate('+Math.atan2(dy,dx)+'rad)';flight.innerHTML='<i></i>';treeInner.appendChild(flight);setTimeout(()=>flight.remove(),950);}setTimeout(()=>{copiedNodes.clear();context.copiedNodes.forEach(node=>{const row=rowOf.get(node);if(row)row.classList.remove('copied');});},1500);}
+hintBtn.addEventListener('click',()=>{if(hintBar.classList.contains('show')){hintBar.classList.remove('show');renderChips();return;}const mission=missions[Math.min(missionIndex,missionCount-1)];hintBar.innerHTML=mission.hint;hintBar.classList.add('show');renderChips();});
+form.addEventListener('submit',event=>{event.preventDefault();const value=input.value;input.value='';execute(value);input.focus();});
+input.addEventListener('keydown',event=>{if(event.key==='ArrowUp'){event.preventDefault();if(historyIndex<history.length-1){historyIndex++;input.value=history[history.length-1-historyIndex];input.setSelectionRange(input.value.length,input.value.length);}}else if(event.key==='ArrowDown'){event.preventDefault();if(historyIndex>0){historyIndex--;input.value=history[history.length-1-historyIndex];}else{historyIndex=-1;input.value='';}}});
+buildTree();
+requestAnimationFrame(()=>{focusNode=HOME;moveAvatar(false);updateUI();renderMission();log('<span class="hl">Welcome to the visual cp terminal.</span>');log('The <span class="hl">blue blob</span> follows the file or folder you focus.');log('Tap a file in the map to choose a source, then type where it should land.');log('');log('<span class="dim">Try this first:</span> <span class="code">cp notes.txt notes.backup.txt</span>');});
+window.addEventListener('resize',()=>moveAvatar(false));
+if(document.fonts&&document.fonts.ready)document.fonts.ready.then(()=>moveAvatar(false));
+if(!('ontouchstart' in window)&&window.innerWidth>900)setTimeout(()=>input.focus(),400);
+</script>
+</body>
+</html>

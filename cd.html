@@ -1,0 +1,1062 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Learn `cd` — Visual Linux</title>
+<style>
+/* ============ TOKENS ============ */
+:root{
+  --bg:#070b14;
+  --txt:#e6edf7;
+  --dim:#8b9bb4;
+  --accent:#38bdf8;
+  --accent2:#4ade80;
+  --folder:#fbbf24;
+  --err:#fb7185;
+  --line:rgba(255,255,255,.11);
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;min-height:100dvh;
+  font-family:var(--mono);
+  color:var(--txt);
+  background:#070b14;
+  overflow-x:hidden;
+  -webkit-font-smoothing:antialiased;
+}
+body::before{
+  content:'';position:fixed;inset:0;z-index:-2;
+  background:
+    radial-gradient(900px 600px at 12% -10%, rgba(56,189,248,.14), transparent 62%),
+    radial-gradient(800px 600px at 100% 0%, rgba(74,222,128,.10), transparent 58%),
+    radial-gradient(700px 700px at 50% 120%, rgba(168,85,247,.13), transparent 62%),
+    #070b14;
+}
+body::after{
+  content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;
+  background-image:
+    linear-gradient(rgba(255,255,255,.028) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.028) 1px, transparent 1px);
+  background-size:46px 46px;
+  -webkit-mask-image:radial-gradient(ellipse at 50% 0%, #000 15%, transparent 72%);
+  mask-image:radial-gradient(ellipse at 50% 0%, #000 15%, transparent 72%);
+}
+
+/* ============ LAYOUT ============ */
+.app{
+  max-width:1300px;margin:0 auto;
+  min-height:100dvh;
+  display:flex;flex-direction:column;
+  padding:14px 16px 16px;gap:11px;
+}
+
+/* ---- header ---- */
+.top{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:11px}
+.logo{
+  width:38px;height:38px;flex:0 0 auto;border-radius:11px;
+  display:grid;place-items:center;
+  font-size:19px;font-weight:700;color:#04121f;
+  background:linear-gradient(150deg,#7dd3fc,#38bdf8 45%,#0ea5e9);
+  box-shadow:0 8px 22px -8px rgba(56,189,248,.9), inset 0 1px 0 rgba(255,255,255,.6);
+  animation:logoPulse 3.2s ease-in-out infinite;
+}
+@keyframes logoPulse{0%,100%{box-shadow:0 8px 22px -8px rgba(56,189,248,.9), inset 0 1px 0 rgba(255,255,255,.6)}50%{box-shadow:0 8px 30px -6px rgba(56,189,248,1), inset 0 1px 0 rgba(255,255,255,.6)}}
+.brand h1{margin:0;font-size:16px;letter-spacing:.01em;font-weight:700}
+.brand h1 code{
+  background:rgba(56,189,248,.16);color:#7dd3fc;
+  padding:1px 7px;border-radius:6px;border:1px solid rgba(56,189,248,.28);
+}
+.brand p{margin:2px 0 0;font-size:11.5px;color:var(--dim)}
+.steps{display:flex;gap:7px;align-items:center}
+.steps i{
+  width:9px;height:9px;border-radius:50%;display:block;
+  background:rgba(255,255,255,.13);
+  transition:all .45s cubic-bezier(.34,1.56,.64,1);
+}
+.steps i.done{
+  background:var(--accent2);
+  box-shadow:0 0 0 4px rgba(74,222,128,.15), 0 0 14px rgba(74,222,128,.7);
+  transform:scale(1.15);
+}
+
+/* ---- mission bar ---- */
+.mission{
+  display:flex;align-items:center;gap:12px;
+  padding:10px 13px;border-radius:14px;
+  background:linear-gradient(90deg, rgba(56,189,248,.11), rgba(56,189,248,.02));
+  border:1px solid rgba(56,189,248,.22);
+  transition:background .35s, border-color .35s, transform .35s, box-shadow .35s;
+}
+.mission.complete{
+  background:linear-gradient(90deg, rgba(74,222,128,.24), rgba(74,222,128,.05));
+  border-color:rgba(74,222,128,.55);
+  transform:scale(1.012);
+  box-shadow:0 0 30px -8px rgba(74,222,128,.5);
+}
+.badge{
+  font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;
+  padding:5px 9px;border-radius:999px;white-space:nowrap;
+  background:rgba(56,189,248,.16);color:#7dd3fc;border:1px solid rgba(56,189,248,.3);
+  transition:all .3s;
+}
+.mission.complete .badge{background:rgba(74,222,128,.2);color:#86efac;border-color:rgba(74,222,128,.45)}
+.mission-text{flex:1;font-size:13px;line-height:1.4;min-width:0}
+.mission-text b{color:#7dd3fc}
+.mission.complete .mission-text b{color:#86efac}
+.hint-btn{
+  font:inherit;font-size:11px;color:var(--dim);cursor:pointer;
+  background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);
+  padding:6px 11px;border-radius:9px;white-space:nowrap;transition:.2s;
+}
+.hint-btn:hover{color:var(--txt);background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.24)}
+.hint{
+  max-height:0;overflow:hidden;opacity:0;
+  font-size:12.5px;color:var(--dim);
+  padding:0 14px;border-radius:12px;
+  transition:max-height .3s ease, opacity .3s ease, padding .3s ease, background .3s;
+}
+.hint.show{max-height:70px;opacity:1;padding:9px 14px;background:rgba(255,255,255,.035)}
+.hint code{color:#7dd3fc;background:rgba(56,189,248,.13);padding:1px 6px;border-radius:5px}
+
+/* ---- main grid ---- */
+main{
+  flex:1;min-height:0;
+  display:grid;
+  grid-template-columns:minmax(0,1.08fr) minmax(0,1fr);
+  gap:13px;
+}
+.panel{
+  background:linear-gradient(180deg, rgba(255,255,255,.048), rgba(255,255,255,.014));
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:17px;padding:12px;
+  display:flex;flex-direction:column;min-height:0;
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  box-shadow:0 22px 44px -24px rgba(0,0,0,.9), inset 0 1px 0 rgba(255,255,255,.055);
+}
+.panel-head{display:flex;align-items:center;gap:9px;padding:1px 4px 9px}
+.title{font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:var(--dim);font-weight:700}
+.sub{font-size:11px;color:rgba(139,155,180,.65);margin-left:auto}
+.dots{display:flex;gap:5px;margin-right:2px}
+.dots i{width:9px;height:9px;border-radius:50%;display:block}
+.dots i:nth-child(1){background:#fb7185}
+.dots i:nth-child(2){background:#fbbf24}
+.dots i:nth-child(3){background:#4ade80}
+
+/* ============ MAP / TREE ============ */
+.crumbs{
+  display:flex;align-items:center;flex-wrap:wrap;gap:3px;
+  padding:7px 9px;margin-bottom:8px;
+  border-radius:11px;background:rgba(0,0,0,.3);
+  border:1px solid rgba(255,255,255,.055);
+  min-height:37px;
+}
+.crumb{
+  font-size:12px;padding:3px 9px;border-radius:7px;
+  background:rgba(56,189,248,.13);color:#7dd3fc;
+  border:1px solid rgba(56,189,248,.22);
+  animation:crumbIn .32s cubic-bezier(.34,1.56,.64,1) backwards;
+}
+@keyframes crumbIn{from{opacity:0;transform:translateY(-5px) scale(.85)}to{opacity:1;transform:none}}
+.sep{color:rgba(139,155,180,.5);font-size:11px;padding:0 1px}
+
+.tree-scroll{
+  flex:1;min-height:0;overflow:auto;
+  padding:4px 2px 6px;
+  scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.16) transparent;
+  -webkit-overflow-scrolling:touch;
+}
+.tree-scroll::-webkit-scrollbar{width:8px;height:8px}
+.tree-scroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:99px}
+.tree-scroll::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.26)}
+
+.tree-inner{
+  position:relative;display:inline-block;vertical-align:top;
+  min-width:100%;padding:6px 58px 16px 2px;
+}
+.node{position:relative}
+.children{
+  margin-left:16px;padding-left:12px;
+  border-left:2px solid var(--line);
+}
+.children > .node::before{
+  content:'';position:absolute;left:-14px;top:17px;
+  width:14px;height:2px;background:var(--line);border-radius:2px;
+}
+.row{
+  display:inline-flex;align-items:center;gap:8px;
+  min-height:34px;padding:5px 11px 5px 9px;
+  border-radius:10px;cursor:pointer;
+  white-space:nowrap;position:relative;
+  transition:background .22s, box-shadow .22s, transform .18s;
+  -webkit-tap-highlight-color:transparent;
+}
+.row:hover{background:rgba(255,255,255,.055);transform:translateX(2px)}
+.row.current{
+  background:linear-gradient(90deg, rgba(56,189,248,.22), rgba(56,189,248,.03));
+  box-shadow:inset 0 0 0 1px rgba(56,189,248,.4);
+}
+.row.current .label{color:#fff;font-weight:700}
+.row.flash{animation:flashRow .75s ease}
+@keyframes flashRow{
+  0%{background:rgba(74,222,128,.42);box-shadow:inset 0 0 0 1px rgba(74,222,128,.8)}
+  100%{background:transparent;box-shadow:inset 0 0 0 1px transparent}
+}
+.row.file{opacity:.55;cursor:default}
+.row.file:hover{transform:none}
+
+.icon{width:18px;height:14px;flex:0 0 auto;position:relative;border-radius:3px;transition:box-shadow .3s}
+.icon.dir{
+  background:linear-gradient(180deg,#fcd34d,#f59e0b);
+  box-shadow:0 2px 7px rgba(251,191,36,.22);
+}
+.icon.dir::before{
+  content:'';position:absolute;top:-4px;left:0;width:8px;height:6px;
+  background:#fcd34d;border-radius:3px 3px 0 0;
+}
+.icon.file{
+  background:linear-gradient(180deg,#a8b6c9,#64748b);
+  border-radius:2px 5px 2px 2px;
+}
+.row.current .icon.dir{
+  box-shadow:0 0 0 3px rgba(56,189,248,.28), 0 2px 12px rgba(251,191,36,.75);
+}
+.label{font-size:13.5px;letter-spacing:.01em}
+.tag{
+  font-size:9.5px;padding:2px 6px;border-radius:99px;font-weight:700;
+  background:rgba(74,222,128,.16);color:#86efac;border:1px solid rgba(74,222,128,.3);
+}
+
+/* avatar */
+.avatar{
+  position:absolute;left:0;top:0;width:30px;height:30px;
+  z-index:6;pointer-events:none;
+  transition:transform .62s cubic-bezier(.34,1.3,.64,1);
+  will-change:transform;
+}
+.avatar .body{
+  width:100%;height:100%;
+  border-radius:50% 50% 46% 46%;
+  background:radial-gradient(circle at 34% 28%, #bae6fd, #38bdf8 52%, #0369a1);
+  box-shadow:0 0 0 3px rgba(56,189,248,.16), 0 9px 20px -4px rgba(2,132,199,.75);
+  display:grid;place-items:center;
+  animation:idle 2.8s ease-in-out infinite;
+}
+@keyframes idle{0%,100%{transform:translateY(0)}50%{transform:translateY(-2.5px)}}
+.avatar.hop .body{animation:hop .58s cubic-bezier(.34,1.3,.64,1)}
+@keyframes hop{
+  0%{transform:translateY(0) scale(1,1)}
+  28%{transform:translateY(-11px) scale(.9,1.12)}
+  58%{transform:translateY(0) scale(1.12,.88)}
+  80%{transform:translateY(-3px) scale(.98,1.03)}
+  100%{transform:translateY(0) scale(1,1)}
+}
+.eyes{display:flex;gap:5px}
+.eyes i{
+  width:4px;height:6.5px;background:#082f49;border-radius:50%;display:block;
+  animation:blink 4.6s infinite;
+}
+@keyframes blink{0%,92%,100%{transform:scaleY(1)}95%{transform:scaleY(.1)}}
+
+.ping{position:absolute;left:0;top:0;width:0;height:0;pointer-events:none;z-index:4}
+.ping i{
+  position:absolute;left:-17px;top:-17px;width:34px;height:34px;
+  border-radius:50%;border:2px solid rgba(56,189,248,.85);display:block;
+  animation:pingA .75s ease-out forwards;
+}
+@keyframes pingA{0%{transform:scale(.2);opacity:1}100%{transform:scale(1.9);opacity:0}}
+
+/* ============ TERMINAL ============ */
+.term{
+  flex:1;min-height:0;overflow-y:auto;
+  padding:12px 13px;border-radius:12px;
+  background:rgba(0,0,0,.34);
+  border:1px solid rgba(255,255,255,.055);
+  font-size:12.5px;line-height:1.7;
+  scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.16) transparent;
+}
+.term::-webkit-scrollbar{width:8px}
+.term::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:99px}
+.line{
+  white-space:pre-wrap;word-break:break-word;
+  animation:lineIn .22s ease-out;
+}
+@keyframes lineIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+.line .p{color:var(--accent2)}
+.line .c{color:#f8fafc;font-weight:600}
+.line.err{color:var(--err)}
+.line .d{color:#7dd3fc;font-weight:600}
+.line .f{color:#cbd5e1}
+.hl{color:#7dd3fc;font-weight:700}
+.ok{color:#86efac}
+.dim{color:var(--dim)}
+.code{
+  color:#fde68a;background:rgba(251,191,36,.1);
+  padding:1px 7px;border-radius:6px;border:1px solid rgba(251,191,36,.2);
+}
+.tip-line{
+  margin-top:4px;padding:6px 10px;border-radius:8px;
+  background:rgba(251,191,36,.08);
+  border-left:3px solid rgba(251,191,36,.55);
+  color:#fcd34d;font-size:12px;
+}
+
+.chips{
+  display:flex;gap:7px;overflow-x:auto;padding:10px 1px 2px;
+  scrollbar-width:none;
+}
+.chips::-webkit-scrollbar{display:none}
+.chip{
+  font:inherit;font-size:11.5px;white-space:nowrap;cursor:pointer;
+  padding:6px 11px;border-radius:9px;
+  color:#a5b4fc;
+  background:rgba(129,140,248,.1);
+  border:1px solid rgba(129,140,248,.25);
+  transition:.18s;
+  -webkit-tap-highlight-color:transparent;
+}
+.chip:hover{background:rgba(129,140,248,.22);color:#c7d2fe;transform:translateY(-1px)}
+.chip:active{transform:translateY(0) scale(.96)}
+
+.input-row{
+  display:flex;align-items:center;gap:8px;margin-top:9px;
+  padding:9px 10px;border-radius:12px;
+  background:rgba(0,0,0,.4);
+  border:1px solid rgba(56,189,248,.25);
+  transition:border-color .2s, box-shadow .2s;
+}
+.input-row:focus-within{
+  border-color:rgba(56,189,248,.7);
+  box-shadow:0 0 0 3px rgba(56,189,248,.13);
+}
+.input-row.shake{animation:shake .4s}
+@keyframes shake{
+  10%,90%{transform:translateX(-2px)}
+  20%,80%{transform:translateX(4px)}
+  30%,50%,70%{transform:translateX(-6px)}
+  40%,60%{transform:translateX(6px)}
+}
+.ps1{
+  font-size:12.5px;color:var(--accent2);white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;flex:0 1 auto;
+}
+.ps1 .ps-user{color:var(--accent2);opacity:.85}
+.input-row input{
+  flex:1;min-width:40px;background:none;border:none;outline:none;
+  color:#f1f5f9;font:inherit;font-size:13px;padding:0;
+}
+.input-row input::placeholder{color:rgba(139,155,180,.5)}
+.send{
+  font:inherit;font-size:14px;line-height:1;cursor:pointer;
+  width:30px;height:30px;flex:0 0 auto;border-radius:9px;
+  color:#04121f;background:linear-gradient(150deg,#7dd3fc,#38bdf8);
+  border:none;display:grid;place-items:center;
+  transition:.18s;box-shadow:0 4px 14px -4px rgba(56,189,248,.8);
+}
+.send:hover{transform:translateY(-1px);box-shadow:0 6px 18px -4px rgba(56,189,248,1)}
+.send:active{transform:scale(.93)}
+
+/* confetti */
+.confetti{
+  position:fixed;top:-14px;width:8px;height:13px;border-radius:2px;
+  z-index:999;pointer-events:none;
+  animation:fall linear forwards;
+}
+@keyframes fall{to{transform:translateY(108vh) rotate(var(--rot,360deg));opacity:.05}}
+
+/* ============ RESPONSIVE ============ */
+@media (min-width:901px){
+  .term{
+    flex:0 0 clamp(240px,42vh,420px);
+    overflow-y:auto;
+  }
+}
+@media (max-width:900px){
+  .app{padding:12px 12px 16px;gap:10px}
+  main{grid-template-columns:1fr;grid-template-rows:auto auto;flex:none}
+  .panel{min-height:0}
+  .tree-scroll{max-height:40vh}
+  .term{min-height:150px;max-height:32vh}
+  .brand h1{font-size:15px}
+  .brand p{display:none}
+  .mission-text{font-size:12.5px}
+  .ps1 .ps-user{display:none}
+  .sub{display:none}
+}
+@media (max-width:420px){
+  .logo{width:34px;height:34px;font-size:17px}
+  .badge{font-size:9px;padding:4px 7px}
+  .mission{gap:8px;padding:9px 11px}
+  .hint-btn{padding:5px 9px;font-size:10.5px}
+  .label{font-size:13px}
+  .tree-inner{padding-right:48px}
+}
+@media (prefers-reduced-motion:reduce){
+  *{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header class="top">
+    <div class="brand">
+      <div class="logo">$</div>
+      <div>
+        <h1>Learn <code>cd</code></h1>
+        <p>Move around a Linux filesystem — no experience needed.</p>
+      </div>
+    </div>
+    <div class="steps" id="steps"></div>
+  </header>
+
+  <div class="mission" id="mission">
+    <span class="badge" id="missionBadge">Mission 1 / 6</span>
+    <span class="mission-text" id="missionText">Loading…</span>
+    <button class="hint-btn" id="hintBtn" type="button">Hint</button>
+  </div>
+  <div class="hint" id="hintBar"></div>
+
+  <main>
+    <section class="panel">
+      <div class="panel-head">
+        <span class="title">Filesystem map</span>
+        <span class="sub">tap any folder to jump in</span>
+      </div>
+      <div class="crumbs" id="crumbs"></div>
+      <div class="tree-scroll" id="treeScroll">
+        <div class="tree" id="tree"></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <span class="dots"><i></i><i></i><i></i></span>
+        <span class="title">Terminal</span>
+      </div>
+      <div class="term" id="term"></div>
+      <div class="chips" id="chips"></div>
+      <form class="input-row" id="form" autocomplete="off">
+        <span class="ps1" id="ps1"><span class="ps-user">you@linux:</span><span id="psPath">~</span>$</span>
+        <input id="cmd" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="type a command…">
+        <button class="send" type="submit" aria-label="Run command">↵</button>
+      </form>
+    </section>
+  </main>
+</div>
+
+<script>
+/* ==================================================================
+   1. FILESYSTEM MODEL
+   ================================================================== */
+let uid = 0;
+const mk = (name, type = 'dir') => ({ id: ++uid, name, type, children: [], parent: null });
+
+const ROOT      = mk('/');
+const homeDir   = mk('home');
+const HOME      = mk('you');
+const documents = mk('documents');
+const projects  = mk('projects');
+const pictures  = mk('pictures');
+const music     = mk('music');
+const etc       = mk('etc');
+const notes     = mk('notes.txt', 'file');
+const hosts     = mk('hosts', 'file');
+
+ROOT.children      = [homeDir, etc];
+homeDir.children   = [HOME];
+HOME.children      = [documents, pictures, music, notes];
+documents.children = [projects];
+etc.children       = [hosts];
+
+(function link(n, p) {
+  n.parent = p;
+  n.children.forEach(c => link(c, n));
+})(ROOT, null);
+
+let cwd     = HOME;
+let prevDir = null;
+
+/* ---- path helpers ---- */
+function absPath(n) {
+  if (n === ROOT) return '/';
+  const parts = [];
+  let x = n;
+  while (x && x !== ROOT) { parts.unshift(x.name); x = x.parent; }
+  return '/' + parts.join('/');
+}
+function prettyPath(n) {
+  const a = absPath(n);
+  if (a === '/home/you') return '~';
+  if (a.startsWith('/home/you/')) return '~' + a.slice(9);
+  return a;
+}
+function resolvePath(input, base) {
+  let cur, rest;
+  if (input === '~' || input.startsWith('~/')) { cur = HOME; rest = input.slice(1); }
+  else if (input.startsWith('/'))              { cur = ROOT; rest = input.slice(1); }
+  else                                         { cur = base; rest = input; }
+
+  const segs = rest.split('/').filter(Boolean);
+  for (const s of segs) {
+    if (s === '.') continue;
+    if (s === '..') { cur = cur.parent || ROOT; continue; }
+    const next = cur.children.find(c => c.name === s);
+    if (!next) return { error: 'missing', name: s };
+    if (next.type !== 'dir') return { error: 'notdir', node: next };
+    cur = next;
+  }
+  return { node: cur };
+}
+
+const esc = s => String(s).replace(/[&<>"']/g,
+  c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+
+/* ==================================================================
+   2. DOM REFS
+   ================================================================== */
+const treeEl    = document.getElementById('tree');
+const treeScroll= document.getElementById('treeScroll');
+const term      = document.getElementById('term');
+const crumbs    = document.getElementById('crumbs');
+const chips     = document.getElementById('chips');
+const form      = document.getElementById('form');
+const input     = document.getElementById('cmd');
+const ps1       = document.getElementById('ps1');
+const psPath    = document.getElementById('psPath');
+const stepsEl   = document.getElementById('steps');
+const missionEl = document.getElementById('mission');
+const missionBadge = document.getElementById('missionBadge');
+const missionText  = document.getElementById('missionText');
+const hintBtn   = document.getElementById('hintBtn');
+const hintBar   = document.getElementById('hintBar');
+
+let treeInner, avatarEl;
+const rowOf = new Map();   // node -> row element
+
+/* ==================================================================
+   3. TREE RENDERING
+   ================================================================== */
+function buildTree() {
+  treeInner = document.createElement('div');
+  treeInner.className = 'tree-inner';
+  treeEl.appendChild(treeInner);
+
+  renderNode(ROOT, treeInner);
+
+  avatarEl = document.createElement('div');
+  avatarEl.className = 'avatar';
+  avatarEl.innerHTML = '<div class="body"><span class="eyes"><i></i><i></i></span></div>';
+  treeInner.appendChild(avatarEl);
+}
+
+function renderNode(node, parentEl) {
+  const wrap = document.createElement('div');
+  wrap.className = 'node';
+
+  const row = document.createElement('div');
+  row.className = 'row' + (node.type === 'file' ? ' file' : '');
+
+  const icon = document.createElement('span');
+  icon.className = 'icon ' + node.type;
+
+  const label = document.createElement('span');
+  label.className = 'label';
+  label.textContent = node === ROOT ? '/' : node.name;
+
+  row.append(icon, label);
+
+  if (node === HOME) {
+    const tag = document.createElement('span');
+    tag.className = 'tag';
+    tag.textContent = '~';
+    row.appendChild(tag);
+  }
+
+  row.addEventListener('click', () => onNodeClick(node));
+  wrap.appendChild(row);
+  rowOf.set(node, row);
+
+  if (node.children.length) {
+    const kids = document.createElement('div');
+    kids.className = 'children';
+    node.children.forEach(c => renderNode(c, kids));
+    wrap.appendChild(kids);
+  }
+  parentEl.appendChild(wrap);
+}
+
+/* ---- avatar movement ---- */
+function avatarTarget(node) {
+  const row   = rowOf.get(node);
+  const label = row.querySelector('.label');
+  const ir = treeInner.getBoundingClientRect();
+  const lr = label.getBoundingClientRect();
+  return {
+    x: lr.right - ir.left + 9,
+    y: lr.top - ir.top + lr.height / 2 - 15
+  };
+}
+function moveAvatar(animate, node = cwd) {
+  const { x, y } = avatarTarget(node);
+  if (!animate) avatarEl.style.transition = 'none';
+  avatarEl.style.transform = `translate(${x}px, ${y}px)`;
+  if (!animate) requestAnimationFrame(() => { avatarEl.style.transition = ''; });
+}
+
+function ping(x, y) {
+  const el = document.createElement('div');
+  el.className = 'ping';
+  el.style.transform = `translate(${x}px, ${y}px)`;
+  el.innerHTML = '<i></i>';
+  treeInner.appendChild(el);
+  setTimeout(() => el.remove(), 800);
+}
+
+function scrollToRow(node) {
+  const row = rowOf.get(node);
+  const rr = row.getBoundingClientRect();
+  const ir = treeInner.getBoundingClientRect();
+  const rel = rr.top - ir.top;
+  const target = rel + rr.height / 2 - treeScroll.clientHeight / 2;
+  treeScroll.scrollTo({ top: Math.max(0, target), behavior: 'smooth' });
+}
+
+function animateMove(to) {
+  moveAvatar(true, to);
+  avatarEl.classList.remove('hop');
+  void avatarEl.offsetWidth;
+  avatarEl.classList.add('hop');
+
+  const row = rowOf.get(to);
+  const rr = row.getBoundingClientRect();
+  const ir = treeInner.getBoundingClientRect();
+  ping(rr.left - ir.left + 14, rr.top - ir.top + rr.height / 2);
+
+  row.classList.remove('flash');
+  void row.offsetWidth;
+  row.classList.add('flash');
+
+  scrollToRow(to);
+}
+
+/* ==================================================================
+   4. UI SYNC
+   ================================================================== */
+function updateUI() {
+  psPath.textContent = prettyPath(cwd);
+  rowOf.forEach((row, node) => row.classList.toggle('current', node === cwd));
+  renderCrumbs();
+  renderChips();
+}
+
+function renderCrumbs() {
+  crumbs.innerHTML = '';
+  const p = prettyPath(cwd);
+  let parts;
+  if (p === '/') parts = ['/'];
+  else {
+    const segs = p.split('/').filter(Boolean);
+    parts = p.startsWith('/') ? ['/', ...segs] : segs;
+  }
+  parts.forEach((part, i) => {
+    if (i) {
+      const sep = document.createElement('span');
+      sep.className = 'sep';
+      sep.textContent = '›';
+      crumbs.appendChild(sep);
+    }
+    const pill = document.createElement('span');
+    pill.className = 'crumb';
+    pill.style.animationDelay = (i * 45) + 'ms';
+    pill.textContent = part;
+    crumbs.appendChild(pill);
+  });
+}
+
+function renderChips() {
+  chips.innerHTML = '';
+  const list = [];
+  const dirs = cwd.children.filter(c => c.type === 'dir');
+  if (dirs.length) list.push('cd ' + dirs[0].name);
+  if (cwd !== ROOT) list.push('cd ..');
+  if (cwd !== HOME) list.push('cd ~');
+  if (prevDir)      list.push('cd -');
+  list.push('pwd', 'ls');
+
+  [...new Set(list)].slice(0, 5).forEach(cmd => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'chip';
+    b.textContent = cmd;
+    b.addEventListener('click', () => {
+      execute(cmd);
+      input.focus();
+    });
+    chips.appendChild(b);
+  });
+}
+
+/* ==================================================================
+   5. TERMINAL OUTPUT
+   ================================================================== */
+function log(html, cls = '') {
+  const d = document.createElement('div');
+  d.className = 'line ' + cls;
+  d.innerHTML = html;
+  term.appendChild(d);
+  term.scrollTop = term.scrollHeight;
+}
+function shakeInput() {
+  form.classList.remove('shake');
+  void form.offsetWidth;
+  form.classList.add('shake');
+}
+
+/* ==================================================================
+   6. COMMAND EXECUTION
+   ================================================================== */
+let history = [], hIdx = -1;
+
+function execute(raw) {
+  const cmdLine = raw.trim();
+  if (!cmdLine) return;
+
+  history.push(cmdLine);
+  hIdx = -1;
+
+  const prompt = `you@linux:${prettyPath(cwd)}$`;
+  log(`<span class="p">${esc(prompt)}</span> <span class="c">${esc(cmdLine)}</span>`);
+
+  const parts = cmdLine.split(/\s+/);
+  const cmd = parts[0];
+  const args = parts.slice(1);
+
+  switch (cmd) {
+    case 'cd':    doCd(args); break;
+    case 'pwd':   log(esc(absPath(cwd))); break;
+    case 'ls':    doLs(args); break;
+    case 'clear': term.innerHTML = ''; break;
+    case 'help':  showHelp(); break;
+    default:
+      log(`bash: ${esc(cmd)}: command not found`, 'err');
+      log(`<span class="dim">Try "help" to see the commands you can use.</span>`);
+      shakeInput();
+  }
+}
+
+function doCd(args) {
+  if (args.length > 1) {
+    log('bash: cd: too many arguments', 'err');
+    shakeInput();
+    return;
+  }
+  const arg = args[0] !== undefined ? args[0] : '';
+  let target;
+
+  if (arg === '') {
+    target = HOME;
+  } else if (arg === '-') {
+    if (!prevDir) {
+      log('bash: cd: OLDPWD not set', 'err');
+      shakeInput();
+      return;
+    }
+    target = prevDir;
+    log(`<span class="dim">${esc(prettyPath(target))}</span>`);
+  } else {
+    const r = resolvePath(arg, cwd);
+    if (r.error === 'missing') {
+      log(`bash: cd: ${esc(arg)}: No such file or directory`, 'err');
+      log(`<span class="tip-line">That folder isn't here. Run <b>ls</b> to see what IS here — or check your spelling.</span>`, 'tip-line-wrap');
+      shakeInput();
+      return;
+    }
+    if (r.error === 'notdir') {
+      log(`bash: cd: ${esc(arg)}: Not a directory`, 'err');
+      log(`<span class="tip-line"><b>${esc(r.node.name)}</b> is a file, not a folder. <b>cd</b> only walks into folders.</span>`, 'tip-line-wrap');
+      shakeInput();
+      return;
+    }
+    target = r.node;
+  }
+
+  if (target === cwd) {
+    log(`<span class="ok">You're already in ${esc(prettyPath(cwd))} — nothing to do.</span>`);
+    return;
+  }
+
+  prevDir = cwd;
+  cwd = target;
+  animateMove(target);
+  updateUI();
+  checkMission();
+}
+
+function parseLs(args) {
+  const flags = {a:false, l:false, t:false, r:false, one:false, h:false};
+  const paths = [];
+  let optionsEnded = false;
+  for (const arg of args) {
+    if (arg === '--help') return {help:true};
+    if (!optionsEnded && arg === '--') { optionsEnded = true; continue; }
+    if (!optionsEnded && arg.startsWith('--')) {
+      const names = {all:'a','almost-all':'a',long:'l','time-sort':'t',reverse:'r',oneline:'one','human-readable':'h'};
+      const key = arg.slice(2).split('=')[0];
+      if (!(key in names)) return {error:`unsupported option -- '${arg.slice(2)}'`};
+      flags[names[key]] = true;
+      continue;
+    }
+    if (!optionsEnded && arg.startsWith('-') && arg.length > 1) {
+      for (const flag of arg.slice(1)) {
+        if (flag === 'A') { flags.a = true; continue; }
+        if (!(flag in flags)) return {error:`invalid option -- '${flag}'`};
+        flags[flag] = true;
+      }
+      continue;
+    }
+    paths.push(arg);
+  }
+  if (paths.length > 1) return {error:'this playground lists one path at a time'};
+  return {flags, path:paths[0] || '.'};
+}
+function resolveLsPath(input) {
+  let current;
+  let rest = input;
+  if (input === '~' || input.startsWith('~/')) { current = HOME; rest = input.slice(1); }
+  else if (input.startsWith('/')) { current = ROOT; rest = input.slice(1); }
+  else current = cwd;
+  const segments = rest.split('/').filter(Boolean);
+  for (let index = 0; index < segments.length; index++) {
+    const segment = segments[index];
+    if (segment === '.') continue;
+    if (segment === '..') { current = current.parent || ROOT; continue; }
+    if (!current.children) return {error:'notdir', name:segment};
+    const next = current.children.find(child => child.name === segment);
+    if (!next) return {error:'missing', name:segment};
+    if (next.type !== 'dir' && index < segments.length - 1) return {error:'notdir', name:segment};
+    current = next;
+  }
+  return {node:current};
+}
+function listEntries(node, flags) {
+  if (node.type !== 'dir') return [node];
+  let entries = node.children.slice();
+  if (!flags.a) entries = entries.filter(entry => !entry.name.startsWith('.'));
+  entries.sort((left, right) => left.name.localeCompare(right.name, undefined, {numeric:true, sensitivity:'base'}));
+  if (flags.t) entries.sort((left, right) => (right.id || 0) - (left.id || 0));
+  if (flags.r) entries.reverse();
+  return entries;
+}
+function lsSize(node) { return node.type === 'dir' ? '4.0K' : '1.0K'; }
+function lsDate(node) { return new Date(1700000000000 + (node.id || 0) * 60000).toLocaleDateString('en-US', {month:'short', day:'2-digit', year:'numeric'}); }
+function lsMode(node) { return node.type === 'dir' ? 'drwxr-xr-x' : node.name.startsWith('.') ? '-rw-------' : '-rw-r--r--'; }
+function doLs(args) {
+  const parsed = parseLs(args);
+  if (parsed.help) { showHelp(); return; }
+  if (parsed.error) { log(`ls: ${esc(parsed.error)}`, 'err'); shakeInput(); return; }
+  const resolved = resolveLsPath(parsed.path);
+  if (resolved.error) {
+    log(resolved.error === 'missing' ? `ls: cannot access '${esc(parsed.path)}': No such file or directory` : `ls: cannot access '${esc(parsed.path)}': Not a directory`, 'err');
+    shakeInput();
+    return;
+  }
+  const node = resolved.node;
+  const entries = listEntries(node, parsed.flags);
+  if (!entries.length) { log('<span class="dim">(empty)</span>'); return; }
+  if (parsed.flags.l) {
+    entries.forEach(entry => log(`${lsMode(entry)}  you  you  ${lsSize(entry)}  ${lsDate(entry)}  ${entry.type === 'dir' ? esc(entry.name) + '/' : esc(entry.name)}`));
+  } else if (parsed.flags.one) {
+    entries.forEach(entry => log(`<span class="${entry.name.startsWith('.') ? 'err' : entry.type === 'dir' ? 'd' : 'f'}">${esc(entry.name + (entry.type === 'dir' ? '/' : ''))}</span>`));
+  } else {
+    log(entries.map(entry => `<span class="${entry.name.startsWith('.') ? 'err' : entry.type === 'dir' ? 'd' : 'f'}">${esc(entry.name + (entry.type === 'dir' ? '/' : ''))}</span>`).join('   '));
+  }
+  log(`<span class="dim">${entries.length} ${entries.length === 1 ? 'entry' : 'entries'} in ${esc(prettyPath(node))}</span>`);
+}
+
+function showHelp() {
+  log('<span class="ok">Commands you can try:</span>');
+  log('  <span class="d">cd &lt;folder&gt;</span>   go into a folder');
+  log('  <span class="d">cd ..</span>          go up one level');
+  log('  <span class="d">cd ~</span>           go home');
+  log('  <span class="d">cd /</span>           go to the very top');
+  log('  <span class="d">cd -</span>           go back to the previous folder');
+  log('  <span class="d">pwd</span>            print where you are');
+  log('  <span class="d">ls</span>             list what\'s here');
+  log('  <span class="d">clear</span>          wipe the screen');
+}
+
+/* clicking a folder in the map */
+function onNodeClick(node) {
+  if (node === cwd) return;
+
+  if (node.type === 'file') {
+    execute('cd ' + node.name);
+    return;
+  }
+  const cmd = (node.parent === cwd)
+    ? 'cd ' + node.name
+    : 'cd ' + prettyPath(node);
+  execute(cmd);
+}
+
+/* ==================================================================
+   7. MISSIONS
+   ================================================================== */
+const missions = [
+  { text: 'Go into the <b>documents</b> folder.',
+    hint: 'Type: <code>cd documents</code>',
+    check: () => cwd === documents },
+
+  { text: 'Climb back up to <b>you</b>.',
+    hint: 'Two dots mean "the folder above me". Type: <code>cd ..</code>',
+    check: () => cwd === HOME },
+
+  { text: 'Jump into <b>pictures</b>.',
+    hint: 'Type: <code>cd pictures</code>',
+    check: () => cwd === pictures },
+
+  { text: 'Teleport home using <b>~</b>.',
+    hint: '<code>~</code> always means your home folder. Type: <code>cd ~</code> (or just <code>cd</code>)',
+    check: () => cwd === HOME },
+
+  { text: 'Visit <b>/etc</b> using an absolute path.',
+    hint: 'Absolute paths start with <code>/</code> and count from the very top. Type: <code>cd /etc</code>',
+    check: () => cwd === etc },
+
+  { text: 'Go back to where you just were.',
+    hint: 'A single dash remembers the last folder. Type: <code>cd -</code>',
+    check: () => cwd === HOME }
+];
+
+let missionIdx = 0;
+let missionLocked = false;
+
+missions.forEach(() => {
+  const d = document.createElement('i');
+  stepsEl.appendChild(d);
+});
+
+function renderMission() {
+  const m = missions[missionIdx];
+  missionBadge.textContent = `Mission ${missionIdx + 1} / ${missions.length}`;
+  missionText.innerHTML = m.text;
+  hintBar.textContent = '';
+  hintBar.classList.remove('show');
+}
+
+function checkMission() {
+  if (missionLocked || missionIdx >= missions.length) return;
+  if (missions[missionIdx].check()) completeMission();
+}
+
+function completeMission() {
+  missionLocked = true;
+  stepsEl.children[missionIdx].classList.add('done');
+  missionEl.classList.add('complete');
+
+  setTimeout(() => {
+    missionEl.classList.remove('complete');
+    missionIdx++;
+    missionLocked = false;
+
+    if (missionIdx >= missions.length) finishAll();
+    else renderMission();
+  }, 950);
+}
+
+function finishAll() {
+  missionBadge.textContent = 'All done';
+  missionText.innerHTML = 'You can navigate a Linux filesystem. Try exploring on your own!';
+  hintBtn.style.display = 'none';
+  confetti();
+  log('<span class="ok">All missions complete — nicely done!</span>');
+}
+
+function confetti() {
+  const colors = ['#38bdf8', '#4ade80', '#fbbf24', '#f472b6', '#a78bfa', '#7dd3fc'];
+  for (let i = 0; i < 55; i++) {
+    const c = document.createElement('i');
+    c.className = 'confetti';
+    c.style.left = Math.random() * 100 + '%';
+    c.style.background = colors[i % colors.length];
+    c.style.animationDelay = (Math.random() * 0.45) + 's';
+    c.style.animationDuration = (1.7 + Math.random() * 1.3) + 's';
+    c.style.setProperty('--rot', (Math.random() * 900 - 450) + 'deg');
+    document.body.appendChild(c);
+    setTimeout(() => c.remove(), 3600);
+  }
+}
+
+hintBtn.addEventListener('click', () => {
+  if (hintBar.classList.contains('show')) {
+    hintBar.classList.remove('show');
+    return;
+  }
+  hintBar.innerHTML = missions[missionIdx].hint;
+  hintBar.classList.add('show');
+});
+
+/* ==================================================================
+   8. INPUT HANDLING
+   ================================================================== */
+form.addEventListener('submit', e => {
+  e.preventDefault();
+  const v = input.value;
+  input.value = '';
+  execute(v);
+  input.focus();
+});
+
+input.addEventListener('keydown', e => {
+  if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    if (hIdx < history.length - 1) {
+      hIdx++;
+      input.value = history[history.length - 1 - hIdx];
+      input.setSelectionRange(input.value.length, input.value.length);
+    }
+  } else if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    if (hIdx > 0) {
+      hIdx--;
+      input.value = history[history.length - 1 - hIdx];
+    } else {
+      hIdx = -1;
+      input.value = '';
+    }
+  }
+});
+
+/* ==================================================================
+   9. BOOT
+   ================================================================== */
+buildTree();
+
+requestAnimationFrame(() => {
+  moveAvatar(false);
+  updateUI();
+  renderMission();
+
+  log('<span class="hl">Welcome to the visual terminal.</span>');
+  log('The <span class="hl">blue blob</span> on the map is <b>you</b>.');
+  log('Move around by typing a command below — or tap any folder.');
+  log('');
+  log('<span class="dim">Try this first:</span> <span class="code">cd documents</span>');
+});
+
+window.addEventListener('resize', () => moveAvatar(false));
+if (document.fonts && document.fonts.ready) {
+  document.fonts.ready.then(() => moveAvatar(false));
+}
+
+/* focus the input on desktop only (avoids mobile keyboard pop) */
+if (!('ontouchstart' in window) && window.innerWidth > 900) {
+  setTimeout(() => input.focus(), 400);
+}
+</script>
+</body>
+</html>
