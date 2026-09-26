@@ -24,7 +24,17 @@ Then visit `http://127.0.0.1:8000/` in your browser. There is no build step, pac
 | 04 | `cat` | Reading text files, line numbers, multiple files, and path resolution | [Launch `cat`](cat.html) |
 | 05 | `mkdir` | Creating directories, missing parents with `-p`, verbose output, and map mutations | [Launch `mkdir`](mkdir.html) |
 | 06 | `cp` | Copying files and directories, preserving originals, and source-to-destination animation | [Launch `cp`](cp.html) |
-| 07 | `grep` | Searching text, case-insensitive matching, line numbers, counts, and recursive search | [Launch `grep`](grep.html) |
+| 07 | `mv` | Renaming in place, moving into folders, whole-folder moves, and safe overwrites | [Launch `mv`](mv.html) |
+| 08 | `rm` | Deleting files and folders, recursive removal, interactive prompts, wildcards, and undo | [Launch `rm`](rm.html) |
+| 09 | `find` | Searching by name, type, size, depth, and path patterns across a whole tree | [Launch `find`](find.html) |
+| 10 | `sed` | Stream editing with `s///`, global and nth-occurrence flags, line and range addresses, `d` and `p`, `-i` in-place edits, and `.bak` backups | [Launch `sed`](sed.html) |
+| 11 | `cut` | Extracting fields with `-d` and `-f`, field ranges, fixed columns with `-c`, and skipping undelimited lines with `-s` | [Launch `cut`](cut.html) |
+| 12 | `head` / `tail` | Reading the first or last lines of a file, `-n` line counts, `+N` offsets, `-c` byte counts, and following a growing log with `-f` | [Launch `head` / `tail`](head_tail.html) |
+| 13 | `wc` | Counting lines with `-l`, words with `-w`, bytes with `-c`, characters with `-m`, the longest line with `-L`, and totals across files | [Launch `wc`](wc.html) |
+| 14 | `sort` / `uniq` | Sorting with `-n`, `-r`, `-u`, `-f`, `-b`, field keys with `-t` and `-k`, writing results with `-o`, checking order with `-c`, and collapsing repeats with `uniq -c`, `-d`, `-u`, `-i` | [Launch `sort` / `uniq`](sort_uniq.html) |
+| 15 | `chmod` | Symbolic modes like `u+x` and `g-w`, exact sets like `u=rw,g=r,o=`, octal modes like `644`, recursive changes with `-R`, and several files at once | [Launch `chmod`](chmod.html) |
+| 16 | `\|` and `>` `>>` | Piping one command's output into the next, writing results to a file with `>`, appending with `>>`, and chaining stages like `cat FILE \| grep ERROR \| wc -l` | [Launch pipes](pipes.html) |
+| 17 | `grep` | Searching text, case-insensitive matching, line numbers, counts, and recursive search | [Launch `grep`](grep.html) |
 
 ## How the labs work
 
@@ -43,7 +53,7 @@ The filesystem is intentionally in-memory. Refreshing a lab resets its virtual f
 ## Publish with GitHub Pages
 
 1. Put the contents of this folder in the root of a GitHub repository.
-2. Commit `index.html`, `README.md`, and the seven command pages.
+2. Commit `index.html`, `README.md`, and the seventeen command pages.
 3. In the repository, open **Settings → Pages**.
 4. Under **Build and deployment**, choose **Deploy from a branch**.
 5. Select the publishing branch and the `/ (root)` folder.
@@ -60,7 +70,17 @@ The relative links in `index.html` and this README work both on GitHub Pages and
 ├── list.md          # Planned command sequence
 ├── cd.html          # Filesystem navigation lab
 ├── cp.html          # Copying lab
+├── mv.html          # Move and rename lab
+├── rm.html          # Delete-and-restore lab
+├── find.html        # Tree search lab
 ├── cat.html         # File-reading lab
+├── sed.html         # Stream editor lab
+├── cut.html         # Field and column slicing lab
+├── head_tail.html   # Top and bottom of a file lab
+├── wc.html          # Line, word and byte counting lab
+├── sort_uniq.html   # Sort and deduplicate lab
+├── chmod.html       # Permission matrix lab
+├── pipes.html       # Pipeline and redirection lab
 ├── grep.html        # Search lab
 ├── ls.html          # Directory-listing lab
 ├── mkdir.html       # Directory-creation lab

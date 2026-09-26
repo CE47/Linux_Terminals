@@ -1,0 +1,1938 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Learn pipes &amp; redirection — Visual Linux</title>
+<style>
+/* ============ TOKENS ============ */
+:root{
+  --bg:#03151b;
+  --txt:#e8f7f0;
+  --dim:#8ba79b;
+  --accent:#06b6d4;
+  --accent2:#a5f3fc;
+  --mark:#22d3ee;
+  --green:#4ade80;
+  --err:#fda4af;
+  --line:rgba(255,255,255,.11);
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;min-height:100dvh;font-family:var(--mono);color:var(--txt);background:var(--bg);overflow-x:hidden;-webkit-font-smoothing:antialiased}
+body::before{content:'';position:fixed;inset:0;z-index:-2;background:radial-gradient(900px 620px at 10% -12%,rgba(6,182,212,.17),transparent 62%),radial-gradient(820px 600px at 100% 3%,rgba(165,243,252,.09),transparent 60%),radial-gradient(760px 700px at 46% 118%,rgba(103,232,249,.08),transparent 63%),#03151b}
+body::after{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;background-image:linear-gradient(rgba(255,255,255,.026) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.026) 1px,transparent 1px);background-size:46px 46px;-webkit-mask-image:radial-gradient(ellipse at 50% 0%,#000 14%,transparent 74%);mask-image:radial-gradient(ellipse at 50% 0%,#000 14%,transparent 74%)}
+
+/* ============ LAYOUT ============ */
+.app{max-width:1320px;margin:0 auto;min-height:100dvh;display:flex;flex-direction:column;padding:14px 16px 16px;gap:11px}
+.top{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:11px}
+.logo{width:38px;height:38px;flex:0 0 auto;border-radius:11px;display:grid;place-items:center;position:relative;font-size:13px;font-weight:800;letter-spacing:-.06em;color:#04141a;background:linear-gradient(150deg,#cffafe,#06b6d4 45%,#0e7490);box-shadow:0 8px 22px -8px rgba(6,182,212,.9),inset 0 1px 0 rgba(255,255,255,.6);animation:logoPulse 3.2s ease-in-out infinite}
+@keyframes logoPulse{0%,100%{box-shadow:0 8px 22px -8px rgba(6,182,212,.9),inset 0 1px 0 rgba(255,255,255,.6)}50%{box-shadow:0 8px 32px -6px rgba(6,182,212,1),inset 0 1px 0 rgba(255,255,255,.6)}}
+.logo::after{content:'';position:absolute;left:4px;right:4px;top:7px;height:2px;border-radius:2px;background:rgba(43,20,3,.35);box-shadow:0 5px 0 rgba(43,20,3,.35),0 10px 0 rgba(43,20,3,.2)}
+.brand h1{margin:0;font-size:16px;letter-spacing:.01em;font-weight:700}
+.brand h1 code{color:#cffafe;background:rgba(6,182,212,.16);padding:1px 7px;border-radius:6px;border:1px solid rgba(6,182,212,.32)}
+.brand p{margin:2px 0 0;font-size:11.5px;color:var(--dim)}
+.steps{display:flex;gap:7px;align-items:center}
+.steps i{width:9px;height:9px;border-radius:50%;display:block;background:rgba(255,255,255,.13);transition:all .45s cubic-bezier(.34,1.56,.64,1)}
+.steps i.done{background:var(--green);box-shadow:0 0 0 4px rgba(74,222,128,.15),0 0 14px rgba(74,222,128,.7);transform:scale(1.15)}
+.reset-btn{font:inherit;font-size:10.5px;letter-spacing:.04em;color:var(--dim);cursor:pointer;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);padding:5px 10px;border-radius:9px;white-space:nowrap;transition:.2s;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.reset-btn:hover{color:var(--txt);background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.26)}
+.reset-btn:active{transform:scale(.95)}
+.reset-btn.spin{animation:resetSpin .55s cubic-bezier(.34,1.3,.64,1)}
+@keyframes resetSpin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+
+/* ---- mission bar ---- */
+.mission{display:flex;align-items:center;gap:12px;padding:10px 13px;border-radius:14px;background:linear-gradient(90deg,rgba(6,182,212,.12),rgba(6,182,212,.02));border:1px solid rgba(6,182,212,.24);transition:background .35s,border-color .35s,transform .35s,box-shadow .35s}
+.mission.complete{background:linear-gradient(90deg,rgba(74,222,128,.24),rgba(74,222,128,.05));border-color:rgba(74,222,128,.55);transform:scale(1.012);box-shadow:0 0 30px -8px rgba(74,222,128,.5)}
+.badge{font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;padding:5px 9px;border-radius:999px;white-space:nowrap;color:#cffafe;background:rgba(6,182,212,.16);border:1px solid rgba(6,182,212,.3);transition:all .3s}
+.mission.complete .badge{color:#86efac;background:rgba(74,222,128,.2);border-color:rgba(74,222,128,.45)}
+.mission-text{flex:1;font-size:13px;line-height:1.4;min-width:0}
+.mission-text b{color:#cffafe}
+.mission.complete .mission-text b{color:#86efac}
+.hint-btn{font:inherit;font-size:11px;color:var(--dim);cursor:pointer;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);padding:6px 11px;border-radius:9px;white-space:nowrap;transition:.2s}
+.hint-btn:hover{color:var(--txt);background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.24)}
+.hint{max-height:0;overflow:hidden;opacity:0;font-size:12.5px;color:var(--dim);padding:0 14px;border-radius:12px;transition:max-height .3s ease,opacity .3s ease,padding .3s ease,background .3s}
+.hint.show{max-height:80px;opacity:1;padding:9px 14px;background:rgba(255,255,255,.035)}
+.hint code{color:#a5f3fc;background:rgba(165,243,252,.13);padding:1px 6px;border-radius:5px}
+
+/* ---- main grid ---- */
+main{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1.08fr) minmax(0,1fr);grid-template-rows:minmax(0,1fr);gap:13px}
+.panel{background:linear-gradient(180deg,rgba(255,255,255,.048),rgba(255,255,255,.014));border:1px solid rgba(255,255,255,.08);border-radius:17px;padding:12px;display:flex;flex-direction:column;min-height:0;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:0 22px 44px -24px rgba(0,0,0,.9),inset 0 1px 0 rgba(255,255,255,.055)}
+.panel-head{display:flex;align-items:center;gap:9px;padding:1px 4px 9px;min-width:0}
+.title{font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:var(--dim);font-weight:700}
+.sub{font-size:11px;color:rgba(164,144,127,.65);margin-left:auto}
+.dots{display:flex;gap:5px;margin-right:2px}
+.dots i{width:9px;height:9px;border-radius:50%;display:block}
+.dots i:nth-child(1){background:#fda4af}
+.dots i:nth-child(2){background:#22d3ee}
+.dots i:nth-child(3){background:#4ade80}
+
+/* ---- changed counter ---- */
+.counter{margin-left:auto;display:flex;align-items:center;gap:5px;font-size:10.5px;letter-spacing:.04em;color:#a5f3fc;padding:4px 10px;border-radius:99px;background:rgba(165,243,252,.11);border:1px solid rgba(165,243,252,.26);transition:background .3s,border-color .3s,color .3s}
+.counter b{font-size:12.5px;color:var(--mark);min-width:9px;text-align:center}
+.counter.zero{background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.1);color:var(--dim)}
+.counter.zero b{color:var(--dim)}
+.counter.pop{animation:counterPop .55s cubic-bezier(.34,1.56,.64,1)}
+@keyframes counterPop{0%{transform:scale(1)}40%{transform:scale(1.22);box-shadow:0 0 24px rgba(165,243,252,.55)}100%{transform:scale(1)}}
+
+/* ============ CRUMBS + TREE (cd.html design) ============ */
+.crumbs{display:flex;align-items:center;flex-wrap:wrap;gap:3px;padding:7px 9px;margin-bottom:8px;border-radius:11px;background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.055);min-height:37px;min-width:0}
+.crumb{font-size:12px;padding:3px 9px;border-radius:7px;background:rgba(6,182,212,.13);color:#a5f3fc;border:1px solid rgba(6,182,212,.22);animation:crumbIn .32s cubic-bezier(.34,1.56,.64,1) backwards}
+.crumb:last-child{color:#a5f3fc;background:rgba(165,243,252,.11);border-color:rgba(165,243,252,.26)}
+@keyframes crumbIn{from{opacity:0;transform:translateY(-5px) scale(.85)}to{opacity:1;transform:none}}
+.sep{color:rgba(164,144,127,.5);font-size:11px;padding:0 1px}
+.tree-scroll{flex:1;min-height:0;overflow:auto;padding:4px 2px 6px;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.16) transparent;-webkit-overflow-scrolling:touch;min-width:0}
+.tree-scroll::-webkit-scrollbar{width:8px;height:8px}
+.tree-scroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:99px}
+.tree-scroll::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.26)}
+.tree-inner{position:relative;display:inline-block;vertical-align:top;min-width:100%;padding:6px 58px 16px 2px}
+.node{position:relative}
+.children{margin-left:16px;padding-left:12px;border-left:2px solid var(--line)}
+.children>.node::before{content:'';position:absolute;left:-14px;top:17px;width:14px;height:2px;background:var(--line);border-radius:2px}
+.row{display:inline-flex;align-items:center;gap:8px;min-height:34px;padding:5px 11px 5px 9px;border-radius:10px;cursor:pointer;white-space:nowrap;position:relative;transition:background .22s,box-shadow .22s,transform .18s;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.row:hover{background:rgba(255,255,255,.055);transform:translateX(2px)}
+.row.current{background:linear-gradient(90deg,rgba(6,182,212,.22),rgba(6,182,212,.03));box-shadow:inset 0 0 0 1px rgba(6,182,212,.4)}
+.row.current .label{color:#fff;font-weight:700}
+.row.file{opacity:.55}
+.row.target{box-shadow:inset 0 0 0 1px rgba(6,182,212,.85);background:rgba(6,182,212,.16);opacity:1}
+.row.target .label{color:#fff}
+.row.edited{animation:rowEdited .8s cubic-bezier(.34,1.56,.64,1)}
+@keyframes rowEdited{0%{background:rgba(165,243,252,.4);box-shadow:0 0 0 2px rgba(165,243,252,.95),0 0 34px rgba(165,243,252,.7)}100%{background:transparent;box-shadow:inset 0 0 0 1px rgba(165,243,252,.3)}}
+.row.born{animation:rowBorn .55s cubic-bezier(.34,1.56,.64,1)}
+@keyframes rowBorn{0%{opacity:0;transform:translateX(-10px) scale(.9);background:rgba(74,222,128,.35)}100%{opacity:1;transform:none;background:transparent}}
+.row.reverted{animation:rowReverted .8s ease}
+@keyframes rowReverted{0%{background:rgba(167,139,250,.3);box-shadow:inset 0 0 0 1px rgba(167,139,250,.8)}100%{background:transparent;box-shadow:inset 0 0 0 1px rgba(255,255,255,0)}}
+.icon{width:18px;height:14px;flex:0 0 auto;position:relative;border-radius:3px;transition:box-shadow .3s;z-index:1}
+.icon.dir{background:linear-gradient(180deg,#fcd34d,#f59e0b);box-shadow:0 2px 7px rgba(251,191,36,.22)}
+.icon.dir::before{content:'';position:absolute;top:-4px;left:0;width:8px;height:6px;background:#67e8f9;border-radius:3px 3px 0 0}
+.icon.file{background:linear-gradient(180deg,#a8b6c9,#64748b);border-radius:2px 5px 2px 2px}
+.icon.link{width:16px;height:11px;background:linear-gradient(180deg,#cffafe,#67e8f9);border-radius:2px 6px 2px 2px}
+.row.current .icon.dir{box-shadow:0 0 0 3px rgba(251,146,60,.28),0 2px 12px rgba(251,191,36,.75)}
+.label{font-size:13.5px;letter-spacing:.01em;position:relative;z-index:1}
+.tag{font-size:9.5px;padding:2px 6px;border-radius:99px;font-weight:700;background:rgba(74,222,128,.16);color:#86efac;border:1px solid rgba(74,222,128,.3);position:relative;z-index:1}
+.badge-new{font-size:8.5px;padding:2px 6px;border-radius:99px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#86efac;background:rgba(74,222,128,.14);border:1px solid rgba(74,222,128,.3);position:relative;z-index:1}
+.badge-bak{font-size:8.5px;padding:2px 6px;border-radius:99px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#cffafe;background:rgba(103,232,249,.14);border:1px solid rgba(103,232,249,.32);position:relative;z-index:1}
+.kb{font-size:9px;color:rgba(164,144,127,.5);position:relative;z-index:1;transition:color .3s}
+.row.edited .kb{color:var(--mark)}
+.ping{position:absolute;left:0;top:0;width:0;height:0;pointer-events:none;z-index:6}
+.ping i{position:absolute;left:-16px;top:-16px;width:32px;height:32px;border-radius:50%;border:2px solid rgba(165,243,252,.85);display:block;animation:pingA .7s ease-out forwards}
+@keyframes pingA{0%{transform:scale(.2);opacity:1}100%{transform:scale(1.9);opacity:0}}
+.mark{position:absolute;left:8px;bottom:calc(100% - 2px);z-index:9;padding:2px 7px;border-radius:999px;font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;white-space:nowrap;pointer-events:none;color:#a5f3fc;background:rgba(165,243,252,.22);border:1px solid rgba(165,243,252,.55);box-shadow:0 6px 18px -8px rgba(165,243,252,.9);animation:markRise 1.1s cubic-bezier(.22,.9,.3,1) forwards}
+.mark.back{color:#cffafe;background:rgba(103,232,249,.22);border-color:rgba(103,232,249,.5);box-shadow:0 6px 18px -8px rgba(103,232,249,.9)}
+@keyframes markRise{0%{opacity:0;transform:translateY(6px) scale(.8)}22%{opacity:1;transform:translateY(-4px) scale(1)}70%{opacity:1;transform:translateY(-15px)}100%{opacity:0;transform:translateY(-28px)}}
+
+/* ---- avatar ---- */
+.avatar{position:absolute;left:0;top:0;width:30px;height:30px;z-index:7;pointer-events:none;transition:transform .62s cubic-bezier(.34,1.3,.64,1);will-change:transform}
+.avatar .body{width:100%;height:100%;border-radius:50% 50% 46% 46%;background:radial-gradient(circle at 34% 28%,#cffafe,#06b6d4 52%,#155e75);box-shadow:0 0 0 3px rgba(6,182,212,.18),0 9px 20px -4px rgba(194,65,12,.8);display:grid;place-items:center;animation:idle 2.8s ease-in-out infinite}
+@keyframes idle{0%,100%{transform:translateY(0)}50%{transform:translateY(-2.5px)}}
+.avatar.hop .body{animation:hop .58s cubic-bezier(.34,1.3,.64,1)}
+@keyframes hop{0%{transform:translateY(0) scale(1,1)}28%{transform:translateY(-11px) scale(.9,1.12)}58%{transform:translateY(0) scale(1.12,.88)}80%{transform:translateY(-3px) scale(.98,1.03)}100%{transform:translateY(0) scale(1,1)}}
+.eyes{display:flex;gap:5px}
+.eyes i{width:4px;height:6.5px;background:#04141a;border-radius:50%;display:block;animation:blink 4.6s infinite}
+@keyframes blink{0%,92%,100%{transform:scaleY(1)}95%{transform:scaleY(.1)}}
+
+/* ============ SED STREAM ============ */
+.stream{flex:0 0 auto;margin-top:8px;border-radius:12px;background:linear-gradient(180deg,rgba(6,182,212,.05),rgba(0,0,0,.3));border:1px dashed rgba(6,182,212,.28);transition:border-color .3s,box-shadow .3s,background .3s;min-width:0}
+.stream.active{border-color:rgba(6,182,212,.7);background:linear-gradient(180deg,rgba(6,182,212,.11),rgba(0,0,0,.3));box-shadow:0 0 28px -12px rgba(6,182,212,.9)}
+.stream.saved{border-style:solid;border-color:rgba(74,222,128,.7);background:linear-gradient(180deg,rgba(74,222,128,.1),rgba(0,0,0,.3));box-shadow:0 0 28px -12px rgba(74,222,128,.85)}
+.stream-top{display:flex;align-items:center;gap:8px;padding:7px 10px 0;min-width:0}
+.stream-label{font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:#a5f3fc;font-weight:700;flex:0 0 auto}
+.stream-file{font-size:10px;color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.stream-stat{margin-left:auto;font-size:9.5px;color:var(--dim);white-space:nowrap;flex:0 0 auto}
+.pipebar{padding:8px 9px 7px;background:rgba(0,0,0,.3);border-bottom:1px solid var(--line);min-height:96px}
+.pipe{display:flex;align-items:stretch;gap:0;overflow-x:auto;padding-bottom:2px;scrollbar-width:thin}
+.pipe::-webkit-scrollbar{height:5px}
+.pipe::-webkit-scrollbar-thumb{background:rgba(255,255,255,.13);border-radius:99px}
+.stage{flex:1 1 0;min-width:96px;max-width:190px;display:flex;flex-direction:column;gap:3px;padding:6px 7px;border-radius:9px;background:rgba(6,182,212,.09);border:1px solid rgba(6,182,212,.28);animation:stageIn .42s cubic-bezier(.34,1.4,.64,1) backwards}
+.stage.sink{background:rgba(165,243,252,.13);border-color:rgba(165,243,252,.45)}
+.stage.err{background:rgba(251,113,133,.12);border-color:rgba(251,113,133,.45)}
+@keyframes stageIn{from{opacity:0;transform:translateY(9px) scale(.94)}to{opacity:1;transform:none}}
+.st-cmd{font-size:10.5px;font-weight:700;color:#a5f3fc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stage.sink .st-cmd{color:#ecfeff}
+.stage.err .st-cmd{color:#fda4af}
+.st-count{font-size:8.5px;color:rgba(255,255,255,.5)}
+.st-data{margin:0;font:inherit;font-size:9px;line-height:1.45;color:rgba(255,255,255,.66);white-space:pre-wrap;word-break:break-word;max-height:42px;overflow:hidden;flex:1;-webkit-mask-image:linear-gradient(180deg,#000 74%,transparent);mask-image:linear-gradient(180deg,#000 74%,transparent)}
+.st-data b{color:#67e8f9;font-weight:700}
+.link{flex:0 0 26px;position:relative;align-self:center;height:20px}
+.link::before{content:'';position:absolute;left:2px;right:2px;top:9px;height:2px;background:repeating-linear-gradient(90deg,rgba(6,182,212,.75) 0 5px,transparent 5px 9px);border-radius:2px}
+.drop{position:absolute;top:5px;left:1px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle at 32% 30%,#e0fbff,#06b6d4 70%);box-shadow:0 0 9px rgba(6,182,212,.9);animation:dropRun 1.05s linear infinite}
+@keyframes dropRun{0%{transform:translateX(0);opacity:0}12%{opacity:1}88%{opacity:1}100%{transform:translateX(16px);opacity:0}}
+.link.d1 .drop{animation-delay:.32s}
+.link.d2 .drop{animation-delay:.64s}
+.redir-legend{display:flex;align-items:center;gap:6px;margin-top:6px;font-size:8.5px;color:rgba(255,255,255,.42);flex-wrap:wrap}
+.redir-legend b{color:#a5f3fc}
+.orow{display:flex;align-items:baseline;gap:8px;padding:1px 4px;border-radius:6px;font-size:11px;line-height:1.55;animation:orowIn .34s cubic-bezier(.34,1.3,.64,1) backwards}
+@keyframes orowIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.orow .sl-n{color:rgba(103,232,249,.5);min-width:16px;text-align:right;flex:0 0 auto;user-select:none;font-size:10px}
+.orow .sl-tx{min-width:0;word-break:break-word;white-space:pre-wrap;color:#d7f5ef}
+.orow.moved .sl-n{color:#22d3ee}
+.orow .from{font-size:8.5px;color:rgba(255,255,255,.34);flex:0 0 auto;white-space:nowrap}
+.orow.dup{background:rgba(165,243,252,.09);box-shadow:inset 2px 0 0 #22d3ee}
+.orow.dup .sl-tx{color:#ecfccb}
+.grp-badge{font-size:8.5px;font-weight:700;color:#365314;background:#67e8f9;border-radius:99px;padding:0 6px;flex:0 0 auto;align-self:center}
+.more-note{font-size:9.5px;color:var(--dim);padding:3px 4px 1px;opacity:.85}
+.stream-body{max-height:172px;overflow-y:auto;padding:6px 6px 7px;scrollbar-width:thin;min-width:0}
+.stream-body::-webkit-scrollbar{width:7px}
+.stream-body::-webkit-scrollbar-thumb{background:rgba(255,255,255,.13);border-radius:99px}
+.sl{display:flex;align-items:baseline;gap:8px;padding:2px 6px 2px 4px;border-radius:7px;font-size:11px;line-height:1.5;animation:slIn .3s ease-out backwards}
+@keyframes slIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.sl .sl-n{color:rgba(164,144,127,.4);min-width:16px;text-align:right;flex:0 0 auto;user-select:none;font-size:10px}
+.sl .sl-tx{color:#cffafe;min-width:0;word-break:break-word;white-space:pre-wrap}
+.sl.changed{background:rgba(165,243,252,.07);box-shadow:inset 0 0 0 1px rgba(165,243,252,.22)}
+.sl .was{color:rgba(251,113,133,.8);text-decoration:line-through;text-decoration-color:rgba(251,113,133,.5)}
+.sl .arrow{color:var(--mark);font-size:10px;flex:0 0 auto}
+.sl .now{color:#a5f3fc;background:rgba(165,243,252,.2);border-radius:4px;padding:0 4px;box-shadow:inset 0 -2px 0 rgba(165,243,252,.3);animation:nowPop .5s cubic-bezier(.34,1.56,.64,1)}
+@keyframes nowPop{0%{background:rgba(165,243,252,.85);color:#04141a;box-shadow:0 0 0 4px rgba(165,243,252,.3)}100%{background:rgba(165,243,252,.2);color:#a5f3fc;box-shadow:inset 0 -2px 0 rgba(165,243,252,.3)}}
+.sl.gone{background:rgba(251,113,133,.07);box-shadow:inset 0 0 0 1px rgba(251,113,133,.2)}
+.sl.gone .sl-tx{color:rgba(251,113,133,.6);text-decoration:line-through}
+.sl .del{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#fda4af;flex:0 0 auto}
+.stream-none{font-size:10.5px;color:var(--dim);padding:6px 8px 4px;display:block;line-height:1.5}
+.stream-bar{position:absolute;left:0;right:0;height:26px;pointer-events:none;z-index:2;background:linear-gradient(180deg,transparent,rgba(6,182,212,.26) 50%,transparent);border-top:1px solid rgba(6,182,212,.5);border-bottom:1px solid rgba(6,182,212,.5);animation:streamSweep .8s cubic-bezier(.45,.05,.55,.95) forwards}
+@keyframes streamSweep{0%{top:-26px;opacity:0}15%{opacity:1}85%{opacity:1}100%{top:100%;opacity:0}}
+
+/* ============ TERMINAL ============ */
+.term{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:12px 13px;border-radius:12px;background:rgba(0,0,0,.36);border:1px solid rgba(255,255,255,.055);font-size:12.5px;line-height:1.7;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.16) transparent;-webkit-overflow-scrolling:touch;min-width:0}
+.term::-webkit-scrollbar{width:8px}
+.term::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:99px}
+.line{white-space:pre-wrap;word-break:break-word;animation:lineIn .22s ease-out}
+@keyframes lineIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+.line .p{color:#a5f3fc}
+.line .c{color:#f3fdff;font-weight:600}
+.line.err{color:var(--err)}
+.line .d{color:#a5f3fc;font-weight:600}
+.line .f{color:#cbd5e1}
+.line .hl{color:#a5f3fc;font-weight:700}
+.line .ok{color:#86efac}
+.line .warn{color:#67e8f9}
+.line .dim{color:var(--dim)}
+.line .code{color:#a5f3fc;background:rgba(165,243,252,.11);padding:1px 7px;border-radius:6px;border:1px solid rgba(165,243,252,.2)}
+.tip-line{margin-top:4px;padding:6px 10px;border-radius:8px;background:rgba(6,182,212,.09);border-left:3px solid rgba(6,182,212,.5);color:#a5f3fc;font-size:12px}
+.tip-line.danger{background:rgba(251,113,133,.09);border-left-color:rgba(251,113,133,.6);color:#fda4af}
+.tip-line.good{background:rgba(74,222,128,.09);border-left-color:rgba(74,222,128,.5);color:#cffafe}
+mark{background:rgba(165,243,252,.26);color:#a5f3fc;font-weight:600;border-radius:4px;padding:0 3px;box-shadow:inset 0 -2px 0 rgba(165,243,252,.35)}
+del{color:rgba(251,113,133,.75);text-decoration:line-through}
+ins{color:#a5f3fc;background:rgba(165,243,252,.2);border-radius:4px;padding:0 3px;text-decoration:none;box-shadow:inset 0 -2px 0 rgba(165,243,252,.3)}
+.chips{display:flex;gap:7px;overflow-x:auto;min-width:0;max-width:100%;padding:10px 1px 2px;scrollbar-width:none;-ms-overflow-style:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{font:inherit;font-size:11.5px;white-space:nowrap;cursor:pointer;padding:6px 11px;border-radius:9px;color:#a5f3fc;background:rgba(6,182,212,.1);border:1px solid rgba(6,182,212,.26);transition:.18s;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.chip:hover{background:rgba(6,182,212,.22);color:#ecfeff;transform:translateY(-1px);box-shadow:0 6px 16px -12px rgba(6,182,212,.9)}
+.chip:active{transform:translateY(0) scale(.96)}
+
+/* ---- dry run ---- */
+.preview{display:flex;align-items:center;gap:8px;margin-top:9px;padding:8px 10px;border-radius:12px;background:rgba(0,0,0,.34);border:1px dashed rgba(255,255,255,.13);min-height:40px;transition:border-color .25s,background .25s;min-width:0}
+.preview.ok{border-style:solid;border-color:rgba(74,222,128,.4);background:rgba(74,222,128,.05)}
+.preview.warn{border-style:solid;border-color:rgba(165,243,252,.45);background:rgba(165,243,252,.05)}
+.preview.bad{border-style:solid;border-color:rgba(251,113,133,.45);background:rgba(251,113,133,.05)}
+.pv-label{font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);font-weight:700;flex:0 0 auto}
+.pv-body{flex:1;min-width:0;display:flex;align-items:center;gap:7px;flex-wrap:wrap;font-size:11.5px;color:var(--dim)}
+.pv-verdict{font-size:9px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;padding:2px 7px;border-radius:99px;white-space:nowrap;animation:pop .28s cubic-bezier(.34,1.56,.64,1)}
+@keyframes pop{from{opacity:0;transform:scale(.8) translateY(3px)}to{opacity:1;transform:none}}
+.pv-verdict.ok{color:#86efac;background:rgba(74,222,128,.16);border:1px solid rgba(74,222,128,.32)}
+.pv-verdict.warn{color:#a5f3fc;background:rgba(165,243,252,.16);border:1px solid rgba(165,243,252,.34)}
+.pv-verdict.bad{color:#fda4af;background:rgba(251,113,133,.16);border:1px solid rgba(251,113,133,.34)}
+.pv-msg{color:var(--dim);line-height:1.4;max-width:100%;max-height:2.9em;overflow:hidden}
+.pv-body code{color:#a5f3fc;background:rgba(165,243,252,.12);padding:1px 6px;border-radius:5px;border:1px solid rgba(165,243,252,.2)}
+.preview.bad .pv-msg{color:#fda4af}
+.input-row{display:flex;align-items:center;gap:8px;margin-top:9px;padding:9px 10px;border-radius:12px;background:rgba(0,0,0,.4);border:1px solid rgba(6,182,212,.28);transition:border-color .2s,box-shadow .2s;min-width:0}
+.input-row:focus-within{border-color:rgba(6,182,212,.75);box-shadow:0 0 0 3px rgba(6,182,212,.14)}
+.input-row.shake{animation:shake .4s}
+@keyframes shake{10%,90%{transform:translateX(-2px)}20%,80%{transform:translateX(4px)}30%,50%,70%{transform:translateX(-6px)}40%,60%{transform:translateX(6px)}}
+.ps1{font-size:12.5px;color:#a5f3fc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:0 1 auto}
+.ps1 .ps-user{color:#a5f3fc;opacity:.85}
+.input-row input{flex:1;min-width:40px;background:none;border:none;outline:none;color:#f1f5f9;font:inherit;font-size:13px;padding:0}
+.input-row input::placeholder{color:rgba(164,144,127,.5)}
+.send{font:inherit;font-size:14px;line-height:1;cursor:pointer;width:30px;height:30px;flex:0 0 auto;border-radius:9px;color:#04141a;background:linear-gradient(150deg,#cffafe,#06b6d4);border:none;display:grid;place-items:center;transition:.18s;box-shadow:0 4px 14px -4px rgba(6,182,212,.85)}
+.send:hover{transform:translateY(-1px);box-shadow:0 6px 18px -4px rgba(6,182,212,1)}
+.send:active{transform:scale(.93)}
+.confetti{position:fixed;top:-14px;width:8px;height:13px;border-radius:2px;z-index:999;pointer-events:none;animation:fall linear forwards}
+@keyframes fall{to{transform:translateY(108vh) rotate(var(--rot,360deg));opacity:.05}}
+
+/* ============ RESPONSIVE ============ */
+@media (min-width:901px){
+  html,body{height:100%;min-height:0;overflow:hidden}
+  .app{height:100%;min-height:0;overflow:hidden}
+  .term{flex:1 1 auto}
+}
+@media (max-width:900px){
+  .app{padding:12px 12px calc(16px + env(safe-area-inset-bottom));gap:10px}
+  /* minmax(0,1fr), not 1fr: a plain 1fr is minmax(auto,1fr) and its auto
+     minimum lets a wide child (the chip row) drag the column past the viewport */
+  main{grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto;flex:none}
+  .panel{min-height:0;min-width:0}
+  .panel-head,.crumbs,.term,.input-row,.preview,.stream,.chips{min-width:0}
+  .tree-scroll{max-height:24vh}
+  .term{min-height:140px;max-height:24vh}
+  .brand h1{font-size:15px}
+  .brand p{display:none}
+  .mission{padding:9px 11px}
+  .mission-text{font-size:12.5px;line-height:1.35}
+  .ps1 .ps-user{display:none}
+  .sub{display:none}
+  .stream-body{max-height:132px}
+  /* touch-sized controls: these are 19-27px tall with the desktop padding */
+  .hint-btn,.reset-btn{min-height:34px;display:inline-flex;align-items:center;padding:8px 12px}
+  .chip{min-height:34px;display:inline-flex;align-items:center;padding:8px 12px}
+}
+@media (max-width:560px){
+  .logo{width:34px;height:34px;font-size:12px}
+  .badge{font-size:9px;padding:4px 7px}
+  .mission{gap:8px;padding:8px 10px}
+  .hint-btn{padding:5px 9px;font-size:10.5px}
+  .label{font-size:13px}
+  .tree-inner{padding-right:48px}
+  .tree-scroll{max-height:22vh}
+  .term{max-height:23vh}
+  .crumbs{min-height:34px;padding:6px 8px}
+  .kb{display:none}
+  .preview{padding:7px 9px;min-height:36px}
+  .pv-verdict{font-size:8.5px}
+  .stream-body{max-height:118px}
+  .sl{font-size:10.5px}
+  .chip{font-size:11px}
+  /* 9.5px text on a 3px pad makes a 19px target — too small for a thumb */
+  .hint-btn{min-height:34px}
+  .pipebar{min-height:104px}
+  .stage{min-width:86px}
+}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}}
+/* any touch device, whatever the width: keep every control thumb-sized */
+@media (hover:none),(pointer:coarse){
+  .hint-btn,.reset-btn,.chip{min-height:34px;display:inline-flex;align-items:center;padding:8px 12px}
+  .crumb{padding-top:9px;padding-bottom:9px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <div class="logo">pipe</div>
+      <div>
+        <h1>Learn <code>|</code> &amp; <code>&gt;</code></h1>
+        <p>Chain commands together and send their output into a file.</p>
+      </div>
+    </div>
+    <div class="steps" id="steps"></div>
+    <button class="reset-btn" id="resetBtn" type="button" title="Rebuild the filesystem from scratch">↺ reset</button>
+  </header>
+
+  <div class="mission" id="mission">
+    <span class="badge" id="missionBadge">Mission 1 / 6</span>
+    <span class="mission-text" id="missionText">Loading…</span>
+    <button class="hint-btn" id="hintBtn" type="button">Hint</button>
+  </div>
+  <div class="hint" id="hintBar"></div>
+
+  <main>
+    <section class="panel">
+      <div class="panel-head">
+        <span class="title">Filesystem map</span>
+        <span class="counter zero" id="counter"><b id="countNum">0</b> <span id="countLabel">lines out</span></span>
+      </div>
+      <div class="crumbs" id="crumbs"></div>
+      <div class="tree-scroll" id="treeScroll">
+        <div class="tree" id="tree"></div>
+      </div>
+      <div class="stream" id="stream">
+        <div class="stream-top">
+          <span class="stream-label">Pipeline</span>
+          <span class="stream-file" id="streamFile">no file chosen</span>
+          <span class="stream-stat" id="streamStat"></span>
+        </div>
+        <div class="pipebar" id="pipeBar"><span class="perm-empty">Build a pipeline — each box shows what that stage passed on.</span></div>
+        <div class="stream-body" id="streamBody"><span class="stream-none">Pick a file, then run a command — pipe it with <b>|</b> or send it to a file with <b>&gt;</b>.</span></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <span class="dots"><i></i><i></i><i></i></span>
+        <span class="title">Terminal</span>
+      </div>
+      <div class="term" id="term" aria-live="polite"></div>
+      <div class="chips" id="chips"></div>
+      <div class="preview" id="preview">
+        <span class="pv-label">Dry run</span>
+        <span class="pv-body" id="pvBody"><span class="pv-msg">type a command, chain it with |, or send it to a file with &gt;</span></span>
+      </div>
+      <form class="input-row" id="form" autocomplete="off">
+        <span class="ps1"><span class="ps-user">you@linux:</span><span id="psPath">~</span>$</span>
+        <input id="cmd" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="type ls ~/data | grep csv…">
+        <button class="send" type="submit" aria-label="Run command">↵</button>
+      </form>
+    </section>
+  </main>
+</div>
+
+<script>
+/* ==================================================================
+   1. FILESYSTEM MODEL
+   ================================================================== */
+let uid = 0;
+let clock = 1700000000000;
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const mk = (name, type = 'dir', extra = {}) => ({
+  id: ++uid, name, type,
+  children: type === 'dir' ? [] : null,
+  parent: null,
+  size: type === 'dir' ? 4096 : 1,
+  mtime: clock++,
+  content: type === 'file' ? [] : null,
+  born: false,
+  ...extra
+});
+
+let ROOT, HOME, data, docs, logs, scripts, config, etcDir, tmpDir;
+let accessLog, orders, employees, notes, appConf, guide, report, deploySh, hosts, scratch, todo;
+
+function bytesOf(lines) {
+  if (!lines || !lines.length) return 0;
+  return lines.join('\n').length + 1;
+}
+function file(name, lines, extra) {
+  return mk(name, 'file', {content: lines.slice(), size: bytesOf(lines), mtime: clock++, mode: 0o644, ...extra});
+}
+
+function buildModel() {
+  uid = 0;
+  clock = 1700000000000;
+  ROOT = mk('/', 'dir', {mode: 0o755});
+  const homeDir = mk('home', 'dir', {mode: 0o755});
+  HOME = mk('you', 'dir', {mode: 0o755});
+  data = mk('data', 'dir', {mode: 0o755});
+  docs = mk('docs', 'dir', {mode: 0o755});
+  logs = mk('logs', 'dir', {mode: 0o750});
+  scripts = mk('scripts', 'dir', {mode: 0o755});
+  config = mk('config', 'dir', {mode: 0o755});
+  etcDir = mk('etc', 'dir', {mode: 0o755});
+  tmpDir = mk('tmp', 'dir', {mode: 0o777});
+
+  accessLog = file('access.log', [
+    '09:12:01 INFO  boot sequence finished',
+    '09:12:04 INFO  loading configuration',
+    '09:12:07 WARN  cache directory is large',
+    '09:13:00 INFO  worker pool ready',
+    '09:13:44 INFO  request GET / 200',
+    '09:14:02 INFO  request GET /login 200',
+    '09:14:19 ERROR upstream timeout on /api',
+    '09:15:00 INFO  retry 1 of 3 succeeded',
+    '09:15:31 INFO  request POST /login 200',
+    '09:16:05 WARN  slow query 1200ms',
+    '09:16:48 INFO  request GET /reports 200',
+    '09:17:22 ERROR disk almost full /var',
+    '09:18:00 INFO  cleanup finished',
+    '09:18:37 INFO  request GET /health 200'
+  ]);
+  orders = file('orders.csv', [
+    'order,region,units,total',
+    'A-1003,luzon,7,3200',
+    'A-1001,visayas,21,9800',
+    'A-1002,luzon,3,1500',
+    'A-1010,mindanao,11,5100',
+    'A-1004,luzon,15,7200'
+  ]);
+  employees = file('employees.csv', [
+    'id,name,department,salary',
+    '101,Ana,Security,54000',
+    '102,Brian,Support,41000',
+    '103,Carla,Security,58000',
+    '104,Diego,Sales,47000'
+  ]);
+  notes = file('notes.txt', [
+    'Shopping list',
+    '- coffee',
+    '- call the dentist',
+    '- renew the domain'
+  ]);
+  appConf = file('app.conf', [
+    'host=localhost',
+    'port=8080',
+    'workers=4',
+    'timeout=30',
+    'retries=3',
+    'log_level=info'
+  ]);
+  guide = file('guide.txt', [
+    'sort puts lines in order.',
+    'uniq collapses neighbours.',
+    'grep keeps what matches.',
+    'wc counts what is left.',
+    'A pipe hands output from one to the next.'
+  ]);
+  report = file('report.txt', [
+    'weekly capacity report',
+    'region   units   revenue',
+    'luzon    1200    54000',
+    'visayas  430     21000',
+    'mindanao 780     33000',
+    'total    2410   108000'
+  ]);
+  deploySh = file('deploy.sh', ['#!/bin/sh', 'echo starting deploy', 'echo running tests'], {mode: 0o755});
+  todo = file('todo.md', ['- [ ] teach pipes', '- [x] draw the pipeline'], {mode: 0o644});
+  hosts = file('hosts', ['127.0.0.1 localhost', '::1 localhost ip6-localhost']);
+  scratch = file('scratch.txt', ['TODO: pipe me somewhere', 'one two three'], {mode: 0o666});
+
+  ROOT.children = [homeDir, etcDir, tmpDir];
+  homeDir.children = [HOME];
+  HOME.children = [config, data, docs, logs, scripts, notes, todo];
+  data.children = [employees, orders];
+  config.children = [appConf];
+  docs.children = [guide, report];
+  logs.children = [accessLog];
+  scripts.children = [deploySh];
+  etcDir.children = [hosts];
+  tmpDir.children = [scratch];
+
+  link(ROOT, null);
+  sortModel(ROOT);
+  return HOME;
+}
+function link(node, parent) {
+  node.parent = parent;
+  if (node.children) node.children.forEach(child => link(child, node));
+}
+function byName(left, right) {
+  if (left.type !== right.type) return left.type === 'dir' ? -1 : 1;
+  return left.name.localeCompare(right.name, undefined, {numeric: true, sensitivity: 'base'});
+}
+function sortModel(node) {
+  if (!node.children) return;
+  node.children.sort(byName);
+  node.children.forEach(sortModel);
+}
+
+/* ---- path helpers ---- */
+function absPath(node) {
+  if (node === ROOT) return '/';
+  const parts = [];
+  let current = node;
+  while (current && current !== ROOT) { parts.unshift(current.name); current = current.parent; }
+  return '/' + parts.join('/');
+}
+function prettyPath(node) {
+  const path = absPath(node);
+  if (path === '/home/you') return '~';
+  if (path.startsWith('/home/you/')) return '~' + path.slice(9);
+  return path;
+}
+function sizeLabel(node) {
+  if (node.type === 'dir') return '';
+  const bytes = node.size || 0;
+  if (bytes >= 1048576) return (bytes / 1048576).toFixed(1) + ' MB';
+  if (bytes >= 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return bytes + ' B';
+}
+function resolvePath(spec, base) {
+  let current, rest = spec;
+  if (spec === '~' || spec === '~/') { current = HOME; rest = ''; }
+  else if (spec.startsWith('~/')) { current = HOME; rest = spec.slice(1); }
+  else if (spec.startsWith('/')) { current = ROOT; rest = spec.slice(1); }
+  else current = base;
+  if (current.type !== 'dir') return {error: 'notdir', name: spec};
+  const segments = rest.split('/').filter(Boolean);
+  for (let i = 0; i < segments.length; i++) {
+    const segment = segments[i];
+    if (segment === '.') continue;
+    if (segment === '..') { current = current.parent || ROOT; continue; }
+    const next = current.children.find(child => child.name === segment);
+    if (!next) return {error: 'missing', name: segment};
+    if (next.type !== 'dir' && i < segments.length - 1) return {error: 'notdir', name: segment};
+    current = next;
+  }
+  return {node: current};
+}
+const esc = value => String(value).replace(/[&<>"']/g, char =>
+  ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+
+/* ==================================================================
+   2. DOM REFS
+   ================================================================== */
+const treeEl = document.getElementById('tree');
+const treeScroll = document.getElementById('treeScroll');
+const crumbs = document.getElementById('crumbs');
+const term = document.getElementById('term');
+const chips = document.getElementById('chips');
+const form = document.getElementById('form');
+const input = document.getElementById('cmd');
+const psPath = document.getElementById('psPath');
+const stepsEl = document.getElementById('steps');
+const missionEl = document.getElementById('mission');
+const missionBadge = document.getElementById('missionBadge');
+const missionText = document.getElementById('missionText');
+const hintBtn = document.getElementById('hintBtn');
+const hintBar = document.getElementById('hintBar');
+const resetBtn = document.getElementById('resetBtn');
+const counterEl = document.getElementById('counter');
+const countNum = document.getElementById('countNum');
+const streamEl = document.getElementById('stream');
+const streamFile = document.getElementById('streamFile');
+const streamStat = document.getElementById('streamStat');
+const streamBody = document.getElementById('streamBody');
+const pipeBar = document.getElementById('pipeBar');
+const countLabel = document.getElementById('countLabel');
+const previewEl = document.getElementById('preview');
+const pvBody = document.getElementById('pvBody');
+
+let treeInner, avatarEl;
+let cwd = null, prevDir = null, target = null, lastContext = null;
+const rowOf = new Map();
+const nodeOfRow = new Map();
+const wrapOf = new Map();
+
+/* ==================================================================
+   3. TREE RENDERING
+   ================================================================== */
+function paintRow(node) {
+  const row = rowOf.get(node);
+  if (!row) return;
+  row.querySelector('.label').textContent = node === ROOT ? '/' : node.name;
+  const kb = row.querySelector('.kb');
+  if (kb) kb.textContent = sizeLabel(node);
+}
+function buildRow(node) {
+  const wrap = document.createElement('div');
+  wrap.className = 'node';
+  const row = document.createElement('div');
+  row.className = 'row' + (node.type === 'file' ? ' file' : '');
+
+  const icon = document.createElement('span');
+  icon.className = 'icon ' + node.type;
+  const label = document.createElement('span');
+  label.className = 'label';
+  label.textContent = node === ROOT ? '/' : node.name;
+  row.append(icon, label);
+
+  if (node === HOME) {
+    const tag = document.createElement('span');
+    tag.className = 'tag';
+    tag.textContent = '~';
+    row.appendChild(tag);
+  }
+  if (node.born) {
+    const badge = document.createElement('span');
+    badge.className = 'badge-new';
+    badge.textContent = 'new';
+    row.appendChild(badge);
+  }
+  if (/\.bak$/.test(node.name)) {
+    const badge = document.createElement('span');
+    badge.className = 'badge-bak';
+    badge.textContent = 'backup';
+    row.appendChild(badge);
+  }
+  if (node.type === 'file') {
+    const size = document.createElement('span');
+    size.className = 'kb';
+    size.textContent = sizeLabel(node);
+    row.appendChild(size);
+  }
+
+  row.addEventListener('click', () => onNodeClick(node));
+  wrap.appendChild(row);
+  wrapOf.set(node, wrap);
+  rowOf.set(node, row);
+  nodeOfRow.set(row, node);
+  if (node.children && node.children.length) {
+    const kids = document.createElement('div');
+    kids.className = 'children';
+    childrenOf.set(node, kids);
+    node.children.forEach(child => kids.appendChild(buildRow(child)));
+    wrap.appendChild(kids);
+  }
+  return wrap;
+}
+const childrenOf = new Map();
+function buildTree() {
+  treeEl.innerHTML = '';
+  rowOf.clear();
+  nodeOfRow.clear();
+  wrapOf.clear();
+  childrenOf.clear();
+  treeInner = document.createElement('div');
+  treeInner.className = 'tree-inner';
+  treeInner.appendChild(buildRow(ROOT));
+  avatarEl = document.createElement('div');
+  avatarEl.className = 'avatar';
+  avatarEl.innerHTML = '<div class="body"><span class="eyes"><i></i><i></i></span></div>';
+  treeInner.appendChild(avatarEl);
+  treeEl.appendChild(treeInner);
+}
+function childrenContainer(node) {
+  let kids = childrenOf.get(node);
+  if (!kids) {
+    kids = document.createElement('div');
+    kids.className = 'children';
+    wrapOf.get(node).appendChild(kids);
+    childrenOf.set(node, kids);
+  }
+  return kids;
+}
+function insertChild(parent, child) {
+  child.parent = parent;
+  parent.children.push(child);
+  childrenContainer(parent).appendChild(buildRow(child));
+  sortSiblings(parent);
+  paintRow(child);
+  return child;
+}
+function sortSiblings(parent) {
+  const kids = childrenOf.get(parent);
+  if (!kids) return;
+  parent.children.slice().sort(byName).forEach(child => kids.appendChild(wrapOf.get(child)));
+}
+function removeNode(node) {
+  const wrap = wrapOf.get(node);
+  if (wrap) wrap.remove();
+  rowOf.delete(node);
+  wrapOf.delete(node);
+  childrenOf.delete(node);
+  const index = node.parent ? node.parent.children.indexOf(node) : -1;
+  if (index > -1) node.parent.children.splice(index, 1);
+  paintRow(node.parent);
+}
+
+function updateRowStates() {
+  rowOf.forEach((row, node) => {
+    row.classList.toggle('current', node === cwd);
+    row.classList.toggle('target', node === target);
+  });
+}
+function innerRect() { return treeInner.getBoundingClientRect(); }
+function relRect(el) {
+  const box = el.getBoundingClientRect();
+  const base = innerRect();
+  return {left: box.left - base.left, top: box.top - base.top, width: box.width, height: box.height};
+}
+function scrollToRow(node) {
+  const row = rowOf.get(node);
+  if (!row) return;
+  const box = relRect(row);
+  const target2 = box.top + box.height / 2 - treeScroll.clientHeight / 2;
+  treeScroll.scrollTo({top: Math.max(0, target2), behavior: 'smooth'});
+}
+function ping(x, y) {
+  const element = document.createElement('div');
+  element.className = 'ping';
+  element.style.transform = 'translate(' + x + 'px,' + y + 'px)';
+  element.innerHTML = '<i></i>';
+  treeInner.appendChild(element);
+  setTimeout(() => element.remove(), 760);
+}
+function floatMark(node, text, kind) {
+  const row = rowOf.get(node);
+  if (!row) return;
+  const mark = document.createElement('span');
+  mark.className = 'mark' + (kind ? ' ' + kind : '');
+  mark.textContent = text;
+  row.appendChild(mark);
+  setTimeout(() => mark.remove(), 1150);
+}
+function flashRow(node, className) {
+  const row = rowOf.get(node);
+  if (!row) return;
+  row.classList.remove('edited', 'born', 'reverted');
+  void row.offsetWidth;
+  row.classList.add(className);
+  setTimeout(() => row.classList.remove(className), 1000);
+}
+
+/* ---- avatar ---- */
+function avatarTarget(node) {
+  const row = rowOf.get(node);
+  const label = row.querySelector('.label');
+  const base = innerRect();
+  const box = label.getBoundingClientRect();
+  return {x: box.right - base.left + 9, y: box.top - base.top + box.height / 2 - 15};
+}
+function moveAvatar(animate, node) {
+  const t = avatarTarget(node || cwd);
+  if (!animate) avatarEl.style.transition = 'none';
+  avatarEl.style.transform = 'translate(' + t.x + 'px, ' + t.y + 'px)';
+  if (!animate) requestAnimationFrame(() => { avatarEl.style.transition = ''; });
+}
+function animateAvatarTo(node) {
+  moveAvatar(true, node);
+  avatarEl.classList.remove('hop');
+  void avatarEl.offsetWidth;
+  avatarEl.classList.add('hop');
+  const box = relRect(rowOf.get(node));
+  ping(box.left + 16, box.top + box.height / 2);
+  scrollToRow(node);
+}
+
+/* ==================================================================
+   4. THE PIPELINE ENGINE
+   ================================================================== */
+/* split on | and pick up a trailing > or >>, ignoring anything in quotes */
+function parsePipeline(line) {
+  const segments = [];
+  let current = '';
+  let quote = null;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (quote) {
+      current += ch;
+      if (ch === quote) quote = null;
+      continue;
+    }
+    if (ch === '"' || ch === "'") { quote = ch; current += ch; continue; }
+    if (ch === '|') { segments.push(current); current = ''; continue; }
+    current += ch;
+  }
+  if (quote) return {error: 'unmatched ' + quote + ' quote'};
+  segments.push(current);
+
+  /* a redirect belongs after the last stage, exactly where a real shell wants it */
+  let redirect = null;
+  segments.forEach((segment, index) => {
+    const last = index === segments.length - 1;
+    const found = readRedirect(segment);
+    if (!found) return;
+    if (!last) {
+      if (!redirect || !redirect.error) redirect = {error: 'redirection belongs at the end of a pipeline', tip: 'Put <code>&gt; file</code> after the last command, the way a real shell wants it.'};
+      return;
+    }
+    if (!redirect || !redirect.error) redirect = {append: found.append, path: found.path};
+  });
+  if (redirect && redirect.error) return redirect;
+  if (redirect && !redirect.path) return {error: 'missing file after ' + (redirect.append ? '>>' : '>')};
+
+  const cleaned = segments.map(segment => {
+    const found = readRedirect(segment);
+    return (found ? found.before : segment).trim();
+  }).filter(Boolean);
+  if (!cleaned.length) return {error: 'no command given'};
+  const parsed = cleaned.map(text => {
+    const tokens = tokenize(text);
+    return {text, command: tokens[0], args: tokens.slice(1).map(stripQuotes)};
+  });
+  if (parsed.some(stage => !stage.command)) return {error: 'empty command between two pipes'};
+  return {stages: parsed, redirect};
+}
+/* pull a trailing > file or >> file off one segment */
+function readRedirect(segment) {
+  let quote = null;
+  let at = -1;
+  let append = false;
+  for (let i = 0; i < segment.length; i++) {
+    const ch = segment[i];
+    if (quote) {
+      if (ch === quote) quote = null;
+      continue;
+    }
+    if (ch === '"' || ch === "'") { quote = ch; continue; }
+    if (ch === '>') { at = i; append = segment[i + 1] === '>'; break; }
+  }
+  if (at === -1) return null;
+  const before = segment.slice(0, at).trim();
+  const tail = segment.slice(at + (append ? 2 : 1)).trim();
+  const path = tail ? stripQuotes(tail.split(/\s+/)[0]) : '';
+  return {append, path, before};
+}
+
+/* ---- the small command set ---- */
+const PIPELINE_COMMANDS = {
+  echo: 'print the words you give it',
+  pwd: 'print the current directory',
+  ls: 'list what is in a folder',
+  cat: 'print a file',
+  find: 'search the tree by name or type',
+  grep: 'keep the lines that match',
+  wc: 'count lines, words or bytes',
+  head: 'keep the first lines',
+  tail: 'keep the last lines',
+  sort: 'put lines in order',
+  uniq: 'collapse repeated neighbours',
+  cut: 'pick fields out of each line'
+};
+const NEEDS_INPUT = ['grep', 'wc', 'head', 'tail', 'sort', 'uniq', 'cut'];
+
+function flagSet(args, allowed) {
+  const flags = {};
+  const rest = [];
+  for (const arg of args) {
+    if (arg === '--') { rest.push.apply(rest, args.slice(args.indexOf(arg) + 1)); break; }
+    if (arg.startsWith('-') && arg.length > 1 && !/^-\d/.test(arg)) {
+      let ok = true;
+      for (const f of arg.slice(1)) {
+        if (allowed.indexOf(f) === -1) { ok = false; break; }
+        flags[f] = true;
+      }
+      if (!ok) return {error: "invalid option -- '" + arg.slice(1) + "'"};
+      continue;
+    }
+    rest.push(arg);
+  }
+  return {flags, rest};
+}
+function countOf(text, mode) {
+  if (mode === 'w') return (text.match(/\S+/g) || []).length;
+  if (mode === 'c') return text.length + 1;
+  return 1;
+}
+function compareText(a, b, fold) {
+  const x = fold ? a.toLowerCase() : a;
+  const y = fold ? b.toLowerCase() : b;
+  return x < y ? -1 : x > y ? 1 : 0;
+}
+
+/* run one stage; `input` is the lines handed down the pipe */
+function runStage(stage, input) {
+  const command = stage.command;
+  const args = stage.args;
+  const piped = NEEDS_INPUT.indexOf(command) > -1 && !args.some(a => !a.startsWith('-') && a !== command);
+  if (command !== 'grep' && NEEDS_INPUT.indexOf(command) > -1 && input === null && args.filter(a => !a.startsWith('-')).length === 0) {
+    return {error: command + ': nothing piped in', tip: 'Give it something to read: <code>cat FILE | ' + command + '</code>, or name a file directly.'};
+  }
+  try {
+    if (command === 'echo') return {out: args.join(' ').split('\n')};
+    if (command === 'pwd') return {out: [absPath(cwd)]};
+    if (command === 'true') return {out: []};
+    if (command === 'ls') return stageLs(args, !!stage.piped);
+    if (command === 'cat') return stageCat(args, input);
+    if (command === 'find') return stageFind(args);
+    if (command === 'grep') return stageGrep(args, input);
+    if (command === 'wc') return stageWc(args, input);
+    if (command === 'head') return stageEdge(args, input, 'head');
+    if (command === 'tail') return stageEdge(args, input, 'tail');
+    if (command === 'sort') return stageSort(args, input);
+    if (command === 'uniq') return stageUniq(args, input);
+    if (command === 'cut') return stageCut(args, input);
+  } catch (error) {
+    return {error: error && error.message ? error.message : String(error)};
+  }
+  return {
+    error: 'command not found: ' + command,
+    tip: 'This lab pipes: ' + Object.keys(PIPELINE_COMMANDS).join(', ') + '.'
+  };
+}
+function readInput(args, input) {
+  const names = args.filter(arg => !arg.startsWith('-'));
+  if (!names.length) return input === null ? null : input;
+  const out = [];
+  for (const name of names) {
+    const found = resolvePath(name, cwd);
+    if (found.error || !found.node || found.node.type !== 'file') {
+      const why = found.error === 'missing' || !found.node ? 'No such file or directory' : 'Is a directory';
+      return {error: name + ': ' + why};
+    }
+    out.push.apply(out, found.node.content);
+  }
+  return out;
+}
+function stageLs(args, piped) {
+  const parsed = flagSet(args, ['l', 'a', '1', 'h']);
+  if (parsed.error) return parsed;
+  const paths = parsed.rest.length ? parsed.rest : ['.'];
+  const many = paths.length > 1;
+  const blocks = [];
+  for (const spec of paths) {
+    const found = resolvePath(spec, cwd);
+    if (found.error || !found.node) {
+      return {error: "ls: cannot access '" + spec + "': No such file or directory"};
+    }
+    const node = found.node;
+    let entries = node.type === 'dir' ? node.children.slice() : [node];
+    if (node.type === 'dir' && !parsed.flags.a) entries = entries.filter(entry => !entry.name.startsWith('.'));
+    entries.sort(byName);
+    const paint = entry => entry.name + (entry.type === 'dir' ? '/' : '');
+    if (!entries.length) continue;
+    let lines;
+    if (parsed.flags.l) {
+      lines = entries.map(entry => {
+        const mode = typeof entry.mode === 'number' ? entry.mode : (entry.type === 'dir' ? 0o755 : 0o644);
+        const bits = ['u', 'g', 'o'].map((cls, n) => {
+          const shift = cls === 'u' ? 6 : cls === 'g' ? 3 : 0;
+          const value = (mode >> shift) & 7;
+          return (value & 4 ? 'r' : '-') + (value & 2 ? 'w' : '-') + (value & 1 ? 'x' : '-');
+        }).join('');
+        return (entry.type === 'dir' ? 'd' : '-') + bits + ' ' + String(entry.size || 0).padStart(6, ' ') + ' ' + paint(entry);
+      });
+    } else if (parsed.flags['1'] || many || piped) {
+      lines = entries.map(paint);
+    } else {
+      lines = [entries.map(paint).join('   ')];
+    }
+    if (many) {
+      /* the header is the folder name exactly as it was typed */
+      blocks.push((spec === '.' ? '.' : spec.replace(/\/$/, '')) + ':');
+      blocks.push.apply(blocks, lines);
+      blocks.push('');
+    } else {
+      blocks.push.apply(blocks, lines);
+    }
+  }
+  while (blocks.length && blocks[blocks.length - 1] === '') blocks.pop();
+  return {out: blocks};
+}
+function stageCat(args, input) {
+  const source = readInput(args, input);
+  if (source && source.error) return source;
+  if (source === null) return {error: 'cat: missing file operand'};
+  return {out: source.slice()};
+}
+function stageFind(args) {
+  const flags = {name: '', type: ''};
+  const rest = [];
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === '-name' || args[i] === '-type') {
+      if (args[i + 1] === undefined) return {error: 'find: missing argument after ' + args[i]};
+      flags[args[i].slice(1)] = args[i + 1];
+      i++;
+      continue;
+    }
+    if (args[i].startsWith('-')) return {error: "find: unknown predicate '" + args[i] + "'"};
+    rest.push(args[i]);
+  }
+  const root = resolvePath(rest[0] || '.', cwd);
+  if (root.error || !root.node) return {error: "find: '" + (rest[0] || '.') + "': No such file or directory"};
+  const out = [];
+  const walk = node => {
+    if (node !== root.node) out.push(prettyPath(node) + (node.type === 'dir' ? '/' : ''));
+    (node.children || []).forEach(walk);
+  };
+  walk(root.node);
+  let result = out;
+  if (flags.type) result = result.filter(line => flags.type === 'd' ? /\/$/.test(line) : !/\/$/.test(line));
+  if (flags.name) {
+    const pattern = flags.name;
+    const re = new RegExp('^' + pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*').replace(/\?/g, '.') + '$');
+    result = result.filter(line => re.test(line.replace(/\/$/, '').split('/').pop()));
+  }
+  return {out: result};
+}
+function stageGrep(args, input) {
+  const parsed = flagSet(args, ['i', 'v', 'c', 'n']);
+  if (parsed.error) return parsed;
+  if (!parsed.rest.length) return {error: 'grep: missing pattern', tip: 'Give it something to look for: <code>cat FILE | grep ERROR</code>'};
+  /* in grep the first word is the pattern, anything after it is a file */
+  const pattern = parsed.rest[0];
+  const source = readInput(parsed.rest.slice(1), input);
+  if (source && source.error) return source;
+  if (source === null) return {error: 'grep: no input'};
+  let re;
+  try { re = new RegExp(pattern, parsed.flags.i ? 'i' : ''); }
+  catch (error) { return {error: 'grep: invalid pattern'}; }
+  const hits = [];
+  source.forEach((line, index) => {
+    const matched = re.test(line);
+    if (matched !== !!parsed.flags.v) hits.push(parsed.flags.n ? (index + 1) + ':' + line : line);
+  });
+  if (parsed.flags.c) return {out: [String(hits.length)]};
+  return {out: hits};
+}
+function stageWc(args, input) {
+  const parsed = flagSet(args, ['l', 'w', 'c']);
+  if (parsed.error) return parsed;
+  const source = readInput(parsed.rest, input);
+  if (source && source.error) return source;
+  if (source === null) return {error: 'wc: no input'};
+  const modes = ['l', 'w', 'c'].filter(m => parsed.flags[m]);
+  const use = modes.length ? modes : ['l', 'w', 'c'];
+  const totals = use.map(mode => source.reduce((n, line) => n + countOf(line, mode), 0));
+  return {out: [use.map((mode, i) => String(totals[i]).padStart(8, ' ')).join('')], units: use};
+}
+function stageEdge(args, input, which) {
+  const flags = {};
+  const rest = [];
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    if (arg === '-n' || /^-\d+$/.test(arg)) {
+      flags.n = true;
+      if (arg === '-n') {
+        if (args[i + 1] === undefined) return {error: which + ': option requires an argument -- \'n\''};
+        rest.push(args[++i]);
+      } else {
+        rest.push(arg.slice(1));
+      }
+      continue;
+    }
+    if (arg.startsWith('-') && arg.length > 1) return {error: "invalid option -- '" + arg.slice(1) + "'"};
+    rest.push(arg);
+  }
+  const files = rest.filter(a => !/^\d+$/.test(a));
+  const count = flags.n && rest.length ? Math.abs(parseInt(rest[0], 10) || 10) : 10;
+  const source = readInput(files, input);
+  if (source && source.error) return source;
+  if (source === null) return {error: which + ': no input'};
+  return {out: which === 'head' ? source.slice(0, count) : source.slice(Math.max(0, source.length - count))};
+}
+function stageSort(args, input) {
+  const parsed = flagSet(args, ['r', 'u', 'n', 'f', 'b']);
+  if (parsed.error) return parsed;
+  const source = readInput(parsed.rest, input);
+  if (source && source.error) return source;
+  if (source === null) return {error: 'sort: no input'};
+  const rows = source.slice();
+  rows.sort((a, b) => {
+    let order;
+    if (parsed.flags.n) {
+      const x = parseFloat(a) || 0, y = parseFloat(b) || 0;
+      order = x === y ? 0 : x < y ? -1 : 1;
+      if (order === 0) order = compareText(a, b, false);
+    } else order = compareText(a, b, parsed.flags.f);
+    if (order === 0) order = compareText(a, b, false);
+    if (parsed.flags.r) order = order === 0 ? 0 : -order;
+    return order;
+  });
+  if (parsed.flags.u) {
+    const kept = [];
+    rows.forEach(row => {
+      const last = kept[kept.length - 1];
+      if (last === undefined || compareText(last, row, parsed.flags.f) !== 0) kept.push(row);
+    });
+    return {out: kept};
+  }
+  return {out: rows};
+}
+function stageUniq(args, input) {
+  const parsed = flagSet(args, ['c', 'd', 'u', 'i']);
+  if (parsed.error) return parsed;
+  const source = readInput(parsed.rest, input);
+  if (source && source.error) return source;
+  if (source === null) return {error: 'uniq: no input'};
+  const key = text => parsed.flags.i ? text.toLowerCase() : text;
+  const groups = [];
+  source.forEach(line => {
+    const last = groups[groups.length - 1];
+    if (last && key(last.text) === key(line)) last.count++;
+    else groups.push({text: line, count: 1});
+  });
+  let kept = groups;
+  if (parsed.flags.d) kept = groups.filter(g => g.count > 1);
+  if (parsed.flags.u) kept = groups.filter(g => g.count === 1);
+  return {out: kept.map(g => parsed.flags.c ? String(g.count).padStart(7, ' ') + ' ' + g.text : g.text)};
+}
+function stageCut(args, input) {
+  const flags = {d: '', f: '', c: ''};
+  const rest = [];
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    const letter = /^-([dfc])(.*)$/.exec(arg);
+    if (letter) {
+      const slot = letter[1];
+      if (letter[2]) {
+        flags[slot] = letter[2];
+      } else {
+        if (args[i + 1] === undefined) return {error: "cut: option requires an argument -- '" + slot + "'"};
+        flags[slot] = args[i + 1];
+        i++;
+      }
+      continue;
+    }
+    if (arg.startsWith('-') && arg.length > 1) return {error: "invalid option -- '" + arg.slice(1) + "'"};
+    rest.push(arg);
+  }
+  if (flags.f && flags.c) return {error: 'cut: you cannot specify both -f and -c'};
+  if (!flags.f && !flags.c) return {error: 'cut: you must specify a list of fields or characters'};
+  const mode = flags.f ? 'f' : 'c';
+  const spec = mode === 'f' ? flags.f : flags.c;
+  const ranges = [];
+  for (const part of String(spec).split(',')) {
+    const span = /^(\d*)-(\d*)$/.exec(part.trim());
+    if (span) ranges.push([span[1] ? +span[1] : 1, span[2] ? +span[2] : Infinity]);
+    else if (/^\d+$/.test(part.trim())) ranges.push([+part, +part]);
+    else return {error: "cut: invalid list value '" + part + "'"};
+  }
+  const delim = mode === 'f' ? (flags.d || '\t') : '';
+  const source = readInput(rest, input);
+  if (source && source.error) return source;
+  if (source === null) return {error: 'cut: no input'};
+  return {out: source.map(line => {
+    if (mode === 'c') {
+      const chars = Array.from(line);
+      return ranges.filter(([a, b]) => a >= 1).map(([a, b]) => chars.slice(a - 1, b === Infinity ? undefined : b).join('')).join('');
+    }
+    if (line.indexOf(delim) === -1) return line;
+    const fields = line.split(delim);
+    return ranges.map(([a, b]) => fields.slice(a - 1, b === Infinity ? undefined : b).join(delim)).join(delim);
+  })};
+}
+function writeRedirect(path, lines, append) {
+  const found = resolvePath(path, cwd);
+  if (found.error === 'notdir' || (found.node && found.node.type === 'dir')) {
+    return {error: 'bash: ' + path + ': Is a directory'};
+  }
+  if (found.node) {
+    const before = found.node.content.slice();
+    found.node.content = append ? before.concat(lines) : lines.slice();
+    found.node.size = bytesOf(found.node.content);
+    found.node.mtime = clock++;
+    paintRow(found.node);
+    flashRow(found.node, append ? 'born' : 'edited');
+    floatMark(found.node, append ? 'appended' : 'written');
+    return {node: found.node, created: false, before: before.length, after: found.node.content.length};
+  }
+  if (found.error && found.error !== 'missing') return {error: 'bash: ' + path + ': No such file or directory'};
+  const parentPath = path.slice(0, path.lastIndexOf('/')) || '.';
+  const parent = resolvePath(parentPath, cwd);
+  if (parent.error || !parent.node || parent.node.type !== 'dir') {
+    return {error: 'bash: ' + path + ': No such file or directory'};
+  }
+  const created = file(path.slice(path.lastIndexOf('/') + 1), lines, {born: true});
+  insertChild(parent.node, created);
+  flashRow(created, 'born');
+  floatMark(created, 'created');
+  const box = relRect(rowOf.get(created));
+  ping(box.left + 16, box.top + box.height / 2);
+  return {node: created, created: true, before: 0, after: created.content.length};
+}
+
+/* ==================================================================
+   5. TERMINAL
+   ================================================================== */
+function log(html, className) {
+  const line = document.createElement('div');
+  line.className = 'line' + (className ? ' ' + className : '');
+  line.innerHTML = html;
+  term.appendChild(line);
+  term.scrollTop = term.scrollHeight;
+}
+function focusInput() {
+  try { input.focus({preventScroll: true}); } catch (error) { input.focus(); }
+}
+function shakeInput() {
+  form.classList.remove('shake');
+  void form.offsetWidth;
+  form.classList.add('shake');
+}
+function tip(html, kind) {
+  log('<span class="tip-line' + (kind ? ' ' + kind : '') + '">' + html + '</span>', 'tip-line-wrap');
+}
+
+/* ==================================================================
+   6. THE STREAM VIEW
+   ================================================================== */
+let counterToken = 0;
+function updateCounter(n) {
+  const token = ++counterToken;
+  const from = Math.max(0, parseInt(countNum.textContent, 10) || 0);
+  countNum.textContent = String(n);
+  counterEl.classList.toggle('zero', n === 0);
+  counterEl.classList.remove('pop');
+  void counterEl.offsetWidth;
+  counterEl.classList.add('pop');
+  if (reduceMotion || from === n) return;
+  const t0 = performance.now(), dur = 440;
+  (function step(t) {
+    if (token !== counterToken) return;
+    const p = Math.max(0, Math.min(1, (t - t0) / dur));
+    if (p > 0) {
+      const e = 1 - Math.pow(1 - p, 3);
+      countNum.textContent = String(Math.max(0, Math.round(from + (n - from) * e)));
+    }
+    if (p < 1) requestAnimationFrame(step);
+    else countNum.textContent = String(n);
+  })(t0);
+}
+
+function renderPipe(stages, redirect, result) {
+  streamBody.innerHTML = '';
+  streamEl.classList.toggle('active', !!stages);
+  streamFile.textContent = stages ? stages[stages.length - 1].text + (redirect ? ' ' + (redirect.append ? '>>' : '>') + ' ' + redirect.path : '') : '';
+  if (!stages) {
+    streamStat.textContent = '';
+    pipeBar.innerHTML = '<span class="perm-empty">Build a pipeline — each box shows what that stage passed on.</span>';
+    streamBody.innerHTML = '<span class="stream-none">Chain two commands with <b>|</b>, or send the result into a file with <b>&gt;</b>.</span>';
+    return;
+  }
+  let html = '<div class="pipe">';
+  stages.forEach((stage, index) => {
+    if (index) {
+      html += '<div class="link' + (reduceMotion ? ' solid' : ' d' + (index % 3)) + '">' + (reduceMotion ? '' : '<span class="drop"></span>') + '</div>';
+    }
+    const stageResult = result ? result.stages[index] : null;
+    const failed = stageResult && stageResult.error;
+    html += '<div class="stage' + (failed ? ' err' : '') + '" style="animation-delay:' + (index * 90) + 'ms">' +
+      '<span class="st-cmd">' + esc(stage.text) + '</span>' +
+      '<span class="st-count">' + (stageResult ? (failed ? 'stopped' : stageResult.out.length + ' line' + (stageResult.out.length === 1 ? '' : 's')) : 'waiting') + '</span>' +
+      '<pre class="st-data">' + (stageResult ? (failed ? esc(stageResult.error) : previewLines(stageResult.out)) : '…') + '</pre>' +
+      '</div>';
+  });
+  if (redirect) {
+    const written = result && result.written;
+    html += '<div class="link' + (reduceMotion ? ' solid' : ' d1') + '">' + (reduceMotion ? '' : '<span class="drop"></span>') + '</div>';
+    html += '<div class="stage sink" style="animation-delay:' + (stages.length * 90) + 'ms">' +
+      '<span class="st-cmd">' + (redirect.append ? '&gt;&gt; ' : '&gt; ') + esc(redirect.path) + '</span>' +
+      '<span class="st-count">' + (written ? (written.created ? 'new file' : 'file') : 'file') + '</span>' +
+      '<pre class="st-data">' + (written ? esc(prettyPath(written.node) + '\n' + written.before + ' → ' + written.after + ' lines') : 'not written yet') + '</pre>' +
+      '</div>';
+  }
+  html += '</div>';
+  if (redirect) {
+    html += '<div class="redir-legend"><b>' + (redirect.append ? '&gt;&gt;' : '&gt;') + '</b> ' +
+      (redirect.append ? 'adds to the end and keeps what was there' : 'starts the file fresh, wiping the old contents') + '</div>';
+  }
+  pipeBar.innerHTML = html;
+
+  const finalLines = result ? result.lines : null;
+  if (!finalLines) {
+    streamStat.textContent = stages.length + ' stage' + (stages.length === 1 ? '' : 's') + (redirect ? ' + redirect' : '');
+    return;
+  }
+  streamStat.textContent = finalLines.length + ' line' + (finalLines.length === 1 ? '' : 's') + ' out' +
+    (redirect ? ' · written to ' + esc(redirect.path) : ' · printed');
+  if (redirect) {
+    const written = result.written;
+    if (written) {
+      const row = document.createElement('div');
+      row.className = 'mline changed';
+      row.innerHTML = '<span class="sl-n">' + (written.created ? 'new' : 'wrote') + '</span>' +
+        '<span class="sl-tx">' + esc(prettyPath(written.node)) + ' · ' + written.before + ' → ' + written.after + ' lines</span>';
+      streamBody.appendChild(row);
+    }
+    return;
+  }
+  if (!finalLines.length) {
+    streamBody.innerHTML = '<span class="stream-none">The pipeline produced nothing — the last stage filtered everything out.</span>';
+    return;
+  }
+  const cap = finalLines.length > 16 ? 16 : finalLines.length;
+  finalLines.slice(0, cap).forEach((line, index) => {
+    const row = document.createElement('div');
+    row.className = 'mline lit';
+    row.style.animationDelay = Math.min(index * 24, 280) + 'ms';
+    row.innerHTML = '<span class="sl-n">' + (index + 1) + '</span><span class="sl-tx">' + (esc(line) || '<span class="dim">(empty line)</span>') + '</span>';
+    streamBody.appendChild(row);
+  });
+  if (finalLines.length > cap) {
+    const note = document.createElement('div');
+    note.className = 'more-note';
+    note.textContent = '+ ' + (finalLines.length - cap) + ' more line' + (finalLines.length - cap === 1 ? '' : 's');
+    streamBody.appendChild(note);
+  }
+}
+function previewLines(lines) {
+  if (!lines || !lines.length) return '<b>nothing</b>';
+  const shown = lines.slice(0, 3).map(line => esc(line)).join('\n');
+  return shown + (lines.length > 3 ? '\n<b>+' + (lines.length - 3) + ' more</b>' : '');
+}
+function streamSweep() {
+  if (reduceMotion) return;
+  const bar = document.createElement('div');
+  bar.className = 'stream-bar';
+  streamBody.parentElement.style.position = 'relative';
+  streamBody.parentElement.appendChild(bar);
+  setTimeout(() => bar.remove(), 860);
+}
+
+/* ==================================================================
+   7. COMMANDS
+   ================================================================== */
+let history = [], historyIndex = -1;
+function tokenize(line) {
+  return line.match(/(?:[^\s"']+|"[^"]*"|'[^']*')+/g) || [];
+}
+function stripQuotes(token) {
+  if ((token[0] === '"' && token[token.length - 1] === '"') || (token[0] === "'" && token[token.length - 1] === "'")) return token.slice(1, -1);
+  return token;
+}
+function execute(raw) {
+  const line = raw.trim();
+  if (!line) return;
+  history.push(line);
+  historyIndex = -1;
+  log('<span class="p">you@linux:' + esc(prettyPath(cwd)) + '$</span> <span class="c">' + esc(line) + '</span>');
+  if (line === 'clear') { term.innerHTML = ''; return; }
+  if (line === 'help' || line === '--help') { showHelp(); return; }
+  const parts = tokenize(line);
+  const command = parts[0];
+  const args = parts.slice(1).map(stripQuotes);
+  if (PIPELINE_COMMANDS[command]) { doPipeline(parts); focusInput(); return; }
+  if (command === 'cd') doCd(args);
+  else {
+    log('bash: ' + esc(command) + ': command not found', 'err');
+    log('<span class="dim">This playground is about pipes. Type <b>help</b> for the command list.</span>');
+    shakeInput();
+  }
+}
+
+function doPipeline(parts) {
+  const raw = parts.join(' ').replace(/'([^']*)'/g, ' $1 ').replace(/"([^"]*)"/g, ' $1 ').replace(/\s+/g, ' ').trim();
+  const parsed = parsePipeline(raw);
+  if (parsed.error) {
+    log('bash: ' + esc(parsed.error), 'err');
+    if (parsed.tip) tip(parsed.tip, 'danger');
+    shakeInput();
+    return;
+  }
+  const stageResults = [];
+  let lines = null;
+  let stopped = null;
+  parsed.stages.forEach((stage, index) => {
+    stage.piped = index < parsed.stages.length - 1 || !!parsed.redirect;
+  });
+  for (const stage of parsed.stages) {
+    const result = runStage(stage, lines);
+    stageResults.push(result);
+    if (result.error) { stopped = result; break; }
+    lines = result.out;
+  }
+  const written = parsed.redirect && !stopped
+    ? writeRedirect(parsed.redirect.path, lines, parsed.redirect.append)
+    : null;
+  if (written && written.error) {
+    log(written.error, 'err');
+    shakeInput();
+    renderPipe(parsed.stages, parsed.redirect, {stages: stageResults, lines: null, written: null});
+    return;
+  }
+
+  renderPipe(parsed.stages, parsed.redirect, {stages: stageResults, lines, written});
+  if (stopped) {
+    log(stopped.error.indexOf('command not found') === 0 ? stopped.error : (stageResults[stageResults.length - 1].error || stopped.error), 'err');
+    if (stopped.tip) tip(stopped.tip, 'danger');
+    shakeInput();
+    updateCounter(0);
+    return;
+  }
+  streamSweep();
+  updateCounter(lines.length);
+  countLabel.textContent = (lines.length === 1 ? 'line' : 'lines') + ' out';
+
+  if (parsed.redirect) {
+    if (written.created) {
+      log('<span class="ok">created ' + esc(prettyPath(written.node)) + ' with ' + written.after + ' line' + (written.after === 1 ? '' : 's') + '</span>');
+    } else {
+      log('<span class="ok">' + (parsed.redirect.append ? 'appended to ' : 'wrote ') + esc(prettyPath(written.node)) +
+        ' · ' + written.before + ' → ' + written.after + ' lines</span>');
+    }
+    log('<span class="dim">' + (parsed.redirect.append ? '&gt;&gt; kept the old contents and added to the end' : '&gt; replaced whatever was in the file') + '</span>');
+  } else {
+    lines.forEach(line => log(esc(line)));
+    log('<span class="dim">' + parsed.stages.length + ' stage' + (parsed.stages.length === 1 ? '' : 's') +
+      ' · ' + lines.length + ' line' + (lines.length === 1 ? '' : 's') + ' printed</span>');
+  }
+
+  if (parsed.stages.length > 1) {
+    const counts = stageResults.map((r, i) => parsed.stages[i].text + ' ' + (r.error ? 'error' : r.out.length));
+    tip('Each stage only sees what the stage before it handed over: ' + counts.join(' → ') + '.', '');
+  }
+  if (!parsed.redirect && lines.length) {
+    tip('Want that in a file? Add <code>&gt; name</code> at the end — the pipeline writes instead of printing.', '');
+  }
+
+  const last = stageResults[stageResults.length - 1];
+  lastContext = {
+    command: 'pipeline',
+    stageCount: parsed.stages.length,
+    stages: parsed.stages.map(stage => stage.text),
+    commands: parsed.stages.map(stage => stage.command),
+    redirect: parsed.redirect ? (parsed.redirect.append ? '>>' : '>') : '',
+    redirectPath: parsed.redirect ? parsed.redirect.path : '',
+    created: written ? written.created : false,
+    appended: !!(parsed.redirect && parsed.redirect.append),
+    wroteFile: written ? prettyPath(written.node) : '',
+    lines: lines.length,
+    node: written ? written.node : (parsed.stages.length ? null : null)
+  };
+  if (written) target = written.node;
+  else if (parsed.stages.length === 1) {
+    const only = parsed.stages[0];
+    if (only.command === 'cat' || only.command === 'ls') {
+      const names = only.args.filter(a => !a.startsWith('-'));
+      if (names.length === 1) {
+        const found = resolvePath(names[0], cwd);
+        if (!found.error && found.node && found.node.type === 'file') target = found.node;
+      }
+    }
+  }
+  recordEvidence(lastContext);
+  updateRowStates();
+  if (target) scrollToRow(target);
+  checkMission();
+  renderChips();
+}
+
+function showHelp() {
+  log('<span class="ok">Commands you can try:</span>');
+  log('  <span class="hl">ls ~/data | grep csv</span>          hand a listing to grep');
+  log('  <span class="hl">cat FILE | wc -l</span>               count what a pipe delivers');
+  log('  <span class="hl">cat FILE | grep ERROR | wc -l</span>  three stages, one line');
+  log('  <span class="hl">ls ~/docs &gt; ~/data/docs.txt</span>     write the result into a file');
+  log('  <span class="hl">echo "text" &gt;&gt; ~/notes.txt</span>      add a line without wiping the file');
+  log('');
+  log('<span class="ok">Stage commands:</span>');
+  Object.keys(PIPELINE_COMMANDS).forEach(name => {
+    log('  <span class="hl">' + name.padEnd(6, ' ' + '</span><span class="hl">') + '</span>' + PIPELINE_COMMANDS[name]);
+  });
+  log('');
+  log('  <span class="hl">cd PATH</span>                    move between folders');
+  log('  <span class="hl">clear</span>                      wipe the screen');
+  log('<span class="dim">&gt; truncates the file, &gt;&gt; appends to it. Only the last stage prints to your screen when you redirect.</span>');
+}
+
+function doPwd() { log(esc(absPath(cwd))); }
+
+function doCd(args) {
+  if (args.length > 1) { log('bash: cd: too many arguments', 'err'); shakeInput(); return; }
+  const arg = args[0] === undefined ? '' : args[0];
+  let dest;
+  if (!arg) dest = HOME;
+  else if (arg === '-') {
+    if (!prevDir) { log('bash: cd: OLDPWD not set', 'err'); shakeInput(); return; }
+    dest = prevDir;
+  } else {
+    const result = resolvePath(arg, cwd);
+    if (result.error) {
+      log('bash: cd: ' + esc(arg) + ': ' + (result.error === 'missing' ? 'No such file or directory' : 'Not a directory'), 'err');
+      shakeInput();
+      return;
+    }
+    if (result.node.type !== 'dir') {
+      log('bash: cd: ' + esc(arg) + ': Not a directory', 'err');
+      tip('<b>' + esc(arg) + '</b> is a file — <b>cd</b> only walks into folders.');
+      shakeInput();
+      return;
+    }
+    dest = result.node;
+  }
+  if (dest === cwd) { log('<span class="ok">You are already in ' + esc(prettyPath(cwd)) + '.</span>'); return; }
+  prevDir = cwd;
+  cwd = dest;
+  target = null;
+  updateUI();
+  animateAvatarTo(cwd);
+  log('<span class="ok">Now in ' + esc(prettyPath(cwd)) + '</span>');
+}
+
+function parseLs(args) {
+  const flags = {a: false, l: false, t: false, r: false, one: false, h: false};
+  const paths = [];
+  let optionsEnded = false;
+  for (const arg of args) {
+    if (arg === '--help') return {help: true};
+    if (!optionsEnded && arg === '--') { optionsEnded = true; continue; }
+    if (!optionsEnded && arg.startsWith('--')) {
+      const names = {all: 'a', 'almost-all': 'a', long: 'l', 'time-sort': 't', reverse: 'r', oneline: 'one', 'human-readable': 'h'};
+      const key = arg.slice(2).split('=')[0];
+      if (!(key in names)) return {error: "unsupported option -- '" + arg.slice(2) + "'"};
+      flags[names[key]] = true;
+      continue;
+    }
+    if (!optionsEnded && arg.startsWith('-') && arg.length > 1) {
+      for (const flag of arg.slice(1)) {
+        if (flag === 'A') { flags.a = true; continue; }
+        if (flag === '1') { flags.one = true; continue; }
+        if (!(flag in flags)) return {error: "invalid option -- '" + flag + "'", tip: 'ls understands <code>-a</code>, <code>-A</code>, <code>-l</code>, <code>-h</code>, <code>-t</code>, <code>-r</code> and <code>-1</code>.'};
+        flags[flag] = true;
+      }
+      continue;
+    }
+    paths.push(arg);
+  }
+  if (paths.length > 1) return {error: 'this playground lists one path at a time'};
+  return {flags, path: paths[0] || '.'};
+}
+function lsMode(node) {
+  if (node.type === 'dir') return 'drwxr-xr-x';
+  if (node.type === 'link') return 'lrwxrwxrwx';
+  return node.name.startsWith('.') ? '-rw-------' : '-rw-r--r--';
+}
+function lsSizeText(node, human) {
+  if (node.type === 'dir') return human ? '4.0K' : '4096';
+  const bytes = node.size || 0;
+  if (!human) return String(bytes);
+  if (bytes >= 1048576) return (bytes / 1048576).toFixed(1) + 'M';
+  if (bytes >= 1024) return (bytes / 1024).toFixed(1) + 'K';
+  return bytes + 'B';
+}
+function doLs(args) {
+  const parsed = parseLs(args);
+  if (parsed.help) { showLsHelp(); return; }
+  if (parsed.error) { log('ls: ' + esc(parsed.error), 'err'); if (parsed.tip) tip(parsed.tip, 'danger'); shakeInput(); return; }
+  const result = resolvePath(parsed.path, cwd);
+  if (result.error) {
+    log("ls: cannot access '" + esc(parsed.path) + "': " + (result.error === 'missing' ? 'No such file or directory' : 'Not a directory'), 'err');
+    shakeInput();
+    return;
+  }
+  const node = result.node;
+  let entries = node.type === 'dir' ? node.children.slice() : [node];
+  if (node.type === 'dir' && !parsed.flags.a) entries = entries.filter(entry => !entry.name.startsWith('.'));
+  entries.sort(byName);
+  if (parsed.flags.t) entries.sort((left, right) => right.mtime - left.mtime);
+  if (parsed.flags.r) entries.reverse();
+  if (!entries.length) { log('<span class="dim">(empty)</span>'); return; }
+  const paint = entry => {
+    const kind = entry.name.startsWith('.') ? 'code' : entry.type === 'dir' ? 'd' : 'f';
+    const suffix = entry.type === 'dir' ? '/' : '';
+    return '<span class="' + kind + '">' + esc(entry.name + suffix) + '</span>';
+  };
+  if (parsed.flags.l) {
+    entries.forEach(entry => {
+      const date = new Date(entry.mtime).toLocaleDateString('en-US', {month: 'short', day: '2-digit'});
+      log(lsMode(entry) + '  you  you  ' + lsSizeText(entry, parsed.flags.h).padStart(6, ' ') + '  ' + date + '  ' + paint(entry));
+    });
+  } else if (parsed.flags.one) {
+    entries.forEach(entry => log(paint(entry)));
+  } else {
+    log(entries.map(paint).join('   '));
+  }
+  log('<span class="dim">' + entries.length + (entries.length === 1 ? ' entry' : ' entries') + ' in ' + esc(prettyPath(node)) + '</span>');
+}
+function showLsHelp() {
+  log('<span class="ok">ls — list what is here</span>');
+  log('  <span class="hl">ls</span>   <span class="hl">ls -l</span> long   <span class="hl">ls -a</span> hidden   <span class="hl">ls -1</span> one per line');
+  log('  <span class="hl">ls -h</span> readable sizes   <span class="hl">ls -t</span> newest   <span class="hl">ls -r</span> reversed   <span class="hl">ls PATH</span>');
+}
+
+function onNodeClick(node) {
+  if (node.type === 'dir') {
+    const spec = node.parent === cwd ? node.name : prettyPath(node);
+    execute('ls ' + spec + ' | ');
+    return;
+  }
+  target = node;
+  const spec = node.parent === cwd ? node.name : prettyPath(node);
+  input.value = 'cat ' + spec + ' | ';
+  renderPreview();
+  updateRowStates();
+  scrollToRow(node);
+  focusInput();
+  log('<span class="dim">' + esc(prettyPath(node)) + ' is ready — finish the pipeline after the pipe.</span>');
+}
+
+/* ==================================================================
+   8. DRY RUN
+   ================================================================== */
+function renderPreview() {
+  const raw = input.value.trim();
+  previewEl.className = 'preview';
+  if (!raw) {
+    pvBody.innerHTML = '<span class="pv-msg">' + (target
+      ? 'aimed at ' + esc(target.name) + ' — add a stage with | or a file with >'
+      : 'type a command, chain it with |, or send it to a file with >') + '</span>';
+    return;
+  }
+  if (raw === 'help' || raw === 'clear' || raw.indexOf('cd ') === 0) {
+    pvBody.innerHTML = '<span class="pv-msg">' + (raw === 'cd ' || raw.indexOf('cd ') === 0
+      ? 'cd walks you between folders — it cannot be piped.'
+      : 'help lists every stage command; clear wipes the screen.') + '</span>';
+    return;
+  }
+  const flat = raw.replace(/'([^']*)'/g, ' $1 ').replace(/"([^"]*)"/g, ' $1 ').replace(/\s+/g, ' ').trim();
+  const parsed = parsePipeline(flat);
+  if (parsed.error) {
+    previewEl.className = 'preview bad';
+    pvBody.innerHTML = '<span class="pv-verdict bad">blocked</span><span class="pv-msg">' + esc(parsed.error) + '</span>';
+    return;
+  }
+  const unknown = parsed.stages.find(stage => !PIPELINE_COMMANDS[stage.command]);
+  if (unknown) {
+    previewEl.className = 'preview bad';
+    pvBody.innerHTML = '<span class="pv-verdict bad">no such command</span><span class="pv-msg">' + esc(unknown.command) + ' is not a stage in this lab</span>';
+    return;
+  }
+  /* dry run: run the stages but never touch the filesystem */
+  let lines = null, bad = null;
+  parsed.stages.forEach((stage, index) => {
+    stage.piped = index < parsed.stages.length - 1 || !!parsed.redirect;
+  });
+  for (const stage of parsed.stages) {
+    const result = runStage(stage, lines);
+    if (result.error) { bad = result; break; }
+    lines = result.out;
+  }
+  if (bad) {
+    previewEl.className = 'preview bad';
+    pvBody.innerHTML = '<span class="pv-verdict bad">stopped</span><span class="pv-msg">' + esc(bad.error) + '</span>';
+    return;
+  }
+  const chain = parsed.stages.length + ' stage' + (parsed.stages.length === 1 ? '' : 's');
+  const items = '<span class="pv-verdict ok">' + chain + '</span>' +
+    '<span class="pv-verdict ' + (lines.length ? 'ok' : 'warn') + '">' + lines.length + ' line' + (lines.length === 1 ? '' : 's') + ' out</span>' +
+    (parsed.redirect
+      ? '<span class="pv-verdict warn">' + (parsed.redirect.append ? '&gt;&gt; ' : '&gt; ') + esc(parsed.redirect.path) + '</span>'
+      : '<span class="pv-verdict">prints</span>');
+  previewEl.className = lines.length ? 'preview ok' : 'preview warn';
+  pvBody.innerHTML = items + '<span class="pv-msg">' +
+    parsed.stages.map(stage => esc(stage.text)).join(' <b>|</b> ') + '</span>';
+}
+
+/* ==================================================================
+   9. MISSIONS
+   ================================================================== */
+const evidence = {pipe: false, counter: false, three: false, created: false, appended: false, combined: false};
+function recordEvidence(ctx) {
+  if (ctx.stageCount > 1) evidence.pipe = true;
+  if (ctx.commands.indexOf('wc') > -1) evidence.counter = true;
+  if (ctx.stageCount >= 3) evidence.three = true;
+  if (ctx.redirect === '>' && ctx.created) evidence.created = true;
+  if (ctx.appended) evidence.appended = true;
+  if (ctx.stageCount > 1 && ctx.redirect) evidence.combined = true;
+}
+const missions = [
+  {text: 'List <b>~/data</b>, but keep only the names ending in <b>csv</b>. Send the listing through a pipe.',
+   hint: 'The pipe <code>|</code> hands the output of one command to the next: <code>ls ~/data | grep csv</code>',
+   answer: 'ls ~/data | grep csv',
+   check: c => evidence.pipe || (c && c.stageCount === 2 && c.commands[0] === 'ls' && c.commands[1] === 'grep')},
+
+  {text: 'Count the lines of <b>~/logs/access.log</b> without printing the file — pipe it into <b>wc</b>.',
+   hint: '<code>wc -l</code> counts lines, and it is happy to read from a pipe: <code>cat ~/logs/access.log | wc -l</code>',
+   answer: 'cat ~/logs/access.log | wc -l',
+   check: c => evidence.counter || (c && c.stageCount === 2 && c.commands.indexOf('wc') > -1 && c.lines === 1)},
+
+  {text: 'The classic three-stage line: how many <b>ERROR</b> lines are in that log?',
+   hint: 'Three stages chained: <code>cat ~/logs/access.log | grep ERROR | wc -l</code>. Each one only sees what came before it.',
+   answer: 'cat ~/logs/access.log | grep ERROR | wc -l',
+   check: c => evidence.three || (c && c.stageCount === 3 && c.commands.join(' ') === 'cat grep wc')},
+
+  {text: 'Now stop printing and <b>write</b> the result to a file: save a listing of <b>~/docs</b> as <b>~/data/docs.txt</b>.',
+   hint: '<code>&gt; FILE</code> sends the output into a file and prints nothing: <code>ls ~/docs &gt; ~/data/docs.txt</code>',
+   answer: 'ls ~/docs > ~/data/docs.txt',
+   check: c => evidence.created || (c && c.redirect === '>' && /docs\.txt$/.test(c.redirectPath) && c.created)},
+
+  {text: 'Add one more line to <b>~/notes.txt</b> <b>without</b> losing the four lines already in it.',
+   hint: '<code>&gt;&gt;</code> appends instead of replacing: <code>echo "ship it" &gt;&gt; ~/notes.txt</code>',
+   answer: 'echo "ship it" >> ~/notes.txt',
+   check: c => evidence.appended || (c && c.appended && /notes\.txt$/.test(c.redirectPath))},
+
+  {text: 'Last one: use <b>both</b> at once — pipe a listing through <b>sort</b> and save the result as <b>~/data/all.txt</b>.',
+   hint: 'A pipe and a redirect can share one line: <code>ls ~/data ~/docs | sort &gt; ~/data/all.txt</code>',
+   answer: 'ls ~/data ~/docs | sort > ~/data/all.txt',
+   check: c => evidence.combined || (c && c.stageCount === 2 && c.redirect === '>' && /all\.txt$/.test(c.redirectPath) && c.created)}
+];
+const missionCount = missions.length;
+let missionIndex = 0, missionLocked = false;
+
+function renderMission() {
+  const mission = missions[Math.min(missionIndex, missionCount - 1)];
+  missionBadge.textContent = 'Mission ' + (missionIndex + 1) + ' / ' + missionCount;
+  missionText.innerHTML = mission.text;
+  hintBar.textContent = '';
+  hintBar.classList.remove('show');
+  renderChips();
+}
+function checkMission() {
+  if (missionLocked || missionIndex >= missionCount || !lastContext) return;
+  let passed = false;
+  try { passed = missions[missionIndex].check(lastContext); } catch (error) { passed = false; }
+  if (passed) completeMission();
+}
+function completeMission() {
+  missionLocked = true;
+  stepsEl.children[missionIndex].classList.add('done');
+  missionEl.classList.add('complete');
+  setTimeout(() => {
+    missionEl.classList.remove('complete');
+    missionIndex++;
+    missionLocked = false;
+    if (missionIndex >= missionCount) finishAll();
+    else { renderMission(); checkMission(); }
+  }, 950);
+}
+function finishAll() {
+  missionBadge.textContent = 'All done';
+  missionText.innerHTML = 'You can rewrite a whole file with one line of sed. Keep exploring!';
+  hintBtn.style.display = 'none';
+  hintBar.classList.remove('show');
+  confetti();
+  log('<span class="ok">All missions complete — nicely done!</span>');
+  log('<span class="dim">Small commands, chained. Each stage sees only the lines the one before it handed over.</span>');
+}
+function confetti() {
+  const colors = ['#06b6d4', '#22d3ee', '#4ade80', '#a5f3fc', '#f472b6', '#fda4af'];
+  for (let i = 0; i < 55; i++) {
+    const piece = document.createElement('i');
+    piece.className = 'confetti';
+    piece.style.left = Math.random() * 100 + '%';
+    piece.style.background = colors[i % colors.length];
+    piece.style.animationDelay = (Math.random() * 0.45) + 's';
+    piece.style.animationDuration = (1.7 + Math.random() * 1.3) + 's';
+    piece.style.setProperty('--rot', (Math.random() * 900 - 450) + 'deg');
+    document.body.appendChild(piece);
+    setTimeout(() => piece.remove(), 3600);
+  }
+}
+
+/* ==================================================================
+   10. CHIPS + EVENTS
+   ================================================================== */
+function renderChips() {
+  chips.innerHTML = '';
+  const mission = missions[Math.min(missionIndex, missionCount - 1)];
+  const list = [];
+  if (mission && mission.answer) list.push(mission.answer);
+  list.push('ls ~/data | grep csv', 'cat ~/logs/access.log | grep ERROR | wc -l', 'ls ~/docs > ~/data/docs.txt');
+  const essentials = ['ls', 'pwd', 'help'];
+  const seen = new Set();
+  list.filter(command => {
+    if (seen.has(command)) return false;
+    seen.add(command);
+    return true;
+  }).slice(0, 4).concat(essentials).forEach(command => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'chip';
+    button.textContent = command;
+    button.addEventListener('click', () => { input.value = ''; execute(command); focusInput(); });
+    chips.appendChild(button);
+  });
+}
+function updateUI() {
+  psPath.textContent = prettyPath(cwd);
+  updateRowStates();
+  renderCrumbs();
+  renderChips();
+  renderPreview();
+}
+function renderCrumbs() {
+  crumbs.innerHTML = '';
+  const path = prettyPath(cwd);
+  let parts;
+  if (path === '/') parts = ['/'];
+  else if (path.startsWith('~')) parts = ['/', 'home', 'you', ...path.slice(1).split('/').filter(Boolean)];
+  else parts = ['/', ...path.split('/').filter(Boolean)];
+  parts.forEach((part, index) => {
+    if (index) {
+      const separator = document.createElement('span');
+      separator.className = 'sep';
+      separator.textContent = '›';
+      crumbs.appendChild(separator);
+    }
+    const crumb = document.createElement('span');
+    crumb.className = 'crumb';
+    crumb.style.animationDelay = (index * 45) + 'ms';
+    crumb.textContent = part === 'you' ? '~' : part;
+    crumbs.appendChild(crumb);
+  });
+}
+
+hintBtn.addEventListener('click', () => {
+  if (hintBar.classList.contains('show')) { hintBar.classList.remove('show'); renderChips(); return; }
+  const mission = missions[Math.min(missionIndex, missionCount - 1)];
+  hintBar.innerHTML = mission.hint;
+  hintBar.classList.add('show');
+  renderChips();
+});
+form.addEventListener('submit', event => {
+  event.preventDefault();
+  const value = input.value;
+  input.value = '';
+  renderPreview();
+  execute(value);
+  focusInput();
+});
+input.addEventListener('input', renderPreview);
+input.addEventListener('keydown', event => {
+  if (event.key === 'ArrowUp') {
+    event.preventDefault();
+    if (historyIndex < history.length - 1) {
+      historyIndex++;
+      input.value = history[history.length - 1 - historyIndex];
+      input.setSelectionRange(input.value.length, input.value.length);
+      renderPreview();
+    }
+  } else if (event.key === 'ArrowDown') {
+    event.preventDefault();
+    if (historyIndex > 0) {
+      historyIndex--;
+      input.value = history[history.length - 1 - historyIndex];
+    } else {
+      historyIndex = -1;
+      input.value = '';
+    }
+    renderPreview();
+  } else if (event.key === 'Tab') {
+    event.preventDefault();
+    completeToken();
+  }
+});
+function completeToken() {
+  const value = input.value;
+  const tokens = value.split(/\s+/);
+  const last = tokens[tokens.length - 1] || '';
+  if (!last) return;
+  if (value.replace(/"/g, '').replace(/'/g, '').indexOf('s/') > -1 && last.indexOf('/') > -1) return;
+  const slash = last.lastIndexOf('/');
+  const dirPart = slash > -1 ? last.slice(0, slash + 1) : '';
+  const fragment = slash > -1 ? last.slice(slash + 1) : last;
+  let candidates = [];
+  if (fragment.startsWith('-') && tokens.length > 1) {
+    candidates = ['|', '>', '>>', '| grep ', '| wc -l', '| sort', '| head -n 5', '-l', '-c'];
+  } else {
+    const result = resolvePath(dirPart || '.', cwd);
+    if (result.error || result.node.type !== 'dir') return;
+    candidates = result.node.children.map(child => child.name + (child.type === 'dir' ? '/' : ''));
+  }
+  const hits = candidates.filter(candidate => candidate.startsWith(fragment));
+  if (!hits.length) return;
+  if (hits.length === 1) {
+    const suffix = hits[0].endsWith('/') ? '' : ' ';
+    input.value = value.slice(0, value.length - last.length) + dirPart + hits[0] + suffix;
+    input.setSelectionRange(input.value.length, input.value.length);
+  } else {
+    log('<span class="dim">' + esc(hits.join('  ')) + '</span>');
+  }
+  renderPreview();
+}
+
+/* ==================================================================
+   11. RESET + BOOT
+   ================================================================== */
+function resetLab() {
+  buildModel();
+  buildTree();
+  cwd = HOME;
+  prevDir = null;
+  target = null;
+  lastContext = null;
+  history = [];
+  historyIndex = -1;
+  missionIndex = 0;
+  missionLocked = false;
+  Object.keys(evidence).forEach(key => { evidence[key] = false; });
+  term.innerHTML = '';
+  stepsEl.innerHTML = '';
+  missions.forEach(() => stepsEl.appendChild(document.createElement('i')));
+  hintBtn.style.display = '';
+  input.value = '';
+  countNum.textContent = '0';
+  pipeBar.innerHTML = '<span class="perm-empty">Build a pipeline — each box shows what that stage passed on.</span>';
+  counterToken++;
+  counterEl.classList.add('zero');
+  streamEl.className = 'stream';
+  requestAnimationFrame(() => {
+    moveAvatar(false);
+    updateUI();
+    renderMission();
+    renderPipe(null, null, null);
+    log('<span class="hl">Fresh filesystem.</span> Every mission is live again.');
+  });
+}
+resetBtn.addEventListener('click', () => {
+  resetLab();
+  resetBtn.classList.remove('spin');
+  void resetBtn.offsetWidth;
+  resetBtn.classList.add('spin');
+  setTimeout(() => resetBtn.classList.remove('spin'), 600);
+});
+window.addEventListener('resize', () => moveAvatar(false));
+
+HOME = buildModel();
+buildTree();
+stepsEl.innerHTML = '';
+missions.forEach(() => stepsEl.appendChild(document.createElement('i')));
+cwd = HOME;
+
+requestAnimationFrame(() => {
+  moveAvatar(false);
+  updateUI();
+  renderMission();
+  renderPipe(null, null, null);
+  log('<span class="hl">Welcome to the visual pipe terminal.</span>');
+  log('A <b>pipe</b> (<code>|</code>) hands the output of one command straight into the next — no file needed in between.');
+  log('A <b>redirect</b> (<code>&gt;</code>) sends that output into a file instead of your screen.');
+  log('Each box in the strip shows exactly what that stage passed on.');
+  log('');
+  log('<span class="dim">Try this first:</span> <span class="code">ls ~/data | grep csv</span> then <span class="code">cat ~/logs/access.log | wc -l</span>');
+});
+
+if (!('ontouchstart' in window) && window.innerWidth > 900) setTimeout(focusInput, 400);
+</script>
+</body>
+</html>

@@ -1,0 +1,1977 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Learn `sort` &amp; `uniq` — Visual Linux</title>
+<style>
+/* ============ TOKENS ============ */
+:root{
+  --bg:#04110f;
+  --txt:#e8f7f0;
+  --dim:#8ba79b;
+  --accent:#14b8a6;
+  --accent2:#5eead4;
+  --mark:#a3e635;
+  --green:#4ade80;
+  --err:#fda4af;
+  --line:rgba(255,255,255,.11);
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;min-height:100dvh;font-family:var(--mono);color:var(--txt);background:var(--bg);overflow-x:hidden;-webkit-font-smoothing:antialiased}
+body::before{content:'';position:fixed;inset:0;z-index:-2;background:radial-gradient(900px 620px at 10% -12%,rgba(20,184,166,.17),transparent 62%),radial-gradient(820px 600px at 100% 3%,rgba(163,230,53,.09),transparent 60%),radial-gradient(760px 700px at 46% 118%,rgba(94,234,212,.08),transparent 63%),#04110f}
+body::after{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;background-image:linear-gradient(rgba(255,255,255,.026) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.026) 1px,transparent 1px);background-size:46px 46px;-webkit-mask-image:radial-gradient(ellipse at 50% 0%,#000 14%,transparent 74%);mask-image:radial-gradient(ellipse at 50% 0%,#000 14%,transparent 74%)}
+
+/* ============ LAYOUT ============ */
+.app{max-width:1320px;margin:0 auto;min-height:100dvh;display:flex;flex-direction:column;padding:14px 16px 16px;gap:11px}
+.top{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:11px}
+.logo{width:38px;height:38px;flex:0 0 auto;border-radius:11px;display:grid;place-items:center;position:relative;font-size:13px;font-weight:800;letter-spacing:-.06em;color:#04211d;background:linear-gradient(150deg,#99f6e4,#14b8a6 45%,#0d9488);box-shadow:0 8px 22px -8px rgba(20,184,166,.9),inset 0 1px 0 rgba(255,255,255,.6);animation:logoPulse 3.2s ease-in-out infinite}
+@keyframes logoPulse{0%,100%{box-shadow:0 8px 22px -8px rgba(20,184,166,.9),inset 0 1px 0 rgba(255,255,255,.6)}50%{box-shadow:0 8px 32px -6px rgba(20,184,166,1),inset 0 1px 0 rgba(255,255,255,.6)}}
+.logo::after{content:'';position:absolute;left:4px;right:4px;top:7px;height:2px;border-radius:2px;background:rgba(43,20,3,.35);box-shadow:0 5px 0 rgba(43,20,3,.35),0 10px 0 rgba(43,20,3,.2)}
+.brand h1{margin:0;font-size:16px;letter-spacing:.01em;font-weight:700}
+.brand h1 code{color:#99f6e4;background:rgba(20,184,166,.16);padding:1px 7px;border-radius:6px;border:1px solid rgba(20,184,166,.32)}
+.brand p{margin:2px 0 0;font-size:11.5px;color:var(--dim)}
+.steps{display:flex;gap:7px;align-items:center}
+.steps i{width:9px;height:9px;border-radius:50%;display:block;background:rgba(255,255,255,.13);transition:all .45s cubic-bezier(.34,1.56,.64,1)}
+.steps i.done{background:var(--green);box-shadow:0 0 0 4px rgba(74,222,128,.15),0 0 14px rgba(74,222,128,.7);transform:scale(1.15)}
+.reset-btn{font:inherit;font-size:10.5px;letter-spacing:.04em;color:var(--dim);cursor:pointer;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);padding:5px 10px;border-radius:9px;white-space:nowrap;transition:.2s;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.reset-btn:hover{color:var(--txt);background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.26)}
+.reset-btn:active{transform:scale(.95)}
+.reset-btn.spin{animation:resetSpin .55s cubic-bezier(.34,1.3,.64,1)}
+@keyframes resetSpin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+
+/* ---- mission bar ---- */
+.mission{display:flex;align-items:center;gap:12px;padding:10px 13px;border-radius:14px;background:linear-gradient(90deg,rgba(20,184,166,.12),rgba(20,184,166,.02));border:1px solid rgba(20,184,166,.24);transition:background .35s,border-color .35s,transform .35s,box-shadow .35s}
+.mission.complete{background:linear-gradient(90deg,rgba(74,222,128,.24),rgba(74,222,128,.05));border-color:rgba(74,222,128,.55);transform:scale(1.012);box-shadow:0 0 30px -8px rgba(74,222,128,.5)}
+.badge{font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;padding:5px 9px;border-radius:999px;white-space:nowrap;color:#99f6e4;background:rgba(20,184,166,.16);border:1px solid rgba(20,184,166,.3);transition:all .3s}
+.mission.complete .badge{color:#86efac;background:rgba(74,222,128,.2);border-color:rgba(74,222,128,.45)}
+.mission-text{flex:1;font-size:13px;line-height:1.4;min-width:0}
+.mission-text b{color:#99f6e4}
+.mission.complete .mission-text b{color:#86efac}
+.hint-btn{font:inherit;font-size:11px;color:var(--dim);cursor:pointer;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);padding:6px 11px;border-radius:9px;white-space:nowrap;transition:.2s}
+.hint-btn:hover{color:var(--txt);background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.24)}
+.hint{max-height:0;overflow:hidden;opacity:0;font-size:12.5px;color:var(--dim);padding:0 14px;border-radius:12px;transition:max-height .3s ease,opacity .3s ease,padding .3s ease,background .3s}
+.hint.show{max-height:80px;opacity:1;padding:9px 14px;background:rgba(255,255,255,.035)}
+.hint code{color:#d9f99d;background:rgba(163,230,53,.13);padding:1px 6px;border-radius:5px}
+
+/* ---- main grid ---- */
+main{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1.08fr) minmax(0,1fr);grid-template-rows:minmax(0,1fr);gap:13px}
+.panel{background:linear-gradient(180deg,rgba(255,255,255,.048),rgba(255,255,255,.014));border:1px solid rgba(255,255,255,.08);border-radius:17px;padding:12px;display:flex;flex-direction:column;min-height:0;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:0 22px 44px -24px rgba(0,0,0,.9),inset 0 1px 0 rgba(255,255,255,.055)}
+.panel-head{display:flex;align-items:center;gap:9px;padding:1px 4px 9px;min-width:0}
+.title{font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:var(--dim);font-weight:700}
+.sub{font-size:11px;color:rgba(164,144,127,.65);margin-left:auto}
+.dots{display:flex;gap:5px;margin-right:2px}
+.dots i{width:9px;height:9px;border-radius:50%;display:block}
+.dots i:nth-child(1){background:#fda4af}
+.dots i:nth-child(2){background:#a3e635}
+.dots i:nth-child(3){background:#4ade80}
+
+/* ---- changed counter ---- */
+.counter{margin-left:auto;display:flex;align-items:center;gap:5px;font-size:10.5px;letter-spacing:.04em;color:#d9f99d;padding:4px 10px;border-radius:99px;background:rgba(163,230,53,.11);border:1px solid rgba(163,230,53,.26);transition:background .3s,border-color .3s,color .3s}
+.counter b{font-size:12.5px;color:var(--mark);min-width:9px;text-align:center}
+.counter.zero{background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.1);color:var(--dim)}
+.counter.zero b{color:var(--dim)}
+.counter.pop{animation:counterPop .55s cubic-bezier(.34,1.56,.64,1)}
+@keyframes counterPop{0%{transform:scale(1)}40%{transform:scale(1.22);box-shadow:0 0 24px rgba(163,230,53,.55)}100%{transform:scale(1)}}
+
+/* ============ CRUMBS + TREE (cd.html design) ============ */
+.crumbs{display:flex;align-items:center;flex-wrap:wrap;gap:3px;padding:7px 9px;margin-bottom:8px;border-radius:11px;background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.055);min-height:37px;min-width:0}
+.crumb{font-size:12px;padding:3px 9px;border-radius:7px;background:rgba(20,184,166,.13);color:#5eead4;border:1px solid rgba(20,184,166,.22);animation:crumbIn .32s cubic-bezier(.34,1.56,.64,1) backwards}
+.crumb:last-child{color:#d9f99d;background:rgba(163,230,53,.11);border-color:rgba(163,230,53,.26)}
+@keyframes crumbIn{from{opacity:0;transform:translateY(-5px) scale(.85)}to{opacity:1;transform:none}}
+.sep{color:rgba(164,144,127,.5);font-size:11px;padding:0 1px}
+.tree-scroll{flex:1;min-height:0;overflow:auto;padding:4px 2px 6px;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.16) transparent;-webkit-overflow-scrolling:touch;min-width:0}
+.tree-scroll::-webkit-scrollbar{width:8px;height:8px}
+.tree-scroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:99px}
+.tree-scroll::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.26)}
+.tree-inner{position:relative;display:inline-block;vertical-align:top;min-width:100%;padding:6px 58px 16px 2px}
+.node{position:relative}
+.children{margin-left:16px;padding-left:12px;border-left:2px solid var(--line)}
+.children>.node::before{content:'';position:absolute;left:-14px;top:17px;width:14px;height:2px;background:var(--line);border-radius:2px}
+.row{display:inline-flex;align-items:center;gap:8px;min-height:34px;padding:5px 11px 5px 9px;border-radius:10px;cursor:pointer;white-space:nowrap;position:relative;transition:background .22s,box-shadow .22s,transform .18s;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.row:hover{background:rgba(255,255,255,.055);transform:translateX(2px)}
+.row.current{background:linear-gradient(90deg,rgba(20,184,166,.22),rgba(20,184,166,.03));box-shadow:inset 0 0 0 1px rgba(20,184,166,.4)}
+.row.current .label{color:#fff;font-weight:700}
+.row.file{opacity:.55}
+.row.target{box-shadow:inset 0 0 0 1px rgba(20,184,166,.85);background:rgba(20,184,166,.16);opacity:1}
+.row.target .label{color:#fff}
+.row.edited{animation:rowEdited .8s cubic-bezier(.34,1.56,.64,1)}
+@keyframes rowEdited{0%{background:rgba(163,230,53,.4);box-shadow:0 0 0 2px rgba(163,230,53,.95),0 0 34px rgba(163,230,53,.7)}100%{background:transparent;box-shadow:inset 0 0 0 1px rgba(163,230,53,.3)}}
+.row.born{animation:rowBorn .55s cubic-bezier(.34,1.56,.64,1)}
+@keyframes rowBorn{0%{opacity:0;transform:translateX(-10px) scale(.9);background:rgba(74,222,128,.35)}100%{opacity:1;transform:none;background:transparent}}
+.row.reverted{animation:rowReverted .8s ease}
+@keyframes rowReverted{0%{background:rgba(167,139,250,.3);box-shadow:inset 0 0 0 1px rgba(167,139,250,.8)}100%{background:transparent;box-shadow:inset 0 0 0 1px rgba(255,255,255,0)}}
+.icon{width:18px;height:14px;flex:0 0 auto;position:relative;border-radius:3px;transition:box-shadow .3s;z-index:1}
+.icon.dir{background:linear-gradient(180deg,#fcd34d,#f59e0b);box-shadow:0 2px 7px rgba(251,191,36,.22)}
+.icon.dir::before{content:'';position:absolute;top:-4px;left:0;width:8px;height:6px;background:#bef264;border-radius:3px 3px 0 0}
+.icon.file{background:linear-gradient(180deg,#a8b6c9,#64748b);border-radius:2px 5px 2px 2px}
+.icon.link{width:16px;height:11px;background:linear-gradient(180deg,#99f6e4,#2dd4bf);border-radius:2px 6px 2px 2px}
+.row.current .icon.dir{box-shadow:0 0 0 3px rgba(251,146,60,.28),0 2px 12px rgba(251,191,36,.75)}
+.label{font-size:13.5px;letter-spacing:.01em;position:relative;z-index:1}
+.tag{font-size:9.5px;padding:2px 6px;border-radius:99px;font-weight:700;background:rgba(74,222,128,.16);color:#86efac;border:1px solid rgba(74,222,128,.3);position:relative;z-index:1}
+.badge-new{font-size:8.5px;padding:2px 6px;border-radius:99px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#86efac;background:rgba(74,222,128,.14);border:1px solid rgba(74,222,128,.3);position:relative;z-index:1}
+.badge-bak{font-size:8.5px;padding:2px 6px;border-radius:99px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#99f6e4;background:rgba(94,234,212,.14);border:1px solid rgba(94,234,212,.32);position:relative;z-index:1}
+.kb{font-size:9px;color:rgba(164,144,127,.5);position:relative;z-index:1;transition:color .3s}
+.row.edited .kb{color:var(--mark)}
+.ping{position:absolute;left:0;top:0;width:0;height:0;pointer-events:none;z-index:6}
+.ping i{position:absolute;left:-16px;top:-16px;width:32px;height:32px;border-radius:50%;border:2px solid rgba(163,230,53,.85);display:block;animation:pingA .7s ease-out forwards}
+@keyframes pingA{0%{transform:scale(.2);opacity:1}100%{transform:scale(1.9);opacity:0}}
+.mark{position:absolute;left:8px;bottom:calc(100% - 2px);z-index:9;padding:2px 7px;border-radius:999px;font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;white-space:nowrap;pointer-events:none;color:#d9f99d;background:rgba(163,230,53,.22);border:1px solid rgba(163,230,53,.55);box-shadow:0 6px 18px -8px rgba(163,230,53,.9);animation:markRise 1.1s cubic-bezier(.22,.9,.3,1) forwards}
+.mark.back{color:#99f6e4;background:rgba(94,234,212,.22);border-color:rgba(94,234,212,.5);box-shadow:0 6px 18px -8px rgba(94,234,212,.9)}
+@keyframes markRise{0%{opacity:0;transform:translateY(6px) scale(.8)}22%{opacity:1;transform:translateY(-4px) scale(1)}70%{opacity:1;transform:translateY(-15px)}100%{opacity:0;transform:translateY(-28px)}}
+
+/* ---- avatar ---- */
+.avatar{position:absolute;left:0;top:0;width:30px;height:30px;z-index:7;pointer-events:none;transition:transform .62s cubic-bezier(.34,1.3,.64,1);will-change:transform}
+.avatar .body{width:100%;height:100%;border-radius:50% 50% 46% 46%;background:radial-gradient(circle at 34% 28%,#99f6e4,#14b8a6 52%,#0f766e);box-shadow:0 0 0 3px rgba(20,184,166,.18),0 9px 20px -4px rgba(194,65,12,.8);display:grid;place-items:center;animation:idle 2.8s ease-in-out infinite}
+@keyframes idle{0%,100%{transform:translateY(0)}50%{transform:translateY(-2.5px)}}
+.avatar.hop .body{animation:hop .58s cubic-bezier(.34,1.3,.64,1)}
+@keyframes hop{0%{transform:translateY(0) scale(1,1)}28%{transform:translateY(-11px) scale(.9,1.12)}58%{transform:translateY(0) scale(1.12,.88)}80%{transform:translateY(-3px) scale(.98,1.03)}100%{transform:translateY(0) scale(1,1)}}
+.eyes{display:flex;gap:5px}
+.eyes i{width:4px;height:6.5px;background:#04211d;border-radius:50%;display:block;animation:blink 4.6s infinite}
+@keyframes blink{0%,92%,100%{transform:scaleY(1)}95%{transform:scaleY(.1)}}
+
+/* ============ SED STREAM ============ */
+.stream{flex:0 0 auto;margin-top:8px;border-radius:12px;background:linear-gradient(180deg,rgba(20,184,166,.05),rgba(0,0,0,.3));border:1px dashed rgba(20,184,166,.28);transition:border-color .3s,box-shadow .3s,background .3s;min-width:0}
+.stream.active{border-color:rgba(20,184,166,.7);background:linear-gradient(180deg,rgba(20,184,166,.11),rgba(0,0,0,.3));box-shadow:0 0 28px -12px rgba(20,184,166,.9)}
+.stream.saved{border-style:solid;border-color:rgba(74,222,128,.7);background:linear-gradient(180deg,rgba(74,222,128,.1),rgba(0,0,0,.3));box-shadow:0 0 28px -12px rgba(74,222,128,.85)}
+.stream-top{display:flex;align-items:center;gap:8px;padding:7px 10px 0;min-width:0}
+.stream-label{font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:#5eead4;font-weight:700;flex:0 0 auto}
+.stream-file{font-size:10px;color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.stream-stat{margin-left:auto;font-size:9.5px;color:var(--dim);white-space:nowrap;flex:0 0 auto}
+.orderbar{position:relative;min-height:56px;padding:6px 8px 4px;background:rgba(0,0,0,.3);border-bottom:1px solid var(--line);overflow:hidden}
+.omap{position:relative;height:46px}
+.omap-rail{position:absolute;left:0;right:0;top:0;height:32px}
+.omap-line{position:absolute;height:1.5px;border-radius:2px;background:rgba(94,234,212,.45);transform-origin:left center;animation:omapDraw .5s cubic-bezier(.34,1.3,.64,1) backwards}
+.omap-line.same{background:rgba(255,255,255,.14)}
+.omap-from{position:absolute;top:9px;width:7px;height:7px;margin-left:-3.5px;border-radius:50%;background:rgba(255,255,255,.26)}
+.omap-to{position:absolute;top:8px;width:9px;height:9px;margin-left:-4.5px;border-radius:50%;background:#5eead4;box-shadow:0 0 10px -2px rgba(94,234,212,.95);animation:omapPop .4s cubic-bezier(.34,1.56,.64,1) backwards}
+.omap-foot{position:absolute;left:0;right:0;bottom:0;height:13px;border-top:1px solid rgba(255,255,255,.07)}
+.omap-slot{position:absolute;top:0;width:1px;height:4px;background:rgba(255,255,255,.3)}
+.omap-slot.on{background:#5eead4;height:6px}
+.omap-cap{position:absolute;right:3px;bottom:0;font-size:7.5px;color:rgba(255,255,255,.32)}
+@keyframes omapDraw{from{opacity:0;transform:scaleX(.15)}to{opacity:1;transform:none}}
+@keyframes omapPop{from{opacity:0;transform:scale(.3)}to{opacity:1;transform:none}}
+.gbar{position:relative;height:20px;margin:2px 0 4px;display:flex;align-items:center;gap:2px}
+.gseg{position:relative;height:11px;border-radius:3px;background:linear-gradient(180deg,#bef264,#a3e635);box-shadow:0 0 10px -3px rgba(163,230,53,.9);animation:gsegIn .4s cubic-bezier(.34,1.56,.64,1) backwards;min-width:3px}
+.gseg.one{background:linear-gradient(180deg,rgba(255,255,255,.28),rgba(255,255,255,.14));box-shadow:inset 0 0 0 1px rgba(255,255,255,.18)}
+@keyframes gsegIn{from{opacity:0;transform:scaleY(.2)}to{opacity:1;transform:none}}
+.gcount{position:absolute;top:-1px;left:0;font-size:8.5px;color:#d9f99d;white-space:nowrap;transform:translateY(-100%)}
+.glabel{font-size:9px;color:var(--dim);white-space:nowrap;margin-left:4px}
+.orow{display:flex;align-items:baseline;gap:8px;padding:1px 4px;border-radius:6px;font-size:11px;line-height:1.55;animation:orowIn .34s cubic-bezier(.34,1.3,.64,1) backwards}
+@keyframes orowIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.orow .sl-n{color:rgba(94,234,212,.5);min-width:16px;text-align:right;flex:0 0 auto;user-select:none;font-size:10px}
+.orow .sl-tx{min-width:0;word-break:break-word;white-space:pre-wrap;color:#d7f5ef}
+.orow.moved .sl-n{color:#a3e635}
+.orow .from{font-size:8.5px;color:rgba(255,255,255,.34);flex:0 0 auto;white-space:nowrap}
+.orow.dup{background:rgba(163,230,53,.09);box-shadow:inset 2px 0 0 #a3e635}
+.orow.dup .sl-tx{color:#ecfccb}
+.grp-badge{font-size:8.5px;font-weight:700;color:#365314;background:#bef264;border-radius:99px;padding:0 6px;flex:0 0 auto;align-self:center}
+.more-note{font-size:9.5px;color:var(--dim);padding:3px 4px 1px;opacity:.85}
+.stream-body{max-height:172px;overflow-y:auto;padding:6px 6px 7px;scrollbar-width:thin;min-width:0}
+.stream-body::-webkit-scrollbar{width:7px}
+.stream-body::-webkit-scrollbar-thumb{background:rgba(255,255,255,.13);border-radius:99px}
+.sl{display:flex;align-items:baseline;gap:8px;padding:2px 6px 2px 4px;border-radius:7px;font-size:11px;line-height:1.5;animation:slIn .3s ease-out backwards}
+@keyframes slIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.sl .sl-n{color:rgba(164,144,127,.4);min-width:16px;text-align:right;flex:0 0 auto;user-select:none;font-size:10px}
+.sl .sl-tx{color:#99f6e4;min-width:0;word-break:break-word;white-space:pre-wrap}
+.sl.changed{background:rgba(163,230,53,.07);box-shadow:inset 0 0 0 1px rgba(163,230,53,.22)}
+.sl .was{color:rgba(251,113,133,.8);text-decoration:line-through;text-decoration-color:rgba(251,113,133,.5)}
+.sl .arrow{color:var(--mark);font-size:10px;flex:0 0 auto}
+.sl .now{color:#d9f99d;background:rgba(163,230,53,.2);border-radius:4px;padding:0 4px;box-shadow:inset 0 -2px 0 rgba(163,230,53,.3);animation:nowPop .5s cubic-bezier(.34,1.56,.64,1)}
+@keyframes nowPop{0%{background:rgba(163,230,53,.85);color:#04211d;box-shadow:0 0 0 4px rgba(163,230,53,.3)}100%{background:rgba(163,230,53,.2);color:#d9f99d;box-shadow:inset 0 -2px 0 rgba(163,230,53,.3)}}
+.sl.gone{background:rgba(251,113,133,.07);box-shadow:inset 0 0 0 1px rgba(251,113,133,.2)}
+.sl.gone .sl-tx{color:rgba(251,113,133,.6);text-decoration:line-through}
+.sl .del{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#fda4af;flex:0 0 auto}
+.stream-none{font-size:10.5px;color:var(--dim);padding:6px 8px 4px;display:block;line-height:1.5}
+.stream-bar{position:absolute;left:0;right:0;height:26px;pointer-events:none;z-index:2;background:linear-gradient(180deg,transparent,rgba(20,184,166,.26) 50%,transparent);border-top:1px solid rgba(20,184,166,.5);border-bottom:1px solid rgba(20,184,166,.5);animation:streamSweep .8s cubic-bezier(.45,.05,.55,.95) forwards}
+@keyframes streamSweep{0%{top:-26px;opacity:0}15%{opacity:1}85%{opacity:1}100%{top:100%;opacity:0}}
+
+/* ============ TERMINAL ============ */
+.term{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:12px 13px;border-radius:12px;background:rgba(0,0,0,.36);border:1px solid rgba(255,255,255,.055);font-size:12.5px;line-height:1.7;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.16) transparent;-webkit-overflow-scrolling:touch;min-width:0}
+.term::-webkit-scrollbar{width:8px}
+.term::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:99px}
+.line{white-space:pre-wrap;word-break:break-word;animation:lineIn .22s ease-out}
+@keyframes lineIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+.line .p{color:#5eead4}
+.line .c{color:#f2fdfa;font-weight:600}
+.line.err{color:var(--err)}
+.line .d{color:#5eead4;font-weight:600}
+.line .f{color:#cbd5e1}
+.line .hl{color:#5eead4;font-weight:700}
+.line .ok{color:#86efac}
+.line .warn{color:#bef264}
+.line .dim{color:var(--dim)}
+.line .code{color:#d9f99d;background:rgba(163,230,53,.11);padding:1px 7px;border-radius:6px;border:1px solid rgba(163,230,53,.2)}
+.tip-line{margin-top:4px;padding:6px 10px;border-radius:8px;background:rgba(20,184,166,.09);border-left:3px solid rgba(20,184,166,.5);color:#5eead4;font-size:12px}
+.tip-line.danger{background:rgba(251,113,133,.09);border-left-color:rgba(251,113,133,.6);color:#fda4af}
+.tip-line.good{background:rgba(74,222,128,.09);border-left-color:rgba(74,222,128,.5);color:#99f6e4}
+mark{background:rgba(163,230,53,.26);color:#d9f99d;font-weight:600;border-radius:4px;padding:0 3px;box-shadow:inset 0 -2px 0 rgba(163,230,53,.35)}
+del{color:rgba(251,113,133,.75);text-decoration:line-through}
+ins{color:#d9f99d;background:rgba(163,230,53,.2);border-radius:4px;padding:0 3px;text-decoration:none;box-shadow:inset 0 -2px 0 rgba(163,230,53,.3)}
+.chips{display:flex;gap:7px;overflow-x:auto;min-width:0;max-width:100%;padding:10px 1px 2px;scrollbar-width:none;-ms-overflow-style:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{font:inherit;font-size:11.5px;white-space:nowrap;cursor:pointer;padding:6px 11px;border-radius:9px;color:#5eead4;background:rgba(20,184,166,.1);border:1px solid rgba(20,184,166,.26);transition:.18s;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.chip:hover{background:rgba(20,184,166,.22);color:#ccfbf1;transform:translateY(-1px);box-shadow:0 6px 16px -12px rgba(20,184,166,.9)}
+.chip:active{transform:translateY(0) scale(.96)}
+
+/* ---- dry run ---- */
+.preview{display:flex;align-items:center;gap:8px;margin-top:9px;padding:8px 10px;border-radius:12px;background:rgba(0,0,0,.34);border:1px dashed rgba(255,255,255,.13);min-height:40px;transition:border-color .25s,background .25s;min-width:0}
+.preview.ok{border-style:solid;border-color:rgba(74,222,128,.4);background:rgba(74,222,128,.05)}
+.preview.warn{border-style:solid;border-color:rgba(163,230,53,.45);background:rgba(163,230,53,.05)}
+.preview.bad{border-style:solid;border-color:rgba(251,113,133,.45);background:rgba(251,113,133,.05)}
+.pv-label{font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);font-weight:700;flex:0 0 auto}
+.pv-body{flex:1;min-width:0;display:flex;align-items:center;gap:7px;flex-wrap:wrap;font-size:11.5px;color:var(--dim)}
+.pv-verdict{font-size:9px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;padding:2px 7px;border-radius:99px;white-space:nowrap;animation:pop .28s cubic-bezier(.34,1.56,.64,1)}
+@keyframes pop{from{opacity:0;transform:scale(.8) translateY(3px)}to{opacity:1;transform:none}}
+.pv-verdict.ok{color:#86efac;background:rgba(74,222,128,.16);border:1px solid rgba(74,222,128,.32)}
+.pv-verdict.warn{color:#d9f99d;background:rgba(163,230,53,.16);border:1px solid rgba(163,230,53,.34)}
+.pv-verdict.bad{color:#fda4af;background:rgba(251,113,133,.16);border:1px solid rgba(251,113,133,.34)}
+.pv-msg{color:var(--dim);line-height:1.4;max-width:100%;max-height:2.9em;overflow:hidden}
+.pv-body code{color:#d9f99d;background:rgba(163,230,53,.12);padding:1px 6px;border-radius:5px;border:1px solid rgba(163,230,53,.2)}
+.preview.bad .pv-msg{color:#fda4af}
+.input-row{display:flex;align-items:center;gap:8px;margin-top:9px;padding:9px 10px;border-radius:12px;background:rgba(0,0,0,.4);border:1px solid rgba(20,184,166,.28);transition:border-color .2s,box-shadow .2s;min-width:0}
+.input-row:focus-within{border-color:rgba(20,184,166,.75);box-shadow:0 0 0 3px rgba(20,184,166,.14)}
+.input-row.shake{animation:shake .4s}
+@keyframes shake{10%,90%{transform:translateX(-2px)}20%,80%{transform:translateX(4px)}30%,50%,70%{transform:translateX(-6px)}40%,60%{transform:translateX(6px)}}
+.ps1{font-size:12.5px;color:#5eead4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:0 1 auto}
+.ps1 .ps-user{color:#5eead4;opacity:.85}
+.input-row input{flex:1;min-width:40px;background:none;border:none;outline:none;color:#f1f5f9;font:inherit;font-size:13px;padding:0}
+.input-row input::placeholder{color:rgba(164,144,127,.5)}
+.send{font:inherit;font-size:14px;line-height:1;cursor:pointer;width:30px;height:30px;flex:0 0 auto;border-radius:9px;color:#04211d;background:linear-gradient(150deg,#99f6e4,#14b8a6);border:none;display:grid;place-items:center;transition:.18s;box-shadow:0 4px 14px -4px rgba(20,184,166,.85)}
+.send:hover{transform:translateY(-1px);box-shadow:0 6px 18px -4px rgba(20,184,166,1)}
+.send:active{transform:scale(.93)}
+.confetti{position:fixed;top:-14px;width:8px;height:13px;border-radius:2px;z-index:999;pointer-events:none;animation:fall linear forwards}
+@keyframes fall{to{transform:translateY(108vh) rotate(var(--rot,360deg));opacity:.05}}
+
+/* ============ RESPONSIVE ============ */
+@media (min-width:901px){
+  html,body{height:100%;min-height:0;overflow:hidden}
+  .app{height:100%;min-height:0;overflow:hidden}
+  .term{flex:1 1 auto}
+}
+@media (max-width:900px){
+  .app{padding:12px 12px calc(16px + env(safe-area-inset-bottom));gap:10px}
+  /* minmax(0,1fr), not 1fr: a plain 1fr is minmax(auto,1fr) and its auto
+     minimum lets a wide child (the chip row) drag the column past the viewport */
+  main{grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto;flex:none}
+  .panel{min-height:0;min-width:0}
+  .panel-head,.crumbs,.term,.input-row,.preview,.stream,.chips{min-width:0}
+  .tree-scroll{max-height:24vh}
+  .term{min-height:140px;max-height:24vh}
+  .brand h1{font-size:15px}
+  .brand p{display:none}
+  .mission{padding:9px 11px}
+  .mission-text{font-size:12.5px;line-height:1.35}
+  .ps1 .ps-user{display:none}
+  .sub{display:none}
+  .stream-body{max-height:132px}
+  /* touch-sized controls: these are 19-27px tall with the desktop padding */
+  .hint-btn,.reset-btn{min-height:34px;display:inline-flex;align-items:center;padding:8px 12px}
+  .chip{min-height:34px;display:inline-flex;align-items:center;padding:8px 12px}
+}
+@media (max-width:560px){
+  .logo{width:34px;height:34px;font-size:12px}
+  .badge{font-size:9px;padding:4px 7px}
+  .mission{gap:8px;padding:8px 10px}
+  .hint-btn{padding:5px 9px;font-size:10.5px}
+  .label{font-size:13px}
+  .tree-inner{padding-right:48px}
+  .tree-scroll{max-height:22vh}
+  .term{max-height:23vh}
+  .crumbs{min-height:34px;padding:6px 8px}
+  .kb{display:none}
+  .preview{padding:7px 9px;min-height:36px}
+  .pv-verdict{font-size:8.5px}
+  .stream-body{max-height:118px}
+  .sl{font-size:10.5px}
+  .chip{font-size:11px}
+  /* 9.5px text on a 3px pad makes a 19px target — too small for a thumb */
+  .hint-btn{min-height:34px}
+  .orderbar{min-height:50px}
+}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}}
+/* any touch device, whatever the width: keep every control thumb-sized */
+@media (hover:none),(pointer:coarse){
+  .hint-btn,.reset-btn,.chip{min-height:34px;display:inline-flex;align-items:center;padding:8px 12px}
+  .crumb{padding-top:9px;padding-bottom:9px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <div class="logo">s/u</div>
+      <div>
+        <h1>Learn <code>sort</code> &amp; <code>uniq</code></h1>
+        <p>Put lines in order, then collapse the ones that repeat.</p>
+      </div>
+    </div>
+    <div class="steps" id="steps"></div>
+    <button class="reset-btn" id="resetBtn" type="button" title="Rebuild the filesystem from scratch">↺ reset</button>
+  </header>
+
+  <div class="mission" id="mission">
+    <span class="badge" id="missionBadge">Mission 1 / 6</span>
+    <span class="mission-text" id="missionText">Loading…</span>
+    <button class="hint-btn" id="hintBtn" type="button">Hint</button>
+  </div>
+  <div class="hint" id="hintBar"></div>
+
+  <main>
+    <section class="panel">
+      <div class="panel-head">
+        <span class="title">Filesystem map</span>
+        <span class="counter zero" id="counter"><b id="countNum">0</b> rows</span>
+      </div>
+      <div class="crumbs" id="crumbs"></div>
+      <div class="tree-scroll" id="treeScroll">
+        <div class="tree" id="tree"></div>
+      </div>
+      <div class="stream" id="stream">
+        <div class="stream-top">
+          <span class="stream-label">Order</span>
+          <span class="stream-file" id="streamFile">no file chosen</span>
+          <span class="stream-stat" id="streamStat"></span>
+        </div>
+        <div class="orderbar" id="orderBar"><span class="orderbar-hint">each dot slides from where the line was to where it landed</span></div>
+        <div class="stream-body" id="streamBody"><span class="stream-none">Tap a file on the map, then run <b>sort</b> or <b>uniq</b>. The order bar shows how every line moved.</span></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <span class="dots"><i></i><i></i><i></i></span>
+        <span class="title">Terminal</span>
+      </div>
+      <div class="term" id="term" aria-live="polite"></div>
+      <div class="chips" id="chips"></div>
+      <div class="preview" id="preview">
+        <span class="pv-label">Dry run</span>
+        <span class="pv-body" id="pvBody"><span class="pv-msg">type sort or uniq to see what would change</span></span>
+      </div>
+      <form class="input-row" id="form" autocomplete="off">
+        <span class="ps1"><span class="ps-user">you@linux:</span><span id="psPath">~</span>$</span>
+        <input id="cmd" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="type sort…">
+        <button class="send" type="submit" aria-label="Run command">↵</button>
+      </form>
+    </section>
+  </main>
+</div>
+
+<script>
+/* ==================================================================
+   1. FILESYSTEM MODEL
+   ================================================================== */
+let uid = 0;
+let clock = 1700000000000;
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const mk = (name, type = 'dir', extra = {}) => ({
+  id: ++uid, name, type,
+  children: type === 'dir' ? [] : null,
+  parent: null,
+  size: type === 'dir' ? 4096 : 1,
+  mtime: clock++,
+  content: type === 'file' ? [] : null,
+  born: false,
+  ...extra
+});
+
+let ROOT, HOME, data, docs, logs, config, etcDir, tmpDir;
+let roles, orders, servers, accessLog, appConf, guide, notes, todo, hostname, hosts, scratch;
+
+function bytesOf(lines) {
+  if (!lines || !lines.length) return 0;
+  return lines.join('\n').length + 1;
+}
+function file(name, lines, extra) {
+  return mk(name, 'file', {content: lines.slice(), size: bytesOf(lines), mtime: clock++, ...extra});
+}
+
+function buildModel() {
+  uid = 0;
+  clock = 1700000000000;
+  ROOT = mk('/');
+  const homeDir = mk('home');
+  HOME = mk('you');
+  data = mk('data');
+  docs = mk('docs');
+  logs = mk('logs');
+  config = mk('config');
+  etcDir = mk('etc');
+  tmpDir = mk('tmp');
+
+  /* deliberately unsorted, with repeats that are not next to each other */
+  roles = file('roles.txt', [
+    'admin',
+    'viewer',
+    'admin',
+    'editor',
+    'viewer',
+    'admin'
+  ]);
+  orders = file('orders.csv', [
+    'A-1003,luzon,7,3200',
+    'A-1001,visayas,21,9800',
+    'A-1002,luzon,3,1500',
+    'A-1010,mindanao,11,5100',
+    'A-1004,luzon,15,7200',
+    'A-1007,mindanao,4,1900',
+    'A-1005,luzon,9,4100'
+  ]);
+  servers = file('servers.txt', [
+    'web-01',
+    'db-01',
+    'web-01',
+    'cache-01',
+    'db-01',
+    'web-01'
+  ]);
+  accessLog = file('access.log', [
+    'GET /index.html 200',
+    'GET /index.html 200',
+    'POST /login 200',
+    'GET /index.html 200',
+    'POST /login 200',
+    'GET /reports 500'
+  ]);
+  appConf = file('app.conf', [
+    'workers=4',
+    'host=localhost',
+    'port=8080',
+    'timeout=30',
+    'retries=3',
+    'cache=true',
+    'log_level=info'
+  ]);
+  guide = file('guide.txt', [
+    'sort puts lines in order.',
+    'uniq collapses neighbours that match.',
+    'Sort first, then uniq, and repeats become counts.',
+    'That is the whole trick.'
+  ]);
+  notes = file('notes.txt', ['Shopping list', '- coffee', '- tea', '- coffee']);
+  todo = file('todo.md', ['- [ ] teach sort -o', '- [x] draw the order map']);
+  hostname = file('hostname', ['web-01']);
+  hosts = file('hosts', ['127.0.0.1 localhost', '::1 localhost ip6-localhost']);
+  scratch = file('scratch.txt', ['b', 'a', 'c', 'a']);
+
+  ROOT.children = [homeDir, etcDir, tmpDir];
+  homeDir.children = [HOME];
+  HOME.children = [data, config, docs, logs, notes, todo];
+  data.children = [orders, roles, servers];
+  config.children = [appConf];
+  docs.children = [guide];
+  logs.children = [accessLog];
+  etcDir.children = [hostname, hosts];
+  tmpDir.children = [scratch];
+
+  link(ROOT, null);
+  sortModel(ROOT);
+  return HOME;
+}
+function link(node, parent) {
+  node.parent = parent;
+  if (node.children) node.children.forEach(child => link(child, node));
+}
+function byName(left, right) {
+  if (left.type !== right.type) return left.type === 'dir' ? -1 : 1;
+  return left.name.localeCompare(right.name, undefined, {numeric: true, sensitivity: 'base'});
+}
+function sortModel(node) {
+  if (!node.children) return;
+  node.children.sort(byName);
+  node.children.forEach(sortModel);
+}
+
+/* ---- path helpers ---- */
+function absPath(node) {
+  if (node === ROOT) return '/';
+  const parts = [];
+  let current = node;
+  while (current && current !== ROOT) { parts.unshift(current.name); current = current.parent; }
+  return '/' + parts.join('/');
+}
+function prettyPath(node) {
+  const path = absPath(node);
+  if (path === '/home/you') return '~';
+  if (path.startsWith('/home/you/')) return '~' + path.slice(9);
+  return path;
+}
+function sizeLabel(node) {
+  if (node.type === 'dir') return '';
+  const bytes = node.size || 0;
+  if (bytes >= 1048576) return (bytes / 1048576).toFixed(1) + ' MB';
+  if (bytes >= 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return bytes + ' B';
+}
+function resolvePath(spec, base) {
+  let current, rest = spec;
+  if (spec === '~' || spec === '~/') { current = HOME; rest = ''; }
+  else if (spec.startsWith('~/')) { current = HOME; rest = spec.slice(1); }
+  else if (spec.startsWith('/')) { current = ROOT; rest = spec.slice(1); }
+  else current = base;
+  if (current.type !== 'dir') return {error: 'notdir', name: spec};
+  const segments = rest.split('/').filter(Boolean);
+  for (let i = 0; i < segments.length; i++) {
+    const segment = segments[i];
+    if (segment === '.') continue;
+    if (segment === '..') { current = current.parent || ROOT; continue; }
+    const next = current.children.find(child => child.name === segment);
+    if (!next) return {error: 'missing', name: segment};
+    if (next.type !== 'dir' && i < segments.length - 1) return {error: 'notdir', name: segment};
+    current = next;
+  }
+  return {node: current};
+}
+const esc = value => String(value).replace(/[&<>"']/g, char =>
+  ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+
+/* ==================================================================
+   2. DOM REFS
+   ================================================================== */
+const treeEl = document.getElementById('tree');
+const treeScroll = document.getElementById('treeScroll');
+const crumbs = document.getElementById('crumbs');
+const term = document.getElementById('term');
+const chips = document.getElementById('chips');
+const form = document.getElementById('form');
+const input = document.getElementById('cmd');
+const psPath = document.getElementById('psPath');
+const stepsEl = document.getElementById('steps');
+const missionEl = document.getElementById('mission');
+const missionBadge = document.getElementById('missionBadge');
+const missionText = document.getElementById('missionText');
+const hintBtn = document.getElementById('hintBtn');
+const hintBar = document.getElementById('hintBar');
+const resetBtn = document.getElementById('resetBtn');
+const counterEl = document.getElementById('counter');
+const countNum = document.getElementById('countNum');
+const streamEl = document.getElementById('stream');
+const streamFile = document.getElementById('streamFile');
+const streamStat = document.getElementById('streamStat');
+const streamBody = document.getElementById('streamBody');
+const orderBar = document.getElementById('orderBar');
+const previewEl = document.getElementById('preview');
+const pvBody = document.getElementById('pvBody');
+
+let treeInner, avatarEl;
+let cwd = null, prevDir = null, target = null, lastContext = null;
+const rowOf = new Map();
+const nodeOfRow = new Map();
+const wrapOf = new Map();
+
+/* ==================================================================
+   3. TREE RENDERING
+   ================================================================== */
+function paintRow(node) {
+  const row = rowOf.get(node);
+  if (!row) return;
+  row.querySelector('.label').textContent = node === ROOT ? '/' : node.name;
+  const kb = row.querySelector('.kb');
+  if (kb) kb.textContent = sizeLabel(node);
+}
+function buildRow(node) {
+  const wrap = document.createElement('div');
+  wrap.className = 'node';
+  const row = document.createElement('div');
+  row.className = 'row' + (node.type === 'file' ? ' file' : '');
+
+  const icon = document.createElement('span');
+  icon.className = 'icon ' + node.type;
+  const label = document.createElement('span');
+  label.className = 'label';
+  label.textContent = node === ROOT ? '/' : node.name;
+  row.append(icon, label);
+
+  if (node === HOME) {
+    const tag = document.createElement('span');
+    tag.className = 'tag';
+    tag.textContent = '~';
+    row.appendChild(tag);
+  }
+  if (node.born) {
+    const badge = document.createElement('span');
+    badge.className = 'badge-new';
+    badge.textContent = 'new';
+    row.appendChild(badge);
+  }
+  if (/\.bak$/.test(node.name)) {
+    const badge = document.createElement('span');
+    badge.className = 'badge-bak';
+    badge.textContent = 'backup';
+    row.appendChild(badge);
+  }
+  if (node.type === 'file') {
+    const size = document.createElement('span');
+    size.className = 'kb';
+    size.textContent = sizeLabel(node);
+    row.appendChild(size);
+  }
+
+  row.addEventListener('click', () => onNodeClick(node));
+  wrap.appendChild(row);
+  wrapOf.set(node, wrap);
+  rowOf.set(node, row);
+  nodeOfRow.set(row, node);
+  if (node.children && node.children.length) {
+    const kids = document.createElement('div');
+    kids.className = 'children';
+    childrenOf.set(node, kids);
+    node.children.forEach(child => kids.appendChild(buildRow(child)));
+    wrap.appendChild(kids);
+  }
+  return wrap;
+}
+const childrenOf = new Map();
+function buildTree() {
+  treeEl.innerHTML = '';
+  rowOf.clear();
+  nodeOfRow.clear();
+  wrapOf.clear();
+  childrenOf.clear();
+  treeInner = document.createElement('div');
+  treeInner.className = 'tree-inner';
+  treeInner.appendChild(buildRow(ROOT));
+  avatarEl = document.createElement('div');
+  avatarEl.className = 'avatar';
+  avatarEl.innerHTML = '<div class="body"><span class="eyes"><i></i><i></i></span></div>';
+  treeInner.appendChild(avatarEl);
+  treeEl.appendChild(treeInner);
+}
+function childrenContainer(node) {
+  let kids = childrenOf.get(node);
+  if (!kids) {
+    kids = document.createElement('div');
+    kids.className = 'children';
+    wrapOf.get(node).appendChild(kids);
+    childrenOf.set(node, kids);
+  }
+  return kids;
+}
+function insertChild(parent, child) {
+  child.parent = parent;
+  parent.children.push(child);
+  childrenContainer(parent).appendChild(buildRow(child));
+  sortSiblings(parent);
+  paintRow(child);
+  return child;
+}
+function sortSiblings(parent) {
+  const kids = childrenOf.get(parent);
+  if (!kids) return;
+  parent.children.slice().sort(byName).forEach(child => kids.appendChild(wrapOf.get(child)));
+}
+function removeNode(node) {
+  const wrap = wrapOf.get(node);
+  if (wrap) wrap.remove();
+  rowOf.delete(node);
+  wrapOf.delete(node);
+  childrenOf.delete(node);
+  const index = node.parent ? node.parent.children.indexOf(node) : -1;
+  if (index > -1) node.parent.children.splice(index, 1);
+  paintRow(node.parent);
+}
+
+function updateRowStates() {
+  rowOf.forEach((row, node) => {
+    row.classList.toggle('current', node === cwd);
+    row.classList.toggle('target', node === target);
+  });
+}
+function innerRect() { return treeInner.getBoundingClientRect(); }
+function relRect(el) {
+  const box = el.getBoundingClientRect();
+  const base = innerRect();
+  return {left: box.left - base.left, top: box.top - base.top, width: box.width, height: box.height};
+}
+function scrollToRow(node) {
+  const row = rowOf.get(node);
+  if (!row) return;
+  const box = relRect(row);
+  const target2 = box.top + box.height / 2 - treeScroll.clientHeight / 2;
+  treeScroll.scrollTo({top: Math.max(0, target2), behavior: 'smooth'});
+}
+function ping(x, y) {
+  const element = document.createElement('div');
+  element.className = 'ping';
+  element.style.transform = 'translate(' + x + 'px,' + y + 'px)';
+  element.innerHTML = '<i></i>';
+  treeInner.appendChild(element);
+  setTimeout(() => element.remove(), 760);
+}
+function floatMark(node, text, kind) {
+  const row = rowOf.get(node);
+  if (!row) return;
+  const mark = document.createElement('span');
+  mark.className = 'mark' + (kind ? ' ' + kind : '');
+  mark.textContent = text;
+  row.appendChild(mark);
+  setTimeout(() => mark.remove(), 1150);
+}
+function flashRow(node, className) {
+  const row = rowOf.get(node);
+  if (!row) return;
+  row.classList.remove('edited', 'born', 'reverted');
+  void row.offsetWidth;
+  row.classList.add(className);
+  setTimeout(() => row.classList.remove(className), 1000);
+}
+
+/* ---- avatar ---- */
+function avatarTarget(node) {
+  const row = rowOf.get(node);
+  const label = row.querySelector('.label');
+  const base = innerRect();
+  const box = label.getBoundingClientRect();
+  return {x: box.right - base.left + 9, y: box.top - base.top + box.height / 2 - 15};
+}
+function moveAvatar(animate, node) {
+  const t = avatarTarget(node || cwd);
+  if (!animate) avatarEl.style.transition = 'none';
+  avatarEl.style.transform = 'translate(' + t.x + 'px, ' + t.y + 'px)';
+  if (!animate) requestAnimationFrame(() => { avatarEl.style.transition = ''; });
+}
+function animateAvatarTo(node) {
+  moveAvatar(true, node);
+  avatarEl.classList.remove('hop');
+  void avatarEl.offsetWidth;
+  avatarEl.classList.add('hop');
+  const box = relRect(rowOf.get(node));
+  ping(box.left + 16, box.top + box.height / 2);
+  scrollToRow(node);
+}
+
+/* ==================================================================
+   4. THE SORT / UNIQ ENGINE
+   ================================================================== */
+/* -k2, -k2,2, -k2.3, -k2.3,4 and flags glued on the end: -k3,3nr */
+function parseKey(spec) {
+  const key = {startField: 1, startChar: 1, endField: null, endChar: null, n: false, r: false, f: false, b: false};
+  const m = /^(\d+)?(?:\.(\d+))?(?:,(\d+)?(?:\.(\d+))?)?([a-zA-Z]*)$/.exec(spec);
+  if (!m) return {error: "invalid key spec '" + spec + "'"};
+  if (m[1]) key.startField = +m[1];
+  if (m[2]) key.startChar = +m[2];
+  if (m[3]) key.endField = +m[3];
+  if (m[4]) key.endChar = +m[4];
+  const letters = m[5] || '';
+  for (const flag of letters) {
+    if (flag === 'n') key.n = true;
+    else if (flag === 'r') key.r = true;
+    else if (flag === 'f') key.f = true;
+    else if (flag === 'b') key.b = true;
+    else return {error: "invalid key flag '" + flag + "'"};
+  }
+  if (!m[1] && !letters) return {error: "invalid key spec '" + spec + "'"};
+  return {key};
+}
+function fieldSpans(line, delim) {
+  if (delim) {
+    const spans = [];
+    let from = 0;
+    for (let i = 0; i <= line.length; i++) {
+      if (i === line.length || line[i] === delim) { spans.push([from, i]); from = i + 1; }
+    }
+    return spans;
+  }
+  const spans = [];
+  const re = /[^\s]+/g;
+  let hit;
+  while ((hit = re.exec(line)) !== null) spans.push([hit.index, hit.index + hit[0].length]);
+  return spans;
+}
+function keyOf(line, key, delim) {
+  const spans = fieldSpans(line, delim);
+  if (!spans.length) return line;
+  const startSpan = spans[Math.min(key.startField, spans.length) - 1];
+  if (!startSpan) return '';
+  let from = key.startChar > 1 ? startSpan[0] + key.startChar - 1 : startSpan[0];
+  if (!key.b) while (from < line.length && /\s/.test(line[from]) && from < startSpan[0] + key.startChar - 1) from++;
+  if (from > line.length) from = line.length;
+  if (key.endField === null && key.endChar === null) return line.slice(from);
+  const endSpan = spans[Math.min(key.endField || spans.length, spans.length) - 1];
+  if (!endSpan) return line.slice(from);
+  let to = key.endChar ? endSpan[0] + key.endChar : endSpan[1];
+  if (to > line.length) to = line.length;
+  return line.slice(from, Math.max(from, to));
+}
+function numeric(text) {
+  const cleaned = String(text).trim().replace(/,/g, '');
+  const hit = /^[+-]?\d*\.?\d+/.exec(cleaned);
+  return hit ? parseFloat(hit[0]) : 0;
+}
+function compareKeys(a, b, key) {
+  let left = a, right = b;
+  if (key.f) { left = left.toLowerCase(); right = right.toLowerCase(); }
+  if (key.n) {
+    const x = numeric(left), y = numeric(right);
+    if (x !== y) return x < y ? -1 : 1;
+  } else if (left < right) return -1;
+  else if (left > right) return 1;
+  return 0;
+}
+/* sort: stable in the order real sort resolves ties (whole line, then original order) */
+function sortLines(lines, opts) {
+  const key = opts.key || {startField: 1, startChar: 1, endField: null, endChar: null, n: false, r: false, f: false, b: false};
+  const rows = lines.map((text, index) => ({text, from: index + 1, key: keyOf(text, key, opts.delim)}));
+  rows.sort((a, b) => {
+    let order = compareKeys(a.key, b.key, key);
+    /* ties fall back to the whole line, case sensitively, exactly like the real sort */
+    if (order === 0) order = a.text < b.text ? -1 : a.text > b.text ? 1 : 0;
+    if (order === 0) order = a.from - b.from;
+    if (key.r || opts.reverse) order = order === 0 ? 0 : -order;
+    return order;
+  });
+  if (opts.unique) {
+    const kept = [];
+    rows.forEach((row, index) => {
+      const same = index > 0 && compareKeys(row.key, rows[index - 1].key, key) === 0;
+      if (!same) kept.push(row);
+    });
+    return kept;
+  }
+  return rows;
+}
+/* uniq: only neighbours can collapse, exactly like the real uniq */
+function uniqLines(lines, flags) {
+  const skipFields = (flags && flags.f) || 0;
+  const skipChars = (flags && flags.s) || 0;
+  const keyOfLine = text => {
+    let body = text;
+    if (skipFields) {
+      const spans = fieldSpans(body, null);
+      let cut = 0;
+      for (let n = 0; n < skipFields && n < spans.length; n++) cut = spans[n][1];
+      body = body.slice(cut);
+      body = body.slice(0, body.length - body.replace(/^\s+/, '').length).length ? body.replace(/^\s+/, '') : body;
+    }
+    if (skipChars) body = body.slice(skipChars);
+    return flags && flags.i ? body.toLowerCase() : body;
+  };
+  const groups = [];
+  lines.forEach((text, index) => {
+    const key = keyOfLine(text);
+    const last = groups[groups.length - 1];
+    if (last && last.key === key) { last.count++; last.lastAt = index + 1; }
+    else groups.push({text, key, count: 1, firstAt: index + 1, lastAt: index + 1});
+  });
+  let kept = groups;
+  if (flags && flags.d) kept = groups.filter(g => g.count > 1);
+  if (flags && flags.u) kept = groups.filter(g => g.count === 1);
+  return {groups, kept, removed: groups.length - kept.length, collapsed: groups.reduce((n, g) => n + g.count - 1, 0)};
+}
+
+function parseSort(args) {
+  const flags = {n: false, r: false, u: false, f: false, b: false, c: false, delim: '', out: '', keys: []};
+  const files = [];
+  let i = 0;
+  while (i < args.length) {
+    const arg = args[i];
+    if (arg === '--') { i++; break; }
+    if (arg === '--help') return {help: true};
+    if (arg.startsWith('--')) {
+      const key = arg.slice(2).split('=')[0];
+      if (key === 'numeric') { flags.n = true; i++; continue; }
+      if (key === 'reverse') { flags.r = true; i++; continue; }
+      if (key === 'unique') { flags.u = true; i++; continue; }
+      if (key === 'fold-case') { flags.f = true; i++; continue; }
+      if (key === 'ignore-blanks') { flags.b = true; i++; continue; }
+      if (key === 'check') { flags.c = true; i++; continue; }
+      if (key === 'field-separator' || key === 'delimiter') {
+        if (arg.indexOf('=') > -1) flags.delim = arg.slice(arg.indexOf('=') + 1);
+        else { i++; flags.delim = args[i]; }
+        i++;
+        continue;
+      }
+      if (key === 'output') { i++; flags.out = args[i]; i++; continue; }
+      if (key === 'key') { i++; flags.keys.push(args[i]); i++; continue; }
+      return {error: "unrecognized option '" + arg + "'"};
+    }
+    if (arg.startsWith('-') && arg.length > 1) {
+      for (let k = 1; k < arg.length; k++) {
+        const f = arg[k];
+        if (f === 't' || f === 'k' || f === 'o') {
+          const inline = arg.slice(k + 1);
+          let value = inline;
+          if (!value) { value = args[i + 1]; if (value === undefined) return {error: "option requires an argument -- '" + f + "'"}; i++; }
+          if (f === 't') flags.delim = value;
+          if (f === 'k') flags.keys.push(value);
+          if (f === 'o') flags.out = value;
+          k = arg.length;
+          continue;
+        }
+        if (f === 'n') { flags.n = true; continue; }
+        if (f === 'r') { flags.r = true; continue; }
+        if (f === 'u') { flags.u = true; continue; }
+        if (f === 'f') { flags.f = true; continue; }
+        if (f === 'b') { flags.b = true; continue; }
+        if (f === 'c') { flags.c = true; continue; }
+        return {error: "invalid option -- '" + f + "'", tip: 'sort understands <code>-n</code>, <code>-r</code>, <code>-u</code>, <code>-f</code>, <code>-b</code>, <code>-c</code>, <code>-t</code>, <code>-k</code> and <code>-o</code> in this lab.'};
+      }
+      i++;
+      continue;
+    }
+    files.push(arg);
+    i++;
+  }
+  const keys = [];
+  for (const spec of flags.keys) {
+    const parsed = parseKey(spec);
+    if (parsed.error) return {error: parsed.error, tip: 'A key looks like <code>-k2</code>, <code>-k2,2</code> or <code>-k2.3,2.7</code>.'};
+    keys.push(parsed.key);
+  }
+  if (flags.delim !== '' && [...flags.delim].length !== 1) {
+    return {error: 'multi-character tab', tip: 'The -t delimiter must be a single character, like <code>-t,</code> or <code>-t:</code>.'};
+  }
+  if (!files.length && !flags.c) return {error: 'no input file specified', tip: 'Name a file: <code>sort ~/data/roles.txt</code>'};
+  return {keys, keySpecs: flags.keys.slice(), delim: flags.delim, reverse: flags.r, unique: flags.u, fold: flags.f, blanks: flags.b, numeric: flags.n, check: flags.c, out: flags.out, files};
+}
+/* sort -n on its own still sorts the key numerically */
+function effectiveKey(parsed) {
+  const base = parsed.keys[0] || {startField: 1, startChar: 1, endField: null, endChar: null, n: false, r: false, f: false, b: false};
+  return Object.assign({}, base, {
+    n: base.n || !!parsed.numeric,
+    f: base.f || !!parsed.fold,
+    b: base.b || !!parsed.blanks
+  });
+}
+
+function parseUniq(args) {
+  const flags = {c: false, d: false, u: false, i: false, f: 0, s: 0};
+  const files = [];
+  let i = 0;
+  while (i < args.length) {
+    const arg = args[i];
+    if (arg === '--') { i++; break; }
+    if (arg === '--help') return {help: true};
+    if (arg.startsWith('--')) {
+      const key = arg.slice(2).split('=')[0];
+      const names = {count: 'c', 'all-repeated': 'd', 'only-repeated': 'd', 'only-unique': 'u', 'ignore-case': 'i', fields: 'f', chars: 's'};
+      if (!(key in names)) return {error: "unrecognized option '" + arg + "'"};
+      const slot = names[key];
+      if (slot === 'c' || slot === 'd' || slot === 'u' || slot === 'i') flags[slot] = true;
+      else {
+        const inline = arg.indexOf('=') > -1 ? arg.slice(arg.indexOf('=') + 1) : args[++i];
+        if (inline === undefined) return {error: 'option requires an argument -- \'--' + key + '\''};
+        flags[slot] = parseInt(inline, 10);
+        if (!Number.isFinite(flags[slot]) || flags[slot] < 0) return {error: "invalid number after '" + key + "'"};
+      }
+      i++;
+      continue;
+    }
+    if (arg.startsWith('-') && arg.length > 1) {
+      for (let k = 1; k < arg.length; k++) {
+        const f = arg[k];
+        if (f === 'f' || f === 's') {
+          const inline = arg.slice(k + 1);
+          let value = inline;
+          if (!value) { value = args[i + 1]; if (value === undefined) return {error: "option requires an argument -- '" + f + "'"}; i++; }
+          const num = parseInt(value, 10);
+          if (!Number.isFinite(num) || num < 0) return {error: "invalid number of '" + (f === 'f' ? 'fields' : 'chars') + "': '" + value + "'"};
+          flags[f] = num;
+          k = arg.length;
+          continue;
+        }
+        if (f === 'c' || f === 'd' || f === 'u' || f === 'i') { flags[f] = true; continue; }
+        return {error: "invalid option -- '" + f + "'", tip: 'uniq understands <code>-c</code>, <code>-d</code>, <code>-u</code>, <code>-i</code>, <code>-f</code> and <code>-s</code> in this lab.'};
+      }
+      i++;
+      continue;
+    }
+    files.push(arg);
+    i++;
+  }
+  if (!files.length) return {error: 'no input file specified', tip: 'Name a file: <code>uniq -c ~/data/roles.sorted</code>'};
+  return {flags, files};
+}
+
+/* ==================================================================
+   5. TERMINAL
+   ================================================================== */
+function log(html, className) {
+  const line = document.createElement('div');
+  line.className = 'line' + (className ? ' ' + className : '');
+  line.innerHTML = html;
+  term.appendChild(line);
+  term.scrollTop = term.scrollHeight;
+}
+function focusInput() {
+  try { input.focus({preventScroll: true}); } catch (error) { input.focus(); }
+}
+function shakeInput() {
+  form.classList.remove('shake');
+  void form.offsetWidth;
+  form.classList.add('shake');
+}
+function tip(html, kind) {
+  log('<span class="tip-line' + (kind ? ' ' + kind : '') + '">' + html + '</span>', 'tip-line-wrap');
+}
+
+/* ==================================================================
+   6. THE STREAM VIEW
+   ================================================================== */
+let counterToken = 0;
+function updateCounter(n) {
+  const token = ++counterToken;
+  const from = Math.max(0, parseInt(countNum.textContent, 10) || 0);
+  countNum.textContent = String(n);
+  counterEl.classList.toggle('zero', n === 0);
+  counterEl.classList.remove('pop');
+  void counterEl.offsetWidth;
+  counterEl.classList.add('pop');
+  if (reduceMotion || from === n) return;
+  const t0 = performance.now(), dur = 440;
+  (function step(t) {
+    if (token !== counterToken) return;
+    const p = Math.max(0, Math.min(1, (t - t0) / dur));
+    if (p > 0) {
+      const e = 1 - Math.pow(1 - p, 3);
+      countNum.textContent = String(Math.max(0, Math.round(from + (n - from) * e)));
+    }
+    if (p < 1) requestAnimationFrame(step);
+    else countNum.textContent = String(n);
+  })(t0);
+}
+
+function renderOrder(node, result, opts) {
+  streamBody.innerHTML = '';
+  streamEl.classList.toggle('active', !!node && !!result);
+  streamFile.textContent = node ? prettyPath(node) : 'no file chosen';
+  orderBar.innerHTML = '<span class="orderbar-hint">each dot slides from where the line was to where it landed</span>';
+  if (!node) {
+    streamStat.textContent = '';
+    streamBody.innerHTML = '<span class="stream-none">Tap a file on the map, then run <b>sort</b> or <b>uniq</b>. The order bar shows how every line moved.</span>';
+    return;
+  }
+  if (!result) {
+    streamStat.textContent = node.content.length + ' lines · ' + sizeLabel(node);
+    node.content.forEach((text, index) => {
+      streamBody.appendChild(plainRow(index + 1, text, index * 20));
+    });
+    return;
+  }
+  const options = opts || {};
+  if (result.kind === 'sort') renderSortResult(node, result, options);
+  else renderUniqResult(node, result, options);
+}
+function plainRow(n, text, delay) {
+  const row = document.createElement('div');
+  row.className = 'orow';
+  row.style.animationDelay = Math.min(delay || 0, 240) + 'ms';
+  row.innerHTML = '<span class="sl-n">' + n + '</span><span class="sl-tx">' + (esc(text) || '<span class="dim">(empty line)</span>') + '</span>';
+  return row;
+}
+
+/* ---- sort: a permutation strip showing every line travel to its new slot ---- */
+function renderSortResult(node, result, options) {
+  const rows = result.rows;
+  const total = node.content.length;
+  const moved = rows.filter((row, index) => row.from !== index + 1).length;
+  const what = result.keySpec ? 'by ' + result.keySpec : 'alphabetically';
+  streamStat.textContent = rows.length + ' of ' + total + ' rows · ' + what +
+    (result.reverse ? ' · reversed' : '') +
+    (result.fold ? ' · case folded' : '') +
+    (result.numeric ? ' · numeric' : '') +
+    (result.unique ? ' · duplicates dropped' : '') +
+    (moved ? ' · ' + moved + ' moved' : ' · already in order') +
+    (options.wrote ? ' · written to ' + esc(options.wrote) : '') +
+    (options.moreFiles ? ' · +' + options.moreFiles + ' more file' + (options.moreFiles === 1 ? '' : 's') : '');
+  drawOrderMap(rows, total);
+  const cap = rows.length > 16 ? 16 : rows.length;
+  rows.slice(0, cap).forEach((row, index) => {
+    const el = document.createElement('div');
+    const movedRow = row.from !== index + 1;
+    el.className = 'orow' + (movedRow ? ' moved' : '');
+    el.style.animationDelay = Math.min(index * 26, 300) + 'ms';
+    el.innerHTML = '<span class="sl-n">' + (index + 1) + '</span><span class="sl-tx">' + (esc(row.text) || '<span class="dim">(empty line)</span>') + '</span>' +
+      (movedRow ? '<span class="from">was #' + row.from + '</span>' : '');
+    streamBody.appendChild(el);
+  });
+  if (rows.length > cap) {
+    const note = document.createElement('div');
+    note.className = 'more-note';
+    note.textContent = '+ ' + (rows.length - cap) + ' more row' + (rows.length - cap === 1 ? '' : 's');
+    streamBody.appendChild(note);
+  }
+}
+function drawOrderMap(rows, total) {
+  if (reduceMotion || !rows.length) {
+    orderBar.innerHTML = '<span class="orderbar-hint">' + rows.length + ' row' + (rows.length === 1 ? '' : 's') + '</span>';
+    return;
+  }
+  const n = Math.max(rows.length, total, 1);
+  const at = i => ((i + 0.5) / n) * 100;
+  let html = '<div class="omap"><div class="omap-rail">';
+  rows.forEach((row, index) => {
+    const x1 = at(Math.min(row.from - 1, n - 1));
+    const x2 = at(Math.min(index, n - 1));
+    const same = Math.abs(x1 - x2) < 0.05;
+    const left = Math.min(x1, x2);
+    const width = Math.max(0.4, Math.abs(x1 - x2));
+    const delay = Math.min(index * 22, 260);
+    /* fan the chords over four lanes so a long move is easy to follow */
+    const y = 4 + (index % 4) * 6;
+    html += '<span class="omap-line' + (same ? ' same' : '') + '" style="left:' + left.toFixed(2) + '%;width:' + width.toFixed(2) + '%;top:' + y + 'px;animation-delay:' + delay + 'ms"></span>';
+    html += '<span class="omap-from" style="left:' + x1.toFixed(2) + '%;top:' + (y - 2) + 'px"></span>';
+    html += '<span class="omap-to" style="left:' + x2.toFixed(2) + '%;top:' + (y - 3) + 'px;animation-delay:' + Math.min(index * 22 + 60, 300) + 'ms"></span>';
+  });
+  html += '</div><div class="omap-foot">';
+  for (let i = 0; i < n; i++) {
+    const on = rows.some((row, index) => index === i);
+    html += '<span class="omap-slot' + (on ? ' on' : '') + '" style="left:' + at(i).toFixed(2) + '%"></span>';
+  }
+  html += '<span class="omap-cap">old → new</span></div></div>';
+  orderBar.innerHTML = html;
+}
+
+/* ---- uniq: neighbouring duplicates fold into one counted group ---- */
+function renderUniqResult(node, result, options) {
+  const kept = result.kept;
+  const total = node.content.length;
+  streamStat.textContent = kept.length + ' row' + (kept.length === 1 ? '' : 's') + ' from ' + total +
+    (result.collapsed ? ' · ' + result.collapsed + ' collapsed' : ' · nothing collapsed') +
+    (options.count ? ' · counted' : '') +
+    (options.onlyRepeated ? ' · repeats only' : '') +
+    (options.onlyUnique ? ' · uniques only' : '') +
+    (options.ignoreCase ? ' · case folded' : '') +
+    (options.moreFiles ? ' · +' + options.moreFiles + ' more file' + (options.moreFiles === 1 ? '' : 's') : '');
+  drawGroupBar(result.groups, total);
+  const cap = kept.length > 16 ? 16 : kept.length;
+  kept.slice(0, cap).forEach((group, index) => {
+    const el = document.createElement('div');
+    el.className = 'orow' + (group.count > 1 ? ' dup' : '');
+    el.style.animationDelay = Math.min(index * 30, 300) + 'ms';
+    el.innerHTML = '<span class="sl-n">' + (index + 1) + '</span>' +
+      (options.count ? '<span class="grp-badge">×' + group.count + '</span>' : '') +
+      '<span class="sl-tx">' + (esc(group.text) || '<span class="dim">(empty line)</span>') + '</span>' +
+      (group.count > 1 && !options.count ? '<span class="from">×' + group.count + '</span>' : '');
+    streamBody.appendChild(el);
+  });
+  if (kept.length > cap) {
+    const note = document.createElement('div');
+    note.className = 'more-note';
+    note.textContent = '+ ' + (kept.length - cap) + ' more row' + (kept.length - cap === 1 ? '' : 's');
+    streamBody.appendChild(note);
+  }
+}
+function drawGroupBar(groups, total) {
+  if (reduceMotion || !groups.length) {
+    orderBar.innerHTML = '<span class="orderbar-hint">no groups</span>';
+    return;
+  }
+  let html = '<div class="gbar">';
+  groups.forEach((group, index) => {
+    const pct = (group.count / total) * 100;
+    html += '<span class="gseg' + (group.count === 1 ? ' one' : '') + '" style="width:' + pct.toFixed(2) + '%;animation-delay:' + Math.min(index * 40, 280) + 'ms" title="' + esc(group.text) + ' ×' + group.count + '">' +
+      (group.count > 1 ? '<span class="gcount">×' + group.count + '</span>' : '') + '</span>';
+  });
+  html += '<span class="glabel">' + groups.length + ' group' + (groups.length === 1 ? '' : 's') + ' from ' + total + ' lines</span></div>';
+  orderBar.innerHTML = html;
+}
+function streamSweep() {
+  if (reduceMotion) return;
+  const bar = document.createElement('div');
+  bar.className = 'stream-bar';
+  streamBody.parentElement.style.position = 'relative';
+  streamBody.parentElement.appendChild(bar);
+  setTimeout(() => bar.remove(), 860);
+}
+
+/* ==================================================================
+   7. COMMANDS
+   ================================================================== */
+let history = [], historyIndex = -1;
+function tokenize(line) {
+  return line.match(/(?:[^\s"']+|"[^"]*"|'[^']*')+/g) || [];
+}
+function stripQuotes(token) {
+  if ((token[0] === '"' && token[token.length - 1] === '"') || (token[0] === "'" && token[token.length - 1] === "'")) return token.slice(1, -1);
+  return token;
+}
+function execute(raw) {
+  const line = raw.trim();
+  if (!line) return;
+  history.push(line);
+  historyIndex = -1;
+  log('<span class="p">you@linux:' + esc(prettyPath(cwd)) + '$</span> <span class="c">' + esc(line) + '</span>');
+  if (line === 'clear') { term.innerHTML = ''; return; }
+  if (line === 'help' || line === '--help') { showHelp(); return; }
+  const parts = tokenize(line);
+  const command = parts[0];
+  const args = parts.slice(1).map(stripQuotes);
+  if (command === 'sort') doSort(args);
+  else if (command === 'uniq') doUniq(args);
+  else if (command === 'ls') doLs(args);
+  else if (command === 'pwd') doPwd();
+  else if (command === 'cat') doCat(args);
+  else if (command === 'cd') doCd(args);
+  else {
+    log('bash: ' + esc(command) + ': command not found', 'err');
+    log('<span class="dim">This playground is learning <b>sort</b> and <b>uniq</b>. Type <b>help</b> for the command list.</span>');
+    shakeInput();
+  }
+}
+
+function readTargets(names, command) {
+  const out = [];
+  for (const spec of names) {
+    const found = resolvePath(spec, cwd);
+    if (found.error || !found.node || found.node.type !== 'file') {
+      const why = found.error === 'missing' || !found.node ? 'No such file or directory' : 'Is a directory';
+      log(command + ": " + esc(spec) + ": " + why, 'err');
+      tip(why === 'No such file or directory' ? 'Run <b>ls</b> to see the exact names here.' : command + ' reads <b>files</b>. Point it at a file, not a folder.', 'danger');
+      shakeInput();
+      return null;
+    }
+    out.push(found.node);
+  }
+  return out;
+}
+
+function doSort(args) {
+  const parsed = parseSort(args);
+  if (parsed.help) { showSortHelp(); return; }
+  if (parsed.error) {
+    log('sort: ' + esc(parsed.error), 'err');
+    if (parsed.tip) tip(parsed.tip, 'danger');
+    shakeInput();
+    return;
+  }
+  if (parsed.check) {
+    const nodes = readTargets(parsed.files, 'sort');
+    if (!nodes) return;
+    const key = effectiveKey(parsed);
+    let clean = true, node = null, at = 0, line = '';
+    for (const candidate of nodes) {
+      /* compare each line with the one before it, in the order the file already has */
+      for (let i = 1; i < candidate.content.length; i++) {
+        const before = keyOf(candidate.content[i - 1], key, parsed.delim);
+        const now = keyOf(candidate.content[i], key, parsed.delim);
+        const order = parsed.reverse ? compareKeys(now, before, key) : compareKeys(before, now, key);
+        if (order > 0) { clean = false; node = candidate; at = i + 1; line = candidate.content[i]; break; }
+      }
+      if (!clean) break;
+    }
+    if (clean) log('<span class="ok">sort: ' + esc(nodes.map(n => n.name).join(', ')) + ' is already sorted</span>');
+    else {
+      log('sort: ' + esc(node.name) + ':' + at + ': disorder: ' + esc(line), 'err');
+      tip('Line ' + at + ' should come <b>before</b> line ' + (at - 1) + '. That is the disorder <b>sort -c</b> complains about.', 'danger');
+      shakeInput();
+    }
+    return;
+  }
+  const nodes = readTargets(parsed.files, 'sort');
+  if (!nodes) return;
+  const lines = nodes.reduce((all, node) => all.concat(node.content), []);
+  const key = parsed.keys.length || parsed.numeric || parsed.fold || parsed.blanks ? effectiveKey(parsed) : null;
+  const rows = sortLines(lines, {key, delim: parsed.delim, reverse: parsed.reverse, unique: parsed.unique, fold: parsed.fold, blanks: parsed.blanks});
+
+  let wrote = null;
+  if (parsed.out) {
+    const found = resolvePath(parsed.out, cwd);
+    if (found.error && found.error !== 'missing') {
+      log('sort: cannot write to ' + esc(parsed.out) + ': Not a directory', 'err');
+      shakeInput();
+      return;
+    }
+    if (found.error === 'notdir' || (found.node && found.node.type === 'dir')) {
+      log('sort: cannot write to ' + esc(parsed.out) + ': Is a directory', 'err');
+      shakeInput();
+      return;
+    }
+    if (found.node) {
+      found.node.content = rows.map(row => row.text);
+      found.node.size = bytesOf(found.node.content);
+      found.node.mtime = clock++;
+      paintRow(found.node);
+      flashRow(found.node, 'edited');
+      floatMark(found.node, 'sorted');
+      wrote = found.node;
+    } else {
+      const parentPath = parsed.out.slice(0, parsed.out.lastIndexOf('/')) || '.';
+      const parent = resolvePath(parentPath, cwd);
+      if (parent.error || !parent.node || parent.node.type !== 'dir') {
+        log('sort: cannot write to ' + esc(parsed.out) + ': No such file or directory', 'err');
+        shakeInput();
+        return;
+      }
+      const created = file(parsed.out.slice(parsed.out.lastIndexOf('/') + 1), rows.map(row => row.text), {born: true});
+      insertChild(parent.node, created);
+      flashRow(created, 'born');
+      floatMark(created, 'sorted');
+      const box = relRect(rowOf.get(created));
+      ping(box.left + 16, box.top + box.height / 2);
+      wrote = created;
+    }
+    target = wrote;
+  } else {
+    target = nodes[0];
+  }
+
+  const first = {kind: 'sort', rows, keySpec: parsed.keySpecs.join(' '), reverse: parsed.reverse, fold: parsed.fold, numeric: !!(key && key.n), unique: parsed.unique};
+  renderOrder(wrote || nodes[0], first, {wrote: wrote ? prettyPath(wrote) : '', moreFiles: nodes.length - 1});
+  streamSweep();
+  updateCounter(rows.length);
+  if (!wrote) rows.forEach(row => log(esc(row.text)));
+
+  const what = key ? 'sorted by ' + parsed.keySpecs.join(' ') : 'sorted alphabetically';
+  log('<span class="dim">' + what + (parsed.reverse ? ', reversed' : '') + (parsed.fold ? ', case folded' : '') +
+    (parsed.unique ? ', duplicates dropped' : '') + ' · ' + nodes.length + ' file' + (nodes.length === 1 ? '' : 's') +
+    (wrote ? ' · written to ' + esc(prettyPath(wrote)) + ' (sort printed nothing, like the real thing)' : '') + '</span>');
+  if (!wrote) tip('sort only prints. Add <b>-o FILE</b> to write the sorted result to the map — then sort stays quiet.', '');
+
+  lastContext = {
+    command: 'sort',
+    keySpec: parsed.keySpecs.join(' '),
+    key: key,
+    delim: parsed.delim,
+    reverse: parsed.reverse,
+    unique: parsed.unique,
+    fold: parsed.fold,
+    check: false,
+    wrote: wrote ? prettyPath(wrote) : '',
+    files: parsed.files.slice(),
+    fileCount: nodes.length,
+    node: wrote || nodes[0],
+    rows: rows.length,
+    moved: rows.filter((row, index) => row.from !== index + 1).length,
+    inputLines: lines.length
+  };
+  recordEvidence(lastContext);
+  updateRowStates();
+  scrollToRow(wrote || nodes[0]);
+  moveAvatar(false, wrote || nodes[0]);
+  checkMission();
+  renderChips();
+}
+
+function doUniq(args) {
+  const parsed = parseUniq(args);
+  if (parsed.help) { showUniqHelp(); return; }
+  if (parsed.error) {
+    log('uniq: ' + esc(parsed.error), 'err');
+    if (parsed.tip) tip(parsed.tip, 'danger');
+    shakeInput();
+    return;
+  }
+  const nodes = readTargets(parsed.files, 'uniq');
+  if (!nodes) return;
+  const flags = parsed.flags;
+  const lines = nodes.reduce((all, node) => all.concat(node.content), []);
+  const result = uniqLines(lines, flags);
+  const first = {kind: 'uniq', groups: result.groups, kept: result.kept, collapsed: result.collapsed};
+
+  target = nodes[0];
+  renderOrder(nodes[0], first, {
+    count: flags.c, onlyRepeated: flags.d, onlyUnique: flags.u, ignoreCase: flags.i, moreFiles: nodes.length - 1
+  });
+  streamSweep();
+  updateCounter(result.kept.length);
+  result.kept.forEach(group => {
+    if (flags.c) log('<span class="c">' + String(group.count).padStart(7, ' ') + '</span> ' + esc(group.text));
+    else log(esc(group.text));
+  });
+
+  if (!result.collapsed) {
+    log('<span class="dim">nothing collapsed — uniq only merges lines that sit next to each other.</span>');
+    tip('Sort the file first (<code>sort -o FILE FILE</code>), then uniq can see the repeats side by side.', '');
+  } else {
+    log('<span class="dim">' + result.kept.length + ' of ' + lines.length + ' rows · ' + result.collapsed + ' collapsed' +
+      (flags.c ? ' · counted' : '') + '</span>');
+  }
+
+  lastContext = {
+    command: 'uniq',
+    count: flags.c,
+    onlyRepeated: flags.d,
+    onlyUnique: flags.u,
+    ignoreCase: flags.i,
+    skipFields: flags.f,
+    skipChars: flags.s,
+    files: parsed.files.slice(),
+    fileCount: nodes.length,
+    node: nodes[0],
+    rows: result.kept.length,
+    collapsed: result.collapsed,
+    groups: result.groups.length,
+    inputLines: lines.length
+  };
+  recordEvidence(lastContext);
+  updateRowStates();
+  scrollToRow(nodes[0]);
+  moveAvatar(false, nodes[0]);
+  checkMission();
+  renderChips();
+}
+
+function showSortHelp() {
+  log('<span class="ok">sort — put the lines of a file in order</span>');
+  log('  <span class="hl">sort FILE</span>                alphabetical, straight down the page');
+  log('  <span class="hl">sort -r FILE</span>              the other way round');
+  log('  <span class="hl">sort -n FILE</span>              read the lines as numbers');
+  log('  <span class="hl">sort -u FILE</span>              sorted, with repeats dropped');
+  log('  <span class="hl">sort -f FILE</span>              ignore upper and lower case');
+  log('  <span class="hl">sort -t, -k3 -n FILE</span>      sort by field 3, read as a number');
+  log('  <span class="hl">sort -t: -k2,2 FILE</span>       sort by field 2 only');
+  log('  <span class="hl">sort -k1.2 FILE</span>            sort from character 2 of the line');
+  log('  <span class="hl">sort -o OUT FILE</span>           write the sorted result to a file (it replaces it)');
+  log('  <span class="hl">sort -c FILE</span>              check whether it is sorted already');
+  log('');
+  log('<span class="dim">A key is <b>-k2</b>, <b>-k2,2</b> or <b>-k2.3,2.7</b>. Flags can ride along: <b>-k3,3nr</b>.</span>');
+}
+function showUniqHelp() {
+  log('<span class="ok">uniq — collapse the lines that repeat next to each other</span>');
+  log('  <span class="hl">uniq FILE</span>              one row per run of identical neighbours');
+  log('  <span class="hl">uniq -c FILE</span>            count each run in front of the line');
+  log('  <span class="hl">uniq -d FILE</span>            only the lines that appear twice or more');
+  log('  <span class="hl">uniq -u FILE</span>            only the lines that appear once');
+  log('  <span class="hl">uniq -i FILE</span>            treat <b>Admin</b> and <b>admin</b> as the same');
+  log('  <span class="hl">uniq -f 1 FILE</span>          ignore the first field when comparing');
+  log('  <span class="hl">uniq -s 2 FILE</span>          ignore the first 2 characters');
+  log('');
+  log('<span class="dim">uniq never sorts. It only looks at neighbours — sort the file first and the repeats line up.</span>');
+}
+
+
+
+function showHelp() {
+  log('<span class="ok">Commands you can try:</span>');
+  log('  <span class="hl">sort ~/data/roles.txt</span>        the star of this lab');
+  log('  <span class="hl">sort -o ~/data/out.txt FILE</span>  write the sorted result to the map');
+  log('  <span class="hl">sort --help / uniq --help</span>    every flag');
+  log('  <span class="hl">ls / ls -l / ls -a</span>            look around a folder');
+  log('  <span class="hl">pwd</span>                           where am I?');
+  log('  <span class="hl">cat FILE</span>                      read the file yourself');
+  log('  <span class="hl">cd PATH</span>                       move between folders');
+  log('  <span class="hl">clear</span>                         wipe the screen');
+}
+
+function doPwd() { log(esc(absPath(cwd))); }
+
+function doCd(args) {
+  if (args.length > 1) { log('bash: cd: too many arguments', 'err'); shakeInput(); return; }
+  const arg = args[0] === undefined ? '' : args[0];
+  let dest;
+  if (!arg) dest = HOME;
+  else if (arg === '-') {
+    if (!prevDir) { log('bash: cd: OLDPWD not set', 'err'); shakeInput(); return; }
+    dest = prevDir;
+  } else {
+    const result = resolvePath(arg, cwd);
+    if (result.error) {
+      log('bash: cd: ' + esc(arg) + ': ' + (result.error === 'missing' ? 'No such file or directory' : 'Not a directory'), 'err');
+      shakeInput();
+      return;
+    }
+    if (result.node.type !== 'dir') {
+      log('bash: cd: ' + esc(arg) + ': Not a directory', 'err');
+      tip('<b>' + esc(arg) + '</b> is a file — <b>cd</b> only walks into folders.');
+      shakeInput();
+      return;
+    }
+    dest = result.node;
+  }
+  if (dest === cwd) { log('<span class="ok">You are already in ' + esc(prettyPath(cwd)) + '.</span>'); return; }
+  prevDir = cwd;
+  cwd = dest;
+  target = null;
+  updateUI();
+  animateAvatarTo(cwd);
+  log('<span class="ok">Now in ' + esc(prettyPath(cwd)) + '</span>');
+}
+
+function parseLs(args) {
+  const flags = {a: false, l: false, t: false, r: false, one: false, h: false};
+  const paths = [];
+  let optionsEnded = false;
+  for (const arg of args) {
+    if (arg === '--help') return {help: true};
+    if (!optionsEnded && arg === '--') { optionsEnded = true; continue; }
+    if (!optionsEnded && arg.startsWith('--')) {
+      const names = {all: 'a', 'almost-all': 'a', long: 'l', 'time-sort': 't', reverse: 'r', oneline: 'one', 'human-readable': 'h'};
+      const key = arg.slice(2).split('=')[0];
+      if (!(key in names)) return {error: "unsupported option -- '" + arg.slice(2) + "'"};
+      flags[names[key]] = true;
+      continue;
+    }
+    if (!optionsEnded && arg.startsWith('-') && arg.length > 1) {
+      for (const flag of arg.slice(1)) {
+        if (flag === 'A') { flags.a = true; continue; }
+        if (flag === '1') { flags.one = true; continue; }
+        if (!(flag in flags)) return {error: "invalid option -- '" + flag + "'", tip: 'ls understands <code>-a</code>, <code>-A</code>, <code>-l</code>, <code>-h</code>, <code>-t</code>, <code>-r</code> and <code>-1</code>.'};
+        flags[flag] = true;
+      }
+      continue;
+    }
+    paths.push(arg);
+  }
+  if (paths.length > 1) return {error: 'this playground lists one path at a time'};
+  return {flags, path: paths[0] || '.'};
+}
+function lsMode(node) {
+  if (node.type === 'dir') return 'drwxr-xr-x';
+  if (node.type === 'link') return 'lrwxrwxrwx';
+  return node.name.startsWith('.') ? '-rw-------' : '-rw-r--r--';
+}
+function lsSizeText(node, human) {
+  if (node.type === 'dir') return human ? '4.0K' : '4096';
+  const bytes = node.size || 0;
+  if (!human) return String(bytes);
+  if (bytes >= 1048576) return (bytes / 1048576).toFixed(1) + 'M';
+  if (bytes >= 1024) return (bytes / 1024).toFixed(1) + 'K';
+  return bytes + 'B';
+}
+function doLs(args) {
+  const parsed = parseLs(args);
+  if (parsed.help) { showLsHelp(); return; }
+  if (parsed.error) { log('ls: ' + esc(parsed.error), 'err'); if (parsed.tip) tip(parsed.tip, 'danger'); shakeInput(); return; }
+  const result = resolvePath(parsed.path, cwd);
+  if (result.error) {
+    log("ls: cannot access '" + esc(parsed.path) + "': " + (result.error === 'missing' ? 'No such file or directory' : 'Not a directory'), 'err');
+    shakeInput();
+    return;
+  }
+  const node = result.node;
+  let entries = node.type === 'dir' ? node.children.slice() : [node];
+  if (node.type === 'dir' && !parsed.flags.a) entries = entries.filter(entry => !entry.name.startsWith('.'));
+  entries.sort(byName);
+  if (parsed.flags.t) entries.sort((left, right) => right.mtime - left.mtime);
+  if (parsed.flags.r) entries.reverse();
+  if (!entries.length) { log('<span class="dim">(empty)</span>'); return; }
+  const paint = entry => {
+    const kind = entry.name.startsWith('.') ? 'code' : entry.type === 'dir' ? 'd' : 'f';
+    const suffix = entry.type === 'dir' ? '/' : '';
+    return '<span class="' + kind + '">' + esc(entry.name + suffix) + '</span>';
+  };
+  if (parsed.flags.l) {
+    entries.forEach(entry => {
+      const date = new Date(entry.mtime).toLocaleDateString('en-US', {month: 'short', day: '2-digit'});
+      log(lsMode(entry) + '  you  you  ' + lsSizeText(entry, parsed.flags.h).padStart(6, ' ') + '  ' + date + '  ' + paint(entry));
+    });
+  } else if (parsed.flags.one) {
+    entries.forEach(entry => log(paint(entry)));
+  } else {
+    log(entries.map(paint).join('   '));
+  }
+  log('<span class="dim">' + entries.length + (entries.length === 1 ? ' entry' : ' entries') + ' in ' + esc(prettyPath(node)) + '</span>');
+}
+function showLsHelp() {
+  log('<span class="ok">ls — list what is here</span>');
+  log('  <span class="hl">ls</span>   <span class="hl">ls -l</span> long   <span class="hl">ls -a</span> hidden   <span class="hl">ls -1</span> one per line');
+  log('  <span class="hl">ls -h</span> readable sizes   <span class="hl">ls -t</span> newest   <span class="hl">ls -r</span> reversed   <span class="hl">ls PATH</span>');
+}
+
+function doCat(args) {
+  const names = args.filter(arg => !arg.startsWith('-'));
+  if (!names.length) { log('cat: missing file operand', 'err'); shakeInput(); return; }
+  const files = [];
+  for (const spec of names) {
+    const result = resolvePath(spec, cwd);
+    if (result.error || result.node.type !== 'file') {
+      log("cat: '" + esc(spec) + "': " + (result.error === 'missing' ? 'No such file or directory' : result.error === 'notdir' ? 'Not a directory' : 'Is a directory'), 'err');
+      shakeInput();
+      return;
+    }
+    files.push(result.node);
+  }
+  files.forEach((node, index) => {
+    if (files.length > 1) log('<span class="dim">── ' + esc(node.name) + ' ──</span>');
+    node.content.forEach((text, lineIndex) => {
+      log((args.includes('-n') ? '<span class="code">' + String(lineIndex + 1).padStart(3, ' ') + '</span> ' : '') + esc(text));
+    });
+    if (index < files.length - 1) log('');
+  });
+  target = files[0];
+  renderOrder(files[0], null, {});
+  updateRowStates();
+  scrollToRow(files[0]);
+  moveAvatar(false, files[0]);
+}
+
+function onNodeClick(node) {
+  if (node.type === 'file') {
+    if (target === node) {
+      target = null;
+    } else {
+      target = node;
+      input.value = "sed 's/old/new/g' " + (node.parent === cwd ? node.name : prettyPath(node)) + ' ';
+    }
+    renderOrder(target, null, {});
+    updateRowStates();
+    if (target) scrollToRow(target);
+    return;
+  }
+  if (target && node.type === 'dir') {
+    const spec = node.parent === cwd ? node.name : prettyPath(node);
+    execute("sed 's/old/new/g' " + spec + '/');
+    return;
+  }
+  if (node === cwd) {
+    log('<span class="dim">You are already here. Tap a file to load it into the stream.</span>');
+    return;
+  }
+  target = null;
+  renderOrder(null, null, {});
+  updateRowStates();
+  execute('cd ' + (node.parent === cwd ? node.name : prettyPath(node)));
+}
+
+/* ==================================================================
+   8. DRY RUN
+   ================================================================== */
+function renderPreview() {
+  const raw = input.value.trim();
+  previewEl.className = 'preview';
+  if (!raw) {
+    pvBody.innerHTML = '<span class="pv-msg">' + (target
+      ? 'aimed at ' + esc(target.name) + ' — finish the command to preview it'
+      : 'type sort or uniq to see what would change') + '</span>';
+    return;
+  }
+  const parts = tokenize(raw);
+  if (parts[0] !== 'sort' && parts[0] !== 'uniq') {
+    const label = parts[0] === 'ls' ? 'ls lists a folder — try it in the terminal.'
+      : parts[0] === 'cat' ? 'cat prints a file — read it before you reorder it.'
+      : parts[0] === 'pwd' ? 'pwd prints where you are standing.'
+      : parts[0] === 'cd' ? 'cd walks you between folders.'
+      : 'only sort and uniq are previewed here — this lab is about order.';
+    pvBody.innerHTML = '<span class="pv-msg">' + label + '</span>';
+    return;
+  }
+  const parsed = parts[0] === 'sort'
+    ? parseSort(parts.slice(1).map(stripQuotes))
+    : parseUniq(parts.slice(1).map(stripQuotes));
+  if (parsed.help) {
+    pvBody.innerHTML = parts[0] === 'sort'
+      ? '<span class="pv-msg">sort flags: <code>-n</code> numeric · <code>-r</code> reverse · <code>-u</code> unique · <code>-t</code> delimiter · <code>-k</code> key · <code>-o</code> output</span>'
+      : '<span class="pv-msg">uniq flags: <code>-c</code> count · <code>-d</code> repeats only · <code>-u</code> uniques only · <code>-i</code> ignore case</span>';
+    return;
+  }
+  if (parsed.error) {
+    previewEl.className = 'preview bad';
+    pvBody.innerHTML = '<span class="pv-verdict bad">blocked</span><span class="pv-msg">' + esc(parsed.error) + '</span>';
+    return;
+  }
+  if (!parsed.files.length) {
+    previewEl.className = 'preview bad';
+    pvBody.innerHTML = '<span class="pv-verdict bad">no file</span><span class="pv-msg">' + parts[0] + ' needs a file name in this lab</span>';
+    return;
+  }
+  const found = resolvePath(parsed.files[0], cwd);
+  if (found.error || !found.node || found.node.type !== 'file') {
+    previewEl.className = 'preview bad';
+    pvBody.innerHTML = '<span class="pv-verdict bad">no such file</span><span class="pv-msg">' + esc(parsed.files[0]) + ' is not a readable file here</span>';
+    return;
+  }
+  const node = found.node;
+  if (parts[0] === 'sort') {
+    const key = parsed.keys.length || parsed.numeric || parsed.fold || parsed.blanks ? effectiveKey(parsed) : null;
+    const rows = sortLines(node.content, {key, delim: parsed.delim, reverse: parsed.reverse, unique: parsed.unique, fold: parsed.fold});
+    const moved = rows.filter((row, index) => row.from !== index + 1).length;
+    previewEl.className = 'preview ok';
+    pvBody.innerHTML = '<span class="pv-verdict ' + (rows.length === node.content.length ? 'warn' : 'ok') + '">' + rows.length + ' rows</span>' +
+      '<span class="pv-verdict">' + moved + ' will move</span>' +
+      (parsed.out ? '<span class="pv-verdict warn">writes ' + esc(parsed.out) + '</span>' : '') +
+      '<span class="pv-msg">' + esc(prettyPath(node)) + ' · ' + node.content.length + ' lines in</span>';
+    return;
+  }
+  const flags = parsed.flags;
+  const result = uniqLines(node.content, flags);
+  previewEl.className = result.collapsed ? 'preview ok' : 'preview warn';
+  pvBody.innerHTML = '<span class="pv-verdict ' + (result.collapsed ? 'ok' : 'warn') + '">' + result.kept.length + ' rows</span>' +
+    '<span class="pv-verdict ' + (result.collapsed ? 'ok' : 'warn') + '">' + result.collapsed + ' collapse</span>' +
+    (result.collapsed ? '' : '<span class="pv-verdict warn">not sorted yet</span>') +
+    '<span class="pv-msg">' + esc(prettyPath(node)) + ' · uniq only merges neighbours</span>';
+}
+
+/* ==================================================================
+   9. MISSIONS
+   ================================================================== */
+const evidence = {sorted: false, reverse: false, key: false, wrote: false, counted: false, unique: false};
+function recordEvidence(ctx) {
+  if (ctx.command === 'sort') {
+    if (ctx.moved > 0 || ctx.unique) evidence.sorted = true;
+    if (ctx.reverse) evidence.reverse = true;
+    if (ctx.keySpec) evidence.key = true;
+    if (ctx.wrote) evidence.wrote = true;
+    if (ctx.unique) evidence.unique = true;
+  } else {
+    if (ctx.collapsed > 0) evidence.sorted = true;
+    if (ctx.count) evidence.counted = true;
+  }
+}
+const onFile = (ctx, name) => !!ctx && ctx.node && ctx.node.name === name;
+const missions = [
+  {text: 'Put <b>~/data/roles.txt</b> in alphabetical order. Watch the order bar show each line travelling.',
+   hint: 'sort with no flags sorts the whole line alphabetically: <code>sort ~/data/roles.txt</code>',
+   answer: 'sort ~/data/roles.txt',
+   check: c => evidence.sorted || (onFile(c, 'roles.txt') && c.command === 'sort' && !c.keySpec && c.moved > 0)},
+
+  {text: 'Now the same file, but <b>backwards</b>.',
+   hint: '<code>-r</code> reverses the order: <code>sort -r ~/data/roles.txt</code>',
+   answer: 'sort -r ~/data/roles.txt',
+   check: c => evidence.reverse || (onFile(c, 'roles.txt') && c.command === 'sort' && c.reverse)},
+
+  {text: 'Real sorting: <b>~/data/orders.csv</b> by the <b>units</b> column, smallest first. The rows are comma separated.',
+   hint: 'Name the separator and the key, and read the field as a number: <code>sort -t, -k3 -n ~/data/orders.csv</code>',
+   answer: 'sort -t, -k3 -n ~/data/orders.csv',
+   check: c => evidence.key || (onFile(c, 'orders.csv') && c.command === 'sort' && c.delim === ',' && c.key && c.key.n && c.key.startField === 3)},
+
+  {text: 'Make it <b>real</b>: write the sorted roles into a <b>new file</b> called <b>roles.sorted</b> in the same folder.',
+   hint: '<code>-o FILE</code> writes the result instead of printing it — a new file appears on the map: <code>sort -o ~/data/roles.sorted ~/data/roles.txt</code>',
+   answer: 'sort -o ~/data/roles.sorted ~/data/roles.txt',
+   check: c => evidence.wrote || (c && c.command === 'sort' && /roles\.sorted$/.test(c.wrote || ''))},
+
+  {text: 'Now that the repeats sit next to each other, <b>count</b> them with <b>uniq</b>.',
+   hint: 'uniq only merges neighbouring lines, so use the sorted file you just wrote: <code>uniq -c ~/data/roles.sorted</code>',
+   answer: 'uniq -c ~/data/roles.sorted',
+   check: c => evidence.counted || (c && c.command === 'uniq' && c.count && c.collapsed > 0)},
+
+  {text: 'Last one: drop the duplicates in a single step — sort <b>~/data/servers.txt</b> and keep only one of each.',
+   hint: '<code>sort -u</code> sorts and removes repeats in one go: <code>sort -u ~/data/servers.txt</code>',
+   answer: 'sort -u ~/data/servers.txt',
+   check: c => evidence.unique || (onFile(c, 'servers.txt') && c.command === 'sort' && c.unique && c.rows === 3 && c.inputLines === 6)}
+];
+const missionCount = missions.length;
+let missionIndex = 0, missionLocked = false;
+
+function renderMission() {
+  const mission = missions[Math.min(missionIndex, missionCount - 1)];
+  missionBadge.textContent = 'Mission ' + (missionIndex + 1) + ' / ' + missionCount;
+  missionText.innerHTML = mission.text;
+  hintBar.textContent = '';
+  hintBar.classList.remove('show');
+  renderChips();
+}
+function checkMission() {
+  if (missionLocked || missionIndex >= missionCount || !lastContext) return;
+  let passed = false;
+  try { passed = missions[missionIndex].check(lastContext); } catch (error) { passed = false; }
+  if (passed) completeMission();
+}
+function completeMission() {
+  missionLocked = true;
+  stepsEl.children[missionIndex].classList.add('done');
+  missionEl.classList.add('complete');
+  setTimeout(() => {
+    missionEl.classList.remove('complete');
+    missionIndex++;
+    missionLocked = false;
+    if (missionIndex >= missionCount) finishAll();
+    else { renderMission(); checkMission(); }
+  }, 950);
+}
+function finishAll() {
+  missionBadge.textContent = 'All done';
+  missionText.innerHTML = 'You can rewrite a whole file with one line of sed. Keep exploring!';
+  hintBtn.style.display = 'none';
+  hintBar.classList.remove('show');
+  confetti();
+  log('<span class="ok">All missions complete — nicely done!</span>');
+  log('<span class="dim">sort reorders, uniq collapses. Sorted input is what turns uniq into a duplicate counter.</span>');
+}
+function confetti() {
+  const colors = ['#14b8a6', '#a3e635', '#4ade80', '#5eead4', '#f472b6', '#fda4af'];
+  for (let i = 0; i < 55; i++) {
+    const piece = document.createElement('i');
+    piece.className = 'confetti';
+    piece.style.left = Math.random() * 100 + '%';
+    piece.style.background = colors[i % colors.length];
+    piece.style.animationDelay = (Math.random() * 0.45) + 's';
+    piece.style.animationDuration = (1.7 + Math.random() * 1.3) + 's';
+    piece.style.setProperty('--rot', (Math.random() * 900 - 450) + 'deg');
+    document.body.appendChild(piece);
+    setTimeout(() => piece.remove(), 3600);
+  }
+}
+
+/* ==================================================================
+   10. CHIPS + EVENTS
+   ================================================================== */
+function renderChips() {
+  chips.innerHTML = '';
+  const mission = missions[Math.min(missionIndex, missionCount - 1)];
+  const list = [];
+  if (mission && mission.answer) list.push(mission.answer);
+  list.push('sort ~/data/roles.txt', 'sort -t, -k3 -n ~/data/orders.csv', 'uniq -c ~/data/roles.sorted');
+  const essentials = ['ls', 'pwd', 'help'];
+  const seen = new Set();
+  list.filter(command => {
+    if (seen.has(command)) return false;
+    seen.add(command);
+    return true;
+  }).slice(0, 4).concat(essentials).forEach(command => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'chip';
+    button.textContent = command;
+    button.addEventListener('click', () => { input.value = ''; execute(command); focusInput(); });
+    chips.appendChild(button);
+  });
+}
+function updateUI() {
+  psPath.textContent = prettyPath(cwd);
+  updateRowStates();
+  renderCrumbs();
+  renderChips();
+  renderPreview();
+}
+function renderCrumbs() {
+  crumbs.innerHTML = '';
+  const path = prettyPath(cwd);
+  let parts;
+  if (path === '/') parts = ['/'];
+  else if (path.startsWith('~')) parts = ['/', 'home', 'you', ...path.slice(1).split('/').filter(Boolean)];
+  else parts = ['/', ...path.split('/').filter(Boolean)];
+  parts.forEach((part, index) => {
+    if (index) {
+      const separator = document.createElement('span');
+      separator.className = 'sep';
+      separator.textContent = '›';
+      crumbs.appendChild(separator);
+    }
+    const crumb = document.createElement('span');
+    crumb.className = 'crumb';
+    crumb.style.animationDelay = (index * 45) + 'ms';
+    crumb.textContent = part === 'you' ? '~' : part;
+    crumbs.appendChild(crumb);
+  });
+}
+
+hintBtn.addEventListener('click', () => {
+  if (hintBar.classList.contains('show')) { hintBar.classList.remove('show'); renderChips(); return; }
+  const mission = missions[Math.min(missionIndex, missionCount - 1)];
+  hintBar.innerHTML = mission.hint;
+  hintBar.classList.add('show');
+  renderChips();
+});
+form.addEventListener('submit', event => {
+  event.preventDefault();
+  const value = input.value;
+  input.value = '';
+  renderPreview();
+  execute(value);
+  focusInput();
+});
+input.addEventListener('input', renderPreview);
+input.addEventListener('keydown', event => {
+  if (event.key === 'ArrowUp') {
+    event.preventDefault();
+    if (historyIndex < history.length - 1) {
+      historyIndex++;
+      input.value = history[history.length - 1 - historyIndex];
+      input.setSelectionRange(input.value.length, input.value.length);
+      renderPreview();
+    }
+  } else if (event.key === 'ArrowDown') {
+    event.preventDefault();
+    if (historyIndex > 0) {
+      historyIndex--;
+      input.value = history[history.length - 1 - historyIndex];
+    } else {
+      historyIndex = -1;
+      input.value = '';
+    }
+    renderPreview();
+  } else if (event.key === 'Tab') {
+    event.preventDefault();
+    completeToken();
+  }
+});
+function completeToken() {
+  const value = input.value;
+  const tokens = value.split(/\s+/);
+  const last = tokens[tokens.length - 1] || '';
+  if (!last) return;
+  if (value.replace(/"/g, '').replace(/'/g, '').indexOf('s/') > -1 && last.indexOf('/') > -1) return;
+  const slash = last.lastIndexOf('/');
+  const dirPart = slash > -1 ? last.slice(0, slash + 1) : '';
+  const fragment = slash > -1 ? last.slice(slash + 1) : last;
+  let candidates = [];
+  if (fragment.startsWith('-') && tokens.length > 1) {
+    candidates = ['-n', '-r', '-u', '-f', '-c', '-t,', '-k1', '-k2,2', '-o', '-c', '-d', '-u', '-i'];
+  } else {
+    const result = resolvePath(dirPart || '.', cwd);
+    if (result.error || result.node.type !== 'dir') return;
+    candidates = result.node.children.map(child => child.name + (child.type === 'dir' ? '/' : ''));
+  }
+  const hits = candidates.filter(candidate => candidate.startsWith(fragment));
+  if (!hits.length) return;
+  if (hits.length === 1) {
+    const suffix = hits[0].endsWith('/') ? '' : ' ';
+    input.value = value.slice(0, value.length - last.length) + dirPart + hits[0] + suffix;
+    input.setSelectionRange(input.value.length, input.value.length);
+  } else {
+    log('<span class="dim">' + esc(hits.join('  ')) + '</span>');
+  }
+  renderPreview();
+}
+
+/* ==================================================================
+   11. RESET + BOOT
+   ================================================================== */
+function resetLab() {
+  buildModel();
+  buildTree();
+  cwd = HOME;
+  prevDir = null;
+  target = null;
+  lastContext = null;
+  history = [];
+  historyIndex = -1;
+  missionIndex = 0;
+  missionLocked = false;
+  Object.keys(evidence).forEach(key => { evidence[key] = false; });
+  term.innerHTML = '';
+  stepsEl.innerHTML = '';
+  missions.forEach(() => stepsEl.appendChild(document.createElement('i')));
+  hintBtn.style.display = '';
+  input.value = '';
+  countNum.textContent = '0';
+  orderBar.innerHTML = '<span class="orderbar-hint">each dot slides from where the line was to where it landed</span>';
+  counterToken++;
+  counterEl.classList.add('zero');
+  streamEl.className = 'stream';
+  requestAnimationFrame(() => {
+    moveAvatar(false);
+    updateUI();
+    renderMission();
+    renderOrder(null, null, {});
+    log('<span class="hl">Fresh filesystem.</span> Every mission is live again.');
+  });
+}
+resetBtn.addEventListener('click', () => {
+  resetLab();
+  resetBtn.classList.remove('spin');
+  void resetBtn.offsetWidth;
+  resetBtn.classList.add('spin');
+  setTimeout(() => resetBtn.classList.remove('spin'), 600);
+});
+window.addEventListener('resize', () => moveAvatar(false));
+
+HOME = buildModel();
+buildTree();
+stepsEl.innerHTML = '';
+missions.forEach(() => stepsEl.appendChild(document.createElement('i')));
+cwd = HOME;
+
+requestAnimationFrame(() => {
+  moveAvatar(false);
+  updateUI();
+  renderMission();
+  renderOrder(null, null, {});
+  log('<span class="hl">Welcome to the visual sort / uniq terminal.</span>');
+  log('<b>sort</b> rearranges the lines of a file. <b>uniq</b> then folds the ones that repeat next to each other.');
+  log('The order bar under the map draws where every line came from and where it landed.');
+  log('');
+  log('<span class="dim">Try this first:</span> <span class="code">sort ~/data/roles.txt</span> then <span class="code">uniq -c ~/data/roles.txt</span>');
+});
+
+if (!('ontouchstart' in window) && window.innerWidth > 900) setTimeout(focusInput, 400);
+</script>
+</body>
+</html>

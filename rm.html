@@ -1,0 +1,2065 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Learn `rm` — Visual Linux</title>
+<style>
+:root{
+  --bg:#0d0a0e;
+  --txt:#f6ecf0;
+  --dim:#a2949e;
+  --accent:#fb7185;
+  --accent2:#fb923c;
+  --safe:#4ade80;
+  --warn:#fbbf24;
+  --err:#fb7185;
+  --line:rgba(255,255,255,.11);
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;min-height:100dvh;font-family:var(--mono);color:var(--txt);background:var(--bg);overflow-x:hidden;-webkit-font-smoothing:antialiased}
+body::before{content:'';position:fixed;inset:0;z-index:-2;background:radial-gradient(900px 620px at 10% -12%,rgba(251,113,133,.17),transparent 62%),radial-gradient(820px 600px at 100% 2%,rgba(74,222,128,.09),transparent 60%),radial-gradient(760px 700px at 46% 118%,rgba(251,146,60,.11),transparent 63%),#0d0a0e}
+body::after{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;background-image:linear-gradient(rgba(255,255,255,.026) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.026) 1px,transparent 1px);background-size:46px 46px;-webkit-mask-image:radial-gradient(ellipse at 50% 0%,#000 14%,transparent 74%);mask-image:radial-gradient(ellipse at 50% 0%,#000 14%,transparent 74%)}
+.app{max-width:1320px;margin:0 auto;min-height:100dvh;display:flex;flex-direction:column;padding:14px 16px 16px;gap:11px}
+.top{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:11px}
+.logo{width:38px;height:38px;flex:0 0 auto;border-radius:11px;display:grid;place-items:center;font-size:16px;font-weight:800;letter-spacing:-.06em;color:#2b0710;background:linear-gradient(150deg,#fecdd3,#fb7185 45%,#e11d48);box-shadow:0 8px 22px -8px rgba(251,113,133,.9),inset 0 1px 0 rgba(255,255,255,.7);animation:logoPulse 3.2s ease-in-out infinite}
+@keyframes logoPulse{0%,100%{box-shadow:0 8px 22px -8px rgba(251,113,133,.9),inset 0 1px 0 rgba(255,255,255,.7)}50%{box-shadow:0 8px 32px -6px rgba(251,113,133,1),inset 0 1px 0 rgba(255,255,255,.7)}}
+.brand h1{margin:0;font-size:16px;letter-spacing:.01em;font-weight:700}
+.brand h1 code{color:#fecdd3;background:rgba(251,113,133,.16);padding:1px 7px;border-radius:6px;border:1px solid rgba(251,113,133,.32)}
+.brand p{margin:2px 0 0;font-size:11.5px;color:var(--dim)}
+.steps{display:flex;gap:7px;align-items:center}
+.steps i{width:9px;height:9px;border-radius:50%;display:block;background:rgba(255,255,255,.13);transition:all .45s cubic-bezier(.34,1.56,.64,1)}
+.steps i.done{background:var(--safe);box-shadow:0 0 0 4px rgba(74,222,128,.14),0 0 14px rgba(74,222,128,.7);transform:scale(1.15)}
+.reset-btn{font:inherit;font-size:10.5px;letter-spacing:.04em;color:var(--dim);cursor:pointer;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);padding:5px 10px;border-radius:9px;white-space:nowrap;transition:.2s;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.reset-btn:hover{color:var(--txt);background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.26)}
+.reset-btn:active{transform:scale(.95)}
+.reset-btn.spin{animation:resetSpin .55s cubic-bezier(.34,1.3,.64,1)}
+@keyframes resetSpin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+.mission{display:flex;align-items:center;gap:12px;padding:10px 13px;border-radius:14px;background:linear-gradient(90deg,rgba(251,113,133,.12),rgba(251,113,133,.02));border:1px solid rgba(251,113,133,.24);transition:background .35s,border-color .35s,transform .35s,box-shadow .35s}
+.mission.complete{background:linear-gradient(90deg,rgba(74,222,128,.24),rgba(74,222,128,.05));border-color:rgba(74,222,128,.55);transform:scale(1.012);box-shadow:0 0 30px -8px rgba(74,222,128,.5)}
+.badge{font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;padding:5px 9px;border-radius:999px;white-space:nowrap;color:#fecdd3;background:rgba(251,113,133,.17);border:1px solid rgba(251,113,133,.32);transition:all .3s}
+.mission.complete .badge{color:#86efac;background:rgba(74,222,128,.2);border-color:rgba(74,222,128,.45)}
+.mission-text{flex:1;font-size:13px;line-height:1.4;min-width:0}
+.mission-text b{color:#fecdd3}
+.mission.complete .mission-text b{color:#86efac}
+.hint-btn{font:inherit;font-size:11px;color:var(--dim);cursor:pointer;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);padding:6px 11px;border-radius:9px;white-space:nowrap;transition:.2s}
+.hint-btn:hover{color:var(--txt);background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.24)}
+.hint{max-height:0;overflow:hidden;opacity:0;font-size:12.5px;color:var(--dim);padding:0 14px;border-radius:12px;transition:max-height .3s ease,opacity .3s ease,padding .3s ease,background .3s}
+.hint.show{max-height:80px;opacity:1;padding:9px 14px;background:rgba(255,255,255,.035)}
+.hint code{color:#fde68a;background:rgba(251,191,36,.13);padding:1px 6px;border-radius:5px}
+main{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1.08fr) minmax(0,1fr);grid-template-rows:minmax(0,1fr);gap:13px}
+.panel{background:linear-gradient(180deg,rgba(255,255,255,.048),rgba(255,255,255,.014));border:1px solid rgba(255,255,255,.08);border-radius:17px;padding:12px;display:flex;flex-direction:column;min-height:0;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:0 22px 44px -24px rgba(0,0,0,.9),inset 0 1px 0 rgba(255,255,255,.055)}
+.panel-head{display:flex;align-items:center;gap:9px;padding:1px 4px 9px}
+.title{font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:var(--dim);font-weight:700}
+.sub{font-size:11px;color:rgba(162,148,158,.65);margin-left:auto}
+.dots{display:flex;gap:5px;margin-right:2px}
+.dots i{width:9px;height:9px;border-radius:50%;display:block}
+.dots i:nth-child(1){background:#fb7185}
+.dots i:nth-child(2){background:#fbbf24}
+.dots i:nth-child(3){background:#4ade80}
+
+/* ============ DELETION CARD ============ */
+.crumbs{display:flex;align-items:center;flex-wrap:wrap;gap:3px;padding:7px 9px;margin-bottom:8px;border-radius:11px;background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.055);min-height:37px}
+.crumb{font-size:12px;padding:3px 9px;border-radius:7px;background:rgba(251,113,133,.13);color:#fda4af;border:1px solid rgba(251,113,133,.22);animation:crumbIn .32s cubic-bezier(.34,1.56,.64,1) backwards}
+.crumb:last-child{color:#fde68a;background:rgba(251,191,36,.11);border-color:rgba(251,191,36,.26)}
+.crumb.gone{color:#fda4af;background:rgba(251,113,133,.1);border-color:rgba(251,113,133,.3);text-decoration:line-through}
+@keyframes crumbIn{from{opacity:0;transform:translateY(-5px) scale(.85)}to{opacity:1;transform:none}}
+.sep{color:rgba(162,148,158,.5);font-size:11px;padding:0 1px}
+.trash-card{position:relative;display:flex;flex-direction:column;gap:9px;padding:10px 11px 9px;margin-bottom:8px;border-radius:13px;background:linear-gradient(120deg,rgba(251,113,133,.11),rgba(74,222,128,.05) 52%,rgba(251,113,133,.08));border:1px solid rgba(251,113,133,.24);overflow:hidden;transition:background .35s,border-color .35s,box-shadow .35s,transform .35s}
+.trash-card::before{content:'';position:absolute;inset:0;pointer-events:none;background:linear-gradient(105deg,transparent 0%,rgba(255,255,255,.08) 45%,transparent 70%);transform:translateX(-110%);animation:laneShimmer 5.5s ease-in-out infinite}
+@keyframes laneShimmer{0%,55%{transform:translateX(-110%)}78%,100%{transform:translateX(110%)}}
+.trash-card.armed{border-color:rgba(251,113,133,.72);box-shadow:0 0 34px -14px rgba(251,113,133,.95)}
+.trash-card.falling{border-color:rgba(251,146,60,.75);box-shadow:0 0 34px -14px rgba(251,146,60,.95)}
+.trash-card.done{border-color:rgba(74,222,128,.55);box-shadow:0 0 34px -14px rgba(74,222,128,.8)}
+.trash-card.blocked{border-color:rgba(251,113,133,.62);box-shadow:0 0 30px -14px rgba(251,113,133,.8);animation:nudge .38s ease}
+@keyframes nudge{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+.trash-top{display:flex;align-items:center;justify-content:space-between;gap:8px;position:relative;z-index:1;min-width:0}
+.trash-label{font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:#fda4af;font-weight:700;flex:0 0 auto}
+.trash-status{font-size:9.5px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;max-width:64%;transition:color .3s}
+.trash-status.live{color:#fda4af}
+.trash-status.flying{color:#fdba74}
+.trash-status.done{color:#86efac}
+.trash-status.blocked{color:var(--err)}
+.trash-grid{display:grid;grid-template-columns:minmax(0,1fr) 70px minmax(0,1fr);align-items:stretch;gap:7px;position:relative;z-index:1}
+.lane{min-width:0;min-height:67px;padding:8px 9px;border-radius:10px;background:rgba(0,0,0,.22);border:1px solid rgba(255,255,255,.08);transition:background .3s,border-color .3s,box-shadow .3s,opacity .3s}
+.lane.target{border-color:rgba(251,113,133,.28);background:linear-gradient(145deg,rgba(251,113,133,.11),rgba(0,0,0,.2))}
+.lane.bin{border-color:rgba(74,222,128,.24);background:linear-gradient(145deg,rgba(74,222,128,.09),rgba(0,0,0,.2))}
+.lane.bin.armed{border-style:dashed;border-color:rgba(74,222,128,.5)}
+.lane.bin.caught{border-color:rgba(74,222,128,.75);background:linear-gradient(145deg,rgba(74,222,128,.2),rgba(0,0,0,.2));box-shadow:0 0 22px -8px rgba(74,222,128,.8)}
+.lane.empty{opacity:.6}
+.lane.gone{border-style:dashed;border-color:rgba(255,255,255,.15);background:rgba(0,0,0,.24);opacity:.62}
+.lane.gone .lane-path{text-decoration:line-through;color:var(--dim)}
+.lane-label{display:flex;align-items:center;gap:5px;font-size:8.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--dim);font-weight:700}
+.lane-dot{width:6px;height:6px;border-radius:50%;display:block}
+.lane-dot.target{background:var(--accent);box-shadow:0 0 9px rgba(251,113,133,.85)}
+.lane-dot.bin{background:var(--safe);box-shadow:0 0 9px rgba(74,222,128,.8)}
+.lane-path{display:flex;align-items:center;gap:6px;margin-top:8px;color:#fffbff;font-size:12px;font-weight:700;overflow:hidden;white-space:nowrap}
+.lane-path .name{overflow:hidden;text-overflow:ellipsis}
+.lane-meta{display:block;margin-top:4px;color:var(--dim);font-size:9.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.trash-arrow{position:relative;min-height:67px;display:grid;place-items:center}
+.trash-arrow::before{content:'';position:absolute;left:6px;right:9px;top:22px;height:2px;border-radius:2px;background:linear-gradient(90deg,var(--accent),rgba(74,222,128,.35) 55%,var(--safe));box-shadow:0 0 12px rgba(251,113,133,.45)}
+.trash-arrow::after{content:'';position:absolute;right:2px;top:16px;width:10px;height:10px;border-right:2px solid var(--safe);border-bottom:2px solid var(--safe);transform:rotate(45deg);filter:drop-shadow(0 0 5px rgba(74,222,128,.6))}
+.arrow-word{position:relative;z-index:1;margin-top:30px;padding:1px 4px;border-radius:4px;background:#0d0a0e;color:#fda4af;font-size:8px;letter-spacing:.08em}
+.fall-packet{position:absolute;z-index:3;left:9px;top:16px;width:13px;height:13px;border-radius:3px;background:linear-gradient(145deg,#fecdd3,#fb7185);border:1px solid rgba(255,255,255,.85);box-shadow:0 0 14px rgba(251,113,133,.95);opacity:0;transform:translateX(0) rotate(45deg)}
+.trash-card.falling .fall-packet{animation:packetFall .8s cubic-bezier(.4,.1,.6,1) forwards}
+@keyframes packetFall{0%{opacity:0;transform:translate(0,0) rotate(45deg) scale(.7)}22%{opacity:1}70%{opacity:1}100%{opacity:0;transform:translateY(38px) rotate(45deg) scale(1.15)}}
+.trash-foot{position:relative;z-index:1;padding-top:7px;border-top:1px solid rgba(255,255,255,.07);color:var(--dim);font-size:9.5px;line-height:1.5;min-height:3.4em;max-height:3.4em;overflow:hidden}
+
+/* ============ TREE ============ */
+.tree-scroll{flex:1;min-height:0;overflow:auto;padding:4px 2px 6px;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.16) transparent;-webkit-overflow-scrolling:touch}
+.tree-scroll::-webkit-scrollbar{width:8px;height:8px}
+.tree-scroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:99px}
+.tree-scroll::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.26)}
+.tree-inner{position:relative;display:inline-block;vertical-align:top;min-width:100%;padding:6px 58px 16px 2px}
+.node{position:relative}
+.children{margin-left:16px;padding-left:12px;border-left:2px solid var(--line);transition:border-color .3s}
+.children>.node::before{content:'';position:absolute;left:-14px;top:17px;width:14px;height:2px;background:var(--line);border-radius:2px;transition:background .3s}
+.tree-inner.wiring .children{border-color:rgba(255,255,255,.03)}
+.tree-inner.wiring .children>.node::before{background:rgba(255,255,255,.03)}
+.node.lift{transition:transform .34s cubic-bezier(.34,1.3,.64,1);z-index:7}
+.node.lift>.row{box-shadow:0 0 0 1px rgba(251,146,60,.5),0 16px 34px -14px rgba(251,146,60,.75)}
+.row{display:inline-flex;align-items:center;gap:8px;min-height:34px;padding:5px 11px 5px 9px;border-radius:10px;cursor:pointer;white-space:nowrap;position:relative;transition:background .22s,box-shadow .22s,transform .18s;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.row:hover{background:rgba(255,255,255,.055);transform:translateX(2px)}
+.row.current{background:linear-gradient(90deg,rgba(251,113,133,.22),rgba(251,113,133,.03));box-shadow:inset 0 0 0 1px rgba(251,113,133,.42)}
+.row.current .label{color:#fff;font-weight:700}
+.row.file{opacity:.58}
+.row.current::after{content:'';position:absolute;left:0;top:0;bottom:0;width:2px;background:linear-gradient(180deg,transparent,var(--accent),transparent);animation:edgeGlow 2.6s ease-in-out infinite}
+@keyframes edgeGlow{0%,100%{opacity:.35}50%{opacity:1}}
+.row.aimed{box-shadow:inset 0 0 0 1px rgba(251,113,133,.8);background:rgba(251,113,133,.17);opacity:1}
+.row.aimed .label{color:#fff}
+.row.collapsing{animation:rowCollapse .48s cubic-bezier(.5,0,.75,0) forwards;pointer-events:none;overflow:hidden}
+@keyframes rowCollapse{0%{opacity:1;max-height:40px;transform:none;filter:blur(0)}45%{opacity:.7;transform:scaleX(1.02) scaleY(.9);filter:blur(1px)}100%{opacity:0;max-height:0;transform:scaleY(.2);filter:blur(2.5px)}}
+.row.doomed .label{color:var(--err);text-decoration:line-through}
+.row.blocked{animation:rowBlocked .5s ease}
+@keyframes rowBlocked{0%,100%{background:transparent}40%{background:rgba(251,113,133,.2);box-shadow:inset 0 0 0 1px rgba(251,113,133,.7)}}
+.row.pulse{animation:rowPulse .6s ease}
+@keyframes rowPulse{0%{box-shadow:inset 0 0 0 1px rgba(74,222,128,.9);background:rgba(74,222,128,.2)}100%{box-shadow:inset 0 0 0 1px rgba(74,222,128,0);background:transparent}}
+.row .tag{position:relative;z-index:1}
+.mark{position:absolute;left:8px;bottom:calc(100% - 2px);z-index:9;padding:2px 7px;border-radius:999px;font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;white-space:nowrap;pointer-events:none;animation:markRise 1.15s cubic-bezier(.22,.9,.3,1) forwards}
+.mark.gone{color:#fecdd3;background:rgba(251,113,133,.22);border:1px solid rgba(251,113,133,.55);box-shadow:0 6px 18px -8px rgba(251,113,133,.9)}
+.mark.back{color:#86efac;background:rgba(74,222,128,.2);border:1px solid rgba(74,222,128,.5);box-shadow:0 6px 18px -8px rgba(74,222,128,.85)}
+@keyframes markRise{0%{opacity:0;transform:translateY(6px) scale(.8)}22%{opacity:1;transform:translateY(-4px) scale(1)}70%{opacity:1;transform:translateY(-16px)}100%{opacity:0;transform:translateY(-30px)}}
+.icon{width:18px;height:14px;flex:0 0 auto;position:relative;border-radius:3px;transition:box-shadow .3s;z-index:1}
+.icon.dir{background:linear-gradient(180deg,#fcd34d,#f59e0b);box-shadow:0 2px 7px rgba(251,191,36,.22)}
+.icon.dir::before{content:'';position:absolute;top:-4px;left:0;width:8px;height:6px;background:#fcd34d;border-radius:3px 3px 0 0}
+.icon.file{background:linear-gradient(180deg,#a8b6c9,#64748b);border-radius:2px 5px 2px 2px}
+.row.current .icon.dir{box-shadow:0 0 0 3px rgba(251,113,133,.3),0 2px 12px rgba(251,191,36,.75)}
+.row.aimed .icon.file{box-shadow:0 0 0 3px rgba(251,113,133,.22),0 2px 12px rgba(251,113,133,.5)}
+.label{font-size:13.5px;letter-spacing:.01em;position:relative;z-index:1}
+.tag{font-size:9.5px;padding:2px 6px;border-radius:99px;font-weight:700;background:rgba(74,222,128,.16);color:#86efac;border:1px solid rgba(74,222,128,.3)}
+
+/* ---- avatar ---- */
+.avatar{position:absolute;left:0;top:0;width:30px;height:30px;z-index:6;pointer-events:none;transition:transform .62s cubic-bezier(.34,1.3,.64,1);will-change:transform}
+.avatar .body{width:100%;height:100%;border-radius:50% 50% 46% 46%;background:radial-gradient(circle at 34% 28%,#fecdd3,#fb7185 52%,#9f1239);box-shadow:0 0 0 3px rgba(251,113,133,.18),0 9px 20px -4px rgba(190,18,60,.8);display:grid;place-items:center;animation:idle 2.8s ease-in-out infinite}
+@keyframes idle{0%,100%{transform:translateY(0)}50%{transform:translateY(-2.5px)}}
+.avatar.hop .body{animation:hop .58s cubic-bezier(.34,1.3,.64,1)}
+@keyframes hop{0%{transform:translateY(0) scale(1,1)}28%{transform:translateY(-11px) scale(.9,1.12)}58%{transform:translateY(0) scale(1.12,.88)}80%{transform:translateY(-3px) scale(.98,1.03)}100%{transform:translateY(0) scale(1,1)}}
+.avatar.alarm .body{animation:alarm .5s ease}
+@keyframes alarm{0%,100%{transform:translateY(0) rotate(0)}25%{transform:translateY(-4px) rotate(-7deg)}75%{transform:translateY(-2px) rotate(7deg)}}
+.eyes{display:flex;gap:5px}
+.eyes i{width:4px;height:6.5px;background:#3f0d1c;border-radius:50%;display:block;animation:blink 4.6s infinite}
+@keyframes blink{0%,92%,100%{transform:scaleY(1)}95%{transform:scaleY(.1)}}
+.ping{position:absolute;left:0;top:0;width:0;height:0;pointer-events:none;z-index:4}
+.ping i{position:absolute;left:-17px;top:-17px;width:34px;height:34px;border-radius:50%;border:2px solid rgba(74,222,128,.85);display:block;animation:pingA .75s ease-out forwards}
+@keyframes pingA{0%{transform:scale(.2);opacity:1}100%{transform:scale(1.9);opacity:0}}
+
+/* ============ BIN ============ */
+.bin{flex:0 0 auto;margin-top:8px;padding:8px 10px 9px;border-radius:13px;background:linear-gradient(180deg,rgba(74,222,128,.05),rgba(0,0,0,.28));border:1px dashed rgba(74,222,128,.26);transition:border-color .3s,box-shadow .3s,background .3s}
+.bin.caught{border-color:rgba(74,222,128,.8);background:linear-gradient(180deg,rgba(74,222,128,.14),rgba(0,0,0,.28));box-shadow:0 0 30px -12px rgba(74,222,128,.9)}
+.bin-top{display:flex;align-items:center;gap:8px}
+.bin-icon{position:relative;width:13px;height:15px;flex:0 0 auto}
+.bin-icon::before{content:'';position:absolute;left:1.5px;top:4px;width:10px;height:10px;border:1.5px solid var(--safe);border-radius:1px 1px 3px 3px;opacity:.9}
+.bin-icon::after{content:'';position:absolute;left:0;top:2px;width:13px;height:2px;border-radius:2px;background:var(--safe);opacity:.9}
+.bin-name{font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:#86efac;font-weight:700}
+.bin-count{font-size:9.5px;color:var(--dim)}
+.bin-restore{margin-left:auto;font:inherit;font-size:10px;letter-spacing:.03em;color:#86efac;cursor:pointer;background:rgba(74,222,128,.12);border:1px solid rgba(74,222,128,.3);padding:4px 9px;border-radius:8px;white-space:nowrap;transition:.18s;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.bin-restore:hover{background:rgba(74,222,128,.24);color:#dcfce7;transform:translateY(-1px)}
+.bin-restore:active{transform:scale(.96)}
+.bin-restore[disabled]{opacity:.35;cursor:default;transform:none}
+.bin-items{display:flex;gap:6px;overflow-x:auto;padding:7px 1px 1px;scrollbar-width:none}
+.bin-items::-webkit-scrollbar{display:none}
+.bin-pill{display:inline-flex;align-items:center;gap:6px;flex:0 0 auto;max-width:170px;padding:3px 9px 3px 5px;border-radius:999px;font:inherit;font-size:11px;cursor:pointer;color:#dcfce7;background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.24);transition:.18s;animation:pillIn .42s cubic-bezier(.34,1.56,.64,1) backwards;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+@keyframes pillIn{from{opacity:0;transform:translateY(10px) scale(.8)}to{opacity:1;transform:none}}
+.bin-pill:hover{background:rgba(74,222,128,.24);transform:translateY(-1px);box-shadow:0 6px 16px -10px rgba(74,222,128,.9)}
+.bin-pill .name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bin-pill .undo{font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;color:#86efac;opacity:.75;flex:0 0 auto}
+.bin-pill.emptying{animation:pillOut .5s ease forwards}
+@keyframes pillOut{to{opacity:0;transform:translateY(-26px) scale(.7);filter:blur(3px)}}
+.bin-empty-note{font-size:10.5px;color:var(--dim);padding:2px 1px 0}
+.bin-hint{font-size:9.5px;color:var(--dim);padding:6px 1px 0;display:none}
+.bin.empty-state .bin-hint{display:block}
+
+/* ============ FLIGHT LAYER ============ */
+.flight-layer{position:fixed;inset:0;z-index:60;pointer-events:none;overflow:hidden}
+.flyer{position:absolute;left:0;top:0;display:flex;align-items:center;gap:7px;padding:4px 10px 4px 7px;border-radius:10px;background:rgba(32,10,18,.95);border:1px solid rgba(251,113,133,.6);box-shadow:0 0 0 1px rgba(255,255,255,.06),0 18px 36px -14px rgba(0,0,0,.95),0 0 26px -6px rgba(251,113,133,.7);white-space:nowrap;will-change:transform}
+.flyer.back{border-color:rgba(74,222,128,.6);background:rgba(10,28,18,.95);box-shadow:0 0 0 1px rgba(255,255,255,.06),0 18px 36px -14px rgba(0,0,0,.95),0 0 26px -6px rgba(74,222,128,.6)}
+.flyer .fl-name{font-size:12px;font-weight:700;color:#fff5f7;max-width:150px;overflow:hidden;text-overflow:ellipsis}
+.ash{position:absolute;left:0;top:0;width:7px;height:7px;margin:-3.5px 0 0 -3.5px;border-radius:50%;pointer-events:none;animation:ashFade .5s ease-out forwards}
+@keyframes ashFade{0%{opacity:.85;transform:scale(1)}100%{opacity:0;transform:translateY(16px) scale(.15)}}
+.burst{position:absolute;left:0;top:0;width:0;height:0;pointer-events:none}
+.burst i{position:absolute;left:-3px;top:-3px;width:6px;height:6px;border-radius:50%;animation:spark .72s ease-out forwards}
+@keyframes spark{0%{opacity:1;transform:translate(0,0) scale(1)}100%{opacity:0;transform:translate(var(--dx,0),var(--dy,0)) scale(.15)}}
+.burst .ring{position:absolute;border:1.5px solid var(--safe);border-radius:50%;opacity:.9;animation:ringOut .68s ease-out forwards}
+@keyframes ringOut{0%{width:10px;height:10px;margin:-5px 0 0 -5px;opacity:.95}100%{width:74px;height:74px;margin:-37px 0 0 -37px;opacity:0}}
+
+/* ============ TERMINAL ============ */
+.term{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:12px 13px;border-radius:12px;background:rgba(0,0,0,.36);border:1px solid rgba(255,255,255,.055);font-size:12.5px;line-height:1.7;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.16) transparent;-webkit-overflow-scrolling:touch}
+.term::-webkit-scrollbar{width:8px}
+.term::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:99px}
+.line{white-space:pre-wrap;word-break:break-word;animation:lineIn .22s ease-out}
+@keyframes lineIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+.line .p{color:#a7f3d0;opacity:.9}
+.line .c{color:#fff8fa;font-weight:600}
+.line.err{color:var(--err)}
+.line .d{color:#fda4af;font-weight:600}
+.line .f{color:#cbd5e1}
+.line .hl{color:#fda4af;font-weight:700}
+.line .ok{color:#86efac}
+.line .warn{color:#fcd34d}
+.line .dim{color:var(--dim)}
+.line .code{color:#fde68a;background:rgba(251,191,36,.11);padding:1px 7px;border-radius:6px;border:1px solid rgba(251,191,36,.2)}
+.line.prompt-line{color:#fecdd3;font-weight:600}
+.line.confirm{color:#86efac}
+.tip-line{margin-top:4px;padding:6px 10px;border-radius:8px;background:rgba(74,222,128,.08);border-left:3px solid rgba(74,222,128,.5);color:#a7f3d0;font-size:12px}
+.tip-line.danger{background:rgba(251,113,133,.09);border-left-color:rgba(251,113,133,.6);color:#fda4af}
+.chips{display:flex;gap:7px;overflow-x:auto;padding:10px 1px 2px;scrollbar-width:none;-ms-overflow-style:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{font:inherit;font-size:11.5px;white-space:nowrap;cursor:pointer;padding:6px 11px;border-radius:9px;color:#fda4af;background:rgba(251,113,133,.1);border:1px solid rgba(251,113,133,.26);transition:.18s;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.chip:hover{background:rgba(251,113,133,.22);color:#ffe4e6;transform:translateY(-1px);box-shadow:0 6px 16px -12px rgba(251,113,133,.9)}
+.chip:active{transform:translateY(0) scale(.96)}
+
+/* ---- dry run ---- */
+.preview{display:flex;align-items:center;gap:8px;margin-top:9px;padding:8px 10px;border-radius:12px;background:rgba(0,0,0,.34);border:1px dashed rgba(255,255,255,.13);min-height:40px;transition:border-color .25s,background .25s}
+.preview.ok{border-style:solid;border-color:rgba(74,222,128,.4);background:rgba(74,222,128,.05)}
+.preview.warn{border-style:solid;border-color:rgba(251,191,36,.45);background:rgba(251,191,36,.05)}
+.preview.bad{border-style:solid;border-color:rgba(251,113,133,.45);background:rgba(251,113,133,.05)}
+.pv-label{font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);font-weight:700;flex:0 0 auto}
+.pv-body{flex:1;min-width:0;display:flex;align-items:center;gap:7px;flex-wrap:wrap;font-size:11.5px;color:var(--dim)}
+.pv-body .pv-item{display:inline-flex;align-items:center;gap:6px;max-width:100%;padding:2px 8px 2px 4px;border-radius:8px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);color:var(--txt);font-weight:600;overflow:hidden}
+.pv-body .pv-item .name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pv-body .pv-more{font-size:10px;color:var(--dim)}
+.pv-verdict{font-size:9px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;padding:2px 7px;border-radius:99px;white-space:nowrap;animation:pop .28s cubic-bezier(.34,1.56,.64,1)}
+@keyframes pop{from{opacity:0;transform:scale(.8) translateY(3px)}to{opacity:1;transform:none}}
+.pv-verdict.ok{color:#86efac;background:rgba(74,222,128,.16);border:1px solid rgba(74,222,128,.32)}
+.pv-verdict.warn{color:#fde68a;background:rgba(251,191,36,.16);border:1px solid rgba(251,191,36,.34)}
+.pv-verdict.bad{color:#fda4af;background:rgba(251,113,133,.16);border:1px solid rgba(251,113,133,.34)}
+.pv-msg{color:var(--dim);line-height:1.4;max-width:100%;max-height:2.9em;overflow:hidden}
+.pv-body code,.pv-body .code{color:#fde68a;background:rgba(251,191,36,.12);padding:1px 6px;border-radius:5px;border:1px solid rgba(251,191,36,.2)}
+.preview.bad .pv-msg{color:#fda4af}
+
+.input-row{display:flex;align-items:center;gap:8px;margin-top:9px;padding:9px 10px;border-radius:12px;background:rgba(0,0,0,.4);border:1px solid rgba(251,113,133,.28);transition:border-color .2s,box-shadow .2s}
+.input-row:focus-within{border-color:rgba(251,113,133,.75);box-shadow:0 0 0 3px rgba(251,113,133,.14)}
+.input-row.asking{border-color:rgba(74,222,128,.6);box-shadow:0 0 0 3px rgba(74,222,128,.12);animation:askPulse 1.4s ease-in-out infinite}
+@keyframes askPulse{0%,100%{box-shadow:0 0 0 3px rgba(74,222,128,.1)}50%{box-shadow:0 0 0 5px rgba(74,222,128,.2)}}
+.input-row.shake{animation:shake .4s}
+@keyframes shake{10%,90%{transform:translateX(-2px)}20%,80%{transform:translateX(4px)}30%,50%,70%{transform:translateX(-6px)}40%,60%{transform:translateX(6px)}}
+.ps1{font-size:12.5px;color:#a7f3d0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:0 1 auto}
+.ps1 .ps-user{color:#a7f3d0;opacity:.85}
+.ps1 .ps-gone{color:var(--err);text-decoration:line-through}
+.input-row input{flex:1;min-width:40px;background:none;border:none;outline:none;color:#f1f5f9;font:inherit;font-size:13px;padding:0}
+.input-row input::placeholder{color:rgba(162,148,158,.5)}
+.send{font:inherit;font-size:14px;line-height:1;cursor:pointer;width:30px;height:30px;flex:0 0 auto;border-radius:9px;color:#2b0710;background:linear-gradient(150deg,#fecdd3,#fb7185);border:none;display:grid;place-items:center;transition:.18s;box-shadow:0 4px 14px -4px rgba(251,113,133,.85)}
+.send:hover{transform:translateY(-1px);box-shadow:0 6px 18px -4px rgba(251,113,133,1)}
+.send:active{transform:scale(.93)}
+.confetti{position:fixed;top:-14px;width:8px;height:13px;border-radius:2px;z-index:999;pointer-events:none;animation:fall linear forwards}
+@keyframes fall{to{transform:translateY(108vh) rotate(var(--rot,360deg));opacity:.05}}
+
+/* ============ RESPONSIVE ============ */
+@media (min-width:901px){
+  html,body{height:100%;min-height:0;overflow:hidden}
+  .app{height:100%;min-height:0;overflow:hidden}
+  .term{flex:1 1 auto}
+}
+@media (max-width:900px){
+  .app{padding:12px 12px calc(16px + env(safe-area-inset-bottom));gap:10px}
+  /* minmax(0,1fr), not 1fr: a plain 1fr is minmax(auto,1fr) and its auto
+     minimum lets the wide chip row drag the column past the viewport */
+  main{grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto;flex:none}
+  .panel{min-height:0;min-width:0}
+  .panel-head,.crumbs,.term,.input-row,.preview{min-width:0}
+  .chips{min-width:0;max-width:100%}
+  .bin-items{min-width:0;max-width:100%}
+  .tree-scroll{max-height:30vh}
+  .term{min-height:150px;max-height:26vh}
+  .brand h1{font-size:15px}
+  .brand p{display:none}
+  .mission{padding:9px 11px}
+  .mission-text{font-size:12.5px;line-height:1.35}
+  .ps1 .ps-user{display:none}
+  .sub{display:none}
+  .trash-grid{grid-template-columns:minmax(0,1fr) 46px minmax(0,1fr)}
+  .lane{min-height:54px;padding:7px 8px}
+  .lane-path{margin-top:6px;font-size:11.5px}
+  .trash-foot{font-size:9px;line-height:1.5;min-height:4.7em;max-height:4.7em}
+}
+@media (max-width:560px){
+  .logo{width:34px;height:34px;font-size:15px}
+  .badge{font-size:9px;padding:4px 7px}
+  .mission{gap:8px;padding:8px 10px}
+  .hint-btn{padding:5px 9px;font-size:10.5px}
+  .label{font-size:13px}
+  .tree-inner{padding-right:48px}
+  .tree-scroll{max-height:26vh}
+  .term{max-height:24vh}
+  .crumbs{min-height:34px;padding:6px 8px}
+  .trash-grid{grid-template-columns:minmax(0,1fr) 38px minmax(0,1fr);gap:5px}
+  .trash-card{gap:7px;padding:9px 9px 8px}
+  .lane{min-height:46px}
+  .lane-label{font-size:8px;letter-spacing:.1em}
+  .lane-meta{font-size:9px}
+  .trash-arrow{min-height:46px}
+  .trash-arrow::before{left:3px;right:5px;top:14px}
+  .trash-arrow::after{right:1px;top:9px;width:8px;height:8px}
+  .fall-packet{left:4px;top:9px;width:11px;height:11px}
+  .trash-card.falling .fall-packet{animation:packetFallSmall .8s cubic-bezier(.4,.1,.6,1) forwards}
+  @keyframes packetFallSmall{0%{opacity:0;transform:translate(0,0) rotate(45deg) scale(.7)}22%{opacity:1}100%{opacity:0;transform:translateY(30px) rotate(45deg) scale(1.15)}}
+  .preview{padding:7px 9px;min-height:36px}
+  .pv-verdict{font-size:8.5px}
+  .bin{padding:7px 9px 8px;margin-top:7px}
+  .bin-pill{max-width:132px;font-size:10.5px}
+  .bin-restore{font-size:9.5px;padding:4px 8px}
+}
+@media (max-width:380px){
+  .trash-grid{grid-template-columns:1fr;gap:5px}
+  .trash-arrow{min-height:24px}
+  .trash-arrow::before{left:16px;right:16px;top:12px}
+  .trash-arrow::after{right:16px;top:7px}
+  .arrow-word{display:none}
+  .fall-packet{left:16px;top:7px}
+  .trash-card.falling .fall-packet{animation:packetDrop .8s cubic-bezier(.4,.1,.6,1) forwards}
+  @keyframes packetDrop{0%{opacity:0;transform:translate(0,0) rotate(45deg) scale(.7)}22%{opacity:1}100%{opacity:0;transform:translateY(26px) rotate(45deg) scale(1.15)}}
+}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <div class="logo">rm</div>
+      <div>
+        <h1>Learn <code>rm</code></h1>
+        <p>Delete files safely — everything lands in a recoverable bin.</p>
+      </div>
+    </div>
+    <div class="steps" id="steps"></div>
+    <button class="reset-btn" id="resetBtn" type="button" title="Rebuild the filesystem from scratch">↺ reset</button>
+  </header>
+
+  <div class="mission" id="mission">
+    <span class="badge" id="missionBadge">Mission 1 / 6</span>
+    <span class="mission-text" id="missionText">Loading…</span>
+    <button class="hint-btn" id="hintBtn" type="button">Hint</button>
+  </div>
+  <div class="hint" id="hintBar"></div>
+
+  <main>
+    <section class="panel">
+      <div class="panel-head">
+        <span class="title">Filesystem map</span>
+        <span class="sub">tap a file to aim at it</span>
+      </div>
+      <div class="crumbs" id="crumbs"></div>
+      <div class="trash-card" id="trashCard" aria-live="polite">
+        <div class="trash-top"><span class="trash-label">Deletion lane</span><span class="trash-status" id="trashStatus">waiting for a deletion</span></div>
+        <div class="trash-grid">
+          <div class="lane target empty" id="targetLane">
+            <div class="lane-label"><span class="lane-dot target"></span>Target</div>
+            <span class="lane-path" id="targetPath">pick something</span>
+            <span class="lane-meta" id="targetMeta">it will leave the map</span>
+          </div>
+          <div class="trash-arrow" aria-hidden="true"><span class="arrow-word">RM</span><span class="fall-packet" id="fallPacket"></span></div>
+          <div class="lane bin empty" id="binLane">
+            <div class="lane-label"><span class="lane-dot bin"></span>Bin</div>
+            <span class="lane-path" id="binPath">empty</span>
+            <span class="lane-meta" id="binMeta">recoverable, not gone</span>
+          </div>
+        </div>
+        <div class="trash-foot" id="trashFoot">Real rm is final. Here every deletion drops into the bin first, so you can put it back.</div>
+      </div>
+      <div class="tree-scroll" id="treeScroll">
+        <div class="tree" id="tree"></div>
+      </div>
+      <div class="bin empty-state" id="bin">
+        <div class="bin-top">
+          <span class="bin-icon" aria-hidden="true"></span>
+          <span class="bin-name">Bin</span>
+          <span class="bin-count" id="binCount">empty</span>
+          <button class="bin-restore" id="binRestore" type="button" disabled>restore last</button>
+        </div>
+        <div class="bin-items" id="binItems"><span class="bin-empty-note">Nothing deleted yet.</span></div>
+        <div class="bin-hint">Deleted items wait here. Tap one to put it back, or use <b>restore</b>.</div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <span class="dots"><i></i><i></i><i></i></span>
+        <span class="title">Terminal</span>
+      </div>
+      <div class="term" id="term" aria-live="polite"></div>
+      <div class="chips" id="chips"></div>
+      <div class="preview" id="preview">
+        <span class="pv-label">Dry run</span>
+        <span class="pv-body" id="pvBody"><span class="pv-msg">type an rm command to preview it before it happens</span></span>
+      </div>
+      <form class="input-row" id="form" autocomplete="off">
+        <span class="ps1" id="ps1"><span class="ps-user">you@linux:</span><span id="psPath">~</span>$</span>
+        <input id="cmd" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="type rm…">
+        <button class="send" type="submit" aria-label="Run command">↵</button>
+      </form>
+    </section>
+  </main>
+</div>
+<div class="flight-layer" id="flightLayer" aria-hidden="true"></div>
+
+<script>
+/* ==================================================================
+   1. FILESYSTEM MODEL
+   ================================================================== */
+let uid = 0;
+let clock = 1700000000000;
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const mk = (name, type = 'dir', extra = {}) => ({
+  id: ++uid, name, type,
+  children: type === 'dir' ? [] : null,
+  parent: null,
+  size: type === 'dir' ? 4096 : 1,
+  mtime: clock++,
+  content: type === 'file' ? [] : null,
+  deleted: false,
+  ...extra
+});
+
+let ROOT, HOME, documents, pictures, downloads, cache, build, tmpDir, etc;
+let oldDraft, secret, serverLog, bootLog, todo, report, budget, beach, sunset, installer, manual;
+let cacheA, cacheB, cacheDeep, cacheX, buildMain, buildLib, buildTmp, buildScratch;
+let hosts, passwd;
+
+function buildModel() {
+  uid = 0;
+  clock = 1700000000000;
+  ROOT = mk('/');
+  const homeDir = mk('home');
+  HOME = mk('you');
+  documents = mk('documents');
+  pictures = mk('pictures');
+  downloads = mk('downloads');
+  cache = mk('cache');
+  cacheDeep = mk('deep');
+  build = mk('build');
+  buildTmp = mk('tmp');
+  tmpDir = mk('tmp');
+  etc = mk('etc');
+
+  oldDraft = mk('old-draft.txt', 'file', {size:2140, content:[
+    'Old draft. Nothing worth keeping.',
+    'This file exists so you can delete something safely.'
+  ]});
+  secret = mk('secret.txt', 'file', {size:180, content:['do not ship this']});
+  serverLog = mk('server.log', 'file', {size:18400, content:['[ok] listening on :8080','[warn] slow query 1.2s']});
+  bootLog = mk('boot.log', 'file', {size:620, content:['[ok] mounted /data']});
+  todo = mk('todo.md', 'file', {size:420, content:['- learn rm','- keep the bin']});
+  report = mk('report.md', 'file', {size:1340, content:['# Quarterly report','Keep this one.']});
+  budget = mk('budget.csv', 'file', {size:760, content:['item,cost','rent,1200']});
+  beach = mk('beach.png', 'file', {size:248000, content:['beach photo placeholder']});
+  sunset = mk('sunset.png', 'file', {size:196000, content:['sunset photo placeholder']});
+  installer = mk('installer.exe', 'file', {size:5240000, content:['binary placeholder']});
+  manual = mk('manual.pdf', 'file', {size:1840000, content:['# Manual','pages 1-40']});
+  cacheA = mk('a.tmp', 'file', {size:9200, content:['scratch']});
+  cacheB = mk('b.tmp', 'file', {size:4400, content:['scratch']});
+  cacheX = mk('x.dat', 'file', {size:1280, content:['deep scratch']});
+  buildMain = mk('main.o', 'file', {size:84000, content:['ELF object']});
+  buildLib = mk('lib.o', 'file', {size:46000, content:['ELF object']});
+  buildScratch = mk('scratch.o', 'file', {size:2200, content:['ELF object']});
+  hosts = mk('hosts', 'file', {size:220, content:['127.0.0.1 localhost']});
+  passwd = mk('passwd', 'file', {size:410, content:['you:x:1000:1000::/home/you:/bin/bash']});
+  const bashrc = mk('.bashrc', 'file', {size:640, content:['alias ll="ls -l"']});
+
+  ROOT.children = [homeDir, etc, tmpDir];
+  homeDir.children = [HOME];
+  HOME.children = [bashrc, documents, pictures, downloads, cache, build, oldDraft, secret, serverLog, bootLog, todo];
+  documents.children = [report, budget];
+  pictures.children = [beach, sunset];
+  downloads.children = [installer, manual];
+  cache.children = [cacheA, cacheB, cacheDeep];
+  cacheDeep.children = [cacheX];
+  build.children = [buildMain, buildLib, buildTmp];
+  buildTmp.children = [buildScratch];
+  etc.children = [hosts, passwd];
+  tmpDir.children = [];
+
+  link(ROOT, null);
+  sortModel(ROOT);
+  return HOME;
+}
+function link(node, parent) {
+  node.parent = parent;
+  if (node.children) node.children.forEach(child => link(child, node));
+}
+function byName(left, right) {
+  if (left.type !== right.type) return left.type === 'dir' ? -1 : 1;
+  return left.name.localeCompare(right.name, undefined, {numeric: true, sensitivity: 'base'});
+}
+function sortModel(node) {
+  if (!node.children) return;
+  node.children.sort(byName);
+  node.children.forEach(sortModel);
+}
+function alive(node) {
+  if (!node) return false;
+  if (node.deleted) return false;
+  return node === ROOT || alive(node.parent);
+}
+function countDeep(node) {
+  if (node.type !== 'dir') return 0;
+  return node.children.reduce((total, child) => total + 1 + countDeep(child), 0);
+}
+
+/* ---- path helpers ---- */
+function absPath(node) {
+  if (node === ROOT) return '/';
+  const parts = [];
+  let current = node;
+  while (current && current !== ROOT) { parts.unshift(current.name); current = current.parent; }
+  return '/' + parts.join('/');
+}
+function prettyPath(node) {
+  const path = absPath(node);
+  if (path === '/home/you') return '~';
+  if (path.startsWith('/home/you/')) return '~' + path.slice(9);
+  return path;
+}
+function isAncestor(node, ancestor) {
+  let current = node;
+  while (current) { if (current === ancestor) return true; current = current.parent; }
+  return false;
+}
+function sizeLabel(node) {
+  if (node.type === 'dir') return 'folder';
+  const bytes = node.size || 1;
+  if (bytes >= 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return bytes + ' B';
+}
+function laneWeight(node) {
+  if (!node) return 'it will leave the map';
+  if (node.type === 'dir') return node.children.length + (node.children.length === 1 ? ' item' : ' items') + ' + contents';
+  return sizeLabel(node) + ' · one file';
+}
+function resolvePath(spec, base) {
+  let current, rest = spec;
+  if (spec === '~' || spec.startsWith('~/')) { current = HOME; rest = spec.slice(1); }
+  else if (spec.startsWith('/')) { current = ROOT; rest = spec.slice(1); }
+  else current = base;
+  if (current.type !== 'dir') return {error: 'notdir', name: spec};
+  const segments = rest.split('/').filter(Boolean);
+  for (let i = 0; i < segments.length; i++) {
+    const segment = segments[i];
+    if (segment === '.') continue;
+    if (segment === '..') { current = current.parent || ROOT; continue; }
+    const next = current.children.find(child => child.name === segment);
+    if (!next) return {error: 'missing', name: segment};
+    if (next.type !== 'dir' && i < segments.length - 1) return {error: 'notdir', name: segment};
+    current = next;
+  }
+  return {node: current};
+}
+function hasGlob(spec) { return /[*?]/.test(spec.split('/').pop() || ''); }
+function globToRegExp(pattern) {
+  const escaped = pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&');
+  return new RegExp('^' + escaped.replace(/\*/g, '.*').replace(/\?/g, '.') + '$');
+}
+const esc = value => String(value).replace(/[&<>"']/g, char =>
+  ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+
+/* ==================================================================
+   2. DOM REFS
+   ================================================================== */
+const treeEl = document.getElementById('tree');
+const treeScroll = document.getElementById('treeScroll');
+const crumbs = document.getElementById('crumbs');
+const term = document.getElementById('term');
+const chips = document.getElementById('chips');
+const form = document.getElementById('form');
+const input = document.getElementById('cmd');
+const psPath = document.getElementById('psPath');
+const stepsEl = document.getElementById('steps');
+const missionEl = document.getElementById('mission');
+const missionBadge = document.getElementById('missionBadge');
+const missionText = document.getElementById('missionText');
+const hintBtn = document.getElementById('hintBtn');
+const hintBar = document.getElementById('hintBar');
+const resetBtn = document.getElementById('resetBtn');
+const trashCard = document.getElementById('trashCard');
+const trashStatus = document.getElementById('trashStatus');
+const targetLane = document.getElementById('targetLane');
+const binLane = document.getElementById('binLane');
+const targetPath = document.getElementById('targetPath');
+const targetMeta = document.getElementById('targetMeta');
+const binPath = document.getElementById('binPath');
+const binMeta = document.getElementById('binMeta');
+const trashFoot = document.getElementById('trashFoot');
+const binEl = document.getElementById('bin');
+const binItems = document.getElementById('binItems');
+const binCount = document.getElementById('binCount');
+const binRestore = document.getElementById('binRestore');
+const flightLayer = document.getElementById('flightLayer');
+const previewEl = document.getElementById('preview');
+const pvBody = document.getElementById('pvBody');
+
+let treeInner, avatarEl;
+let cwd = null, prevDir = null, aimed = null, lastContext = null, pendingConfirm = null;
+const rowOf = new Map();
+const wrapOf = new Map();
+const childrenOf = new Map();
+const bin = [];
+const pendingCleanups = new Map();
+let motionEls = [];
+let flightToken = 0;
+let wiringTimer = null;
+
+/* ==================================================================
+   3. TREE RENDERING
+   ================================================================== */
+function paintRow(node) {
+  const row = rowOf.get(node);
+  if (!row) return;
+  row.querySelector('.label').textContent = node === ROOT ? '/' : node.name;
+}
+
+function buildRow(node) {
+  const wrap = document.createElement('div');
+  wrap.className = 'node';
+  const row = document.createElement('div');
+  row.className = 'row' + (node.type === 'file' ? ' file' : '');
+  const icon = document.createElement('span');
+  icon.className = 'icon ' + node.type;
+  const label = document.createElement('span');
+  label.className = 'label';
+  row.append(icon, label);
+  if (node === HOME) {
+    const tag = document.createElement('span');
+    tag.className = 'tag';
+    tag.textContent = '~';
+    row.appendChild(tag);
+  }
+  row.addEventListener('click', () => onNodeClick(node));
+  wrap.appendChild(row);
+  rowOf.set(node, row);
+  wrapOf.set(node, wrap);
+  if (node.children && node.children.length) {
+    const kids = document.createElement('div');
+    kids.className = 'children';
+    childrenOf.set(node, kids);
+    node.children.forEach(child => kids.appendChild(buildRow(child)));
+    wrap.appendChild(kids);
+  }
+  paintRow(node);
+  return wrap;
+}
+
+function buildTree() {
+  treeEl.innerHTML = '';
+  rowOf.clear();
+  wrapOf.clear();
+  childrenOf.clear();
+  treeInner = document.createElement('div');
+  treeInner.className = 'tree-inner';
+  treeInner.appendChild(buildRow(ROOT));
+  avatarEl = document.createElement('div');
+  avatarEl.className = 'avatar';
+  avatarEl.innerHTML = '<div class="body"><span class="eyes"><i></i><i></i></span></div>';
+  treeInner.appendChild(avatarEl);
+  treeEl.appendChild(treeInner);
+}
+
+function childrenContainer(node) {
+  let kids = childrenOf.get(node);
+  if (!kids) {
+    kids = document.createElement('div');
+    kids.className = 'children';
+    wrapOf.get(node).appendChild(kids);
+    childrenOf.set(node, kids);
+  }
+  return kids;
+}
+function sortChildren(parent) {
+  const kids = childrenOf.get(parent);
+  if (!kids) return;
+  const order = parent.children.slice().sort(byName);
+  order.forEach(child => kids.appendChild(wrapOf.get(child)));
+  parent.children = order;
+}
+
+/* ---- geometry ---- */
+function innerRect() { return treeInner.getBoundingClientRect(); }
+function relRect(el) {
+  const box = el.getBoundingClientRect();
+  const base = innerRect();
+  return {left: box.left - base.left, top: box.top - base.top, width: box.width, height: box.height};
+}
+function centerOf(el) {
+  const box = el.getBoundingClientRect();
+  return {x: box.left + box.width / 2, y: box.top + box.height / 2};
+}
+function clearMotion() {
+  motionEls.forEach(el => { el.style.transition = ''; el.style.transform = ''; });
+  motionEls = [];
+}
+function snapshot() {
+  const map = new Map();
+  rowOf.forEach((row, node) => map.set(node, relRect(row)));
+  return map;
+}
+function playFlip(previous, skipNodes) {
+  const skip = new Set(skipNodes || []);
+  rowOf.forEach((row, node) => {
+    if (skip.has(node)) return;
+    const before = previous.get(node);
+    if (!before) return;
+    const after = relRect(row);
+    const dx = before.left - after.left;
+    const dy = before.top - after.top;
+    if (Math.abs(dx) < 0.6 && Math.abs(dy) < 0.6) return;
+    row.style.transition = 'none';
+    row.style.transform = 'translate(' + dx + 'px,' + dy + 'px)';
+    motionEls.push(row);
+    requestAnimationFrame(() => {
+      row.style.transition = 'transform .5s cubic-bezier(.22,.9,.28,1)';
+      row.style.transform = '';
+    });
+  });
+}
+function collectSubtree(node, into) {
+  into.add(node);
+  if (node.children) node.children.forEach(child => collectSubtree(child, into));
+  return into;
+}
+function startWiring() {
+  treeInner.classList.add('wiring');
+  clearTimeout(wiringTimer);
+  wiringTimer = setTimeout(() => {
+    treeInner.classList.remove('wiring');
+    clearMotion();
+  }, 640);
+}
+
+/* ---- flight layer: fall into the bin / rise back out ---- */
+function flyItem(node, from, getTarget, onLand, back) {
+  const token = ++flightToken;
+  const flyer = document.createElement('div');
+  flyer.className = 'flyer' + (back ? ' back' : '');
+  flyer.innerHTML = '<span class="icon ' + node.type + '"></span><span class="fl-name">' + esc(node.name) + '</span>';
+  flightLayer.appendChild(flyer);
+
+  const duration = reduceMotion ? 1 : 660;
+  const t0 = performance.now();
+  let lastTrail = 0;
+  const motes = [];
+
+  function frame(now) {
+    if (token !== flightToken) { flyer.remove(); motes.forEach(mote => mote.remove()); return; }
+    const raw = Math.min(1, (now - t0) / duration);
+    const t = raw < 0.5 ? 4 * raw * raw * raw : 1 - Math.pow(-2 * raw + 2, 3) / 2;
+    const to = getTarget();
+    const cx = (from.x + to.x) / 2 + (back ? 0 : 26);
+    const cy = (from.y + to.y) / 2 - 34;
+    const mt = 1 - t;
+    const x = mt * mt * from.x + 2 * mt * t * cx + t * t * to.x;
+    const y = mt * mt * from.y + 2 * mt * t * cy + t * t * to.y;
+    const tilt = (t - 0.5) * 14 * (to.x >= from.x ? 1 : -1);
+    const scale = raw < 0.76 ? 1 + 0.12 * Math.sin(raw / 0.76 * Math.PI) : 1 - 0.2 * ((raw - 0.76) / 0.24);
+    flyer.style.transform = 'translate(' + x + 'px,' + y + 'px) rotate(' + tilt + 'deg) scale(' + scale + ')';
+
+    if (now - lastTrail > 50 && raw < 0.95 && !reduceMotion) {
+      lastTrail = now;
+      const mote = document.createElement('i');
+      mote.className = 'ash';
+      mote.style.left = x + 'px';
+      mote.style.top = y + 'px';
+      mote.style.background = back ? 'rgba(74,222,128,.9)' : (node.type === 'dir' ? 'rgba(251,191,36,.9)' : 'rgba(164,180,203,.9)');
+      flightLayer.appendChild(mote);
+      motes.push(mote);
+      setTimeout(() => { mote.remove(); motes.splice(motes.indexOf(mote), 1); }, 520);
+    }
+    if (raw < 1) requestAnimationFrame(frame);
+    else {
+      flyer.remove();
+      motes.forEach(mote => mote.remove());
+      onLand(to);
+    }
+  }
+  requestAnimationFrame(frame);
+}
+
+function burst(x, y, tint) {
+  if (reduceMotion) return;
+  const holder = document.createElement('div');
+  holder.className = 'burst';
+  holder.style.transform = 'translate(' + x + 'px,' + y + 'px)';
+  const rgb = tint || '74,222,128';
+  holder.innerHTML = '<span class="ring"></span><span class="ring" style="animation-delay:.1s;border-color:rgba(' + rgb + ',.6)"></span>';
+  for (let i = 0; i < 9; i++) {
+    const angle = (Math.PI * 2 * i) / 9 + Math.random() * 0.4;
+    const distance = 24 + Math.random() * 26;
+    const spark = document.createElement('i');
+    spark.style.setProperty('--dx', (Math.cos(angle) * distance).toFixed(1) + 'px');
+    spark.style.setProperty('--dy', (Math.sin(angle) * distance).toFixed(1) + 'px');
+    spark.style.background = 'rgb(' + rgb + ')';
+    spark.style.boxShadow = '0 0 10px rgba(' + rgb + ',.9)';
+    spark.style.animationDelay = (i * 12) + 'ms';
+    holder.appendChild(spark);
+  }
+  flightLayer.appendChild(holder);
+  setTimeout(() => holder.remove(), 900);
+}
+
+function floatMark(node, text, kind) {
+  const row = rowOf.get(node);
+  if (!row) return;
+  const mark = document.createElement('span');
+  mark.className = 'mark ' + kind;
+  mark.textContent = text;
+  row.appendChild(mark);
+  setTimeout(() => mark.remove(), 1200);
+}
+function flashRow(node, className) {
+  const row = rowOf.get(node);
+  if (!row) return;
+  row.classList.remove('pulse', 'blocked');
+  void row.offsetWidth;
+  row.classList.add(className);
+  setTimeout(() => row.classList.remove(className), 1000);
+}
+function scrollToRow(node, smooth) {
+  const row = rowOf.get(node);
+  if (!row) return;
+  const box = relRect(row);
+  const target = box.top + box.height / 2 - treeScroll.clientHeight / 2;
+  treeScroll.scrollTo({top: Math.max(0, target), behavior: smooth === false ? 'auto' : 'smooth'});
+}
+function ping(x, y) {
+  const element = document.createElement('div');
+  element.className = 'ping';
+  element.style.transform = 'translate(' + x + 'px,' + y + 'px)';
+  element.innerHTML = '<i></i>';
+  treeInner.appendChild(element);
+  setTimeout(() => element.remove(), 800);
+}
+
+/* ---- avatar ---- */
+function avatarTarget(node) {
+  const row = rowOf.get(node) || rowOf.get(HOME);
+  const label = row.querySelector('.label');
+  const base = innerRect();
+  const box = label.getBoundingClientRect();
+  return {x: box.right - base.left + 9, y: box.top - base.top + box.height / 2 - 15};
+}
+function moveAvatar(animate, node) {
+  const target = avatarTarget(node || (alive(cwd) ? cwd : HOME));
+  if (!animate) avatarEl.style.transition = 'none';
+  avatarEl.style.transform = 'translate(' + target.x + 'px, ' + target.y + 'px)';
+  if (!animate) requestAnimationFrame(() => { avatarEl.style.transition = ''; });
+}
+function animateAvatarTo(node) {
+  moveAvatar(true, node);
+  avatarEl.classList.remove('hop');
+  void avatarEl.offsetWidth;
+  avatarEl.classList.add('hop');
+  const box = relRect(rowOf.get(node));
+  ping(box.left + 16, box.top + box.height / 2);
+  flashRow(node, 'pulse');
+  scrollToRow(node);
+}
+function avatarAlarm() {
+  avatarEl.classList.remove('alarm');
+  void avatarEl.offsetWidth;
+  avatarEl.classList.add('alarm');
+}
+
+/* ==================================================================
+   4. THE BIN
+   ================================================================== */
+function binTarget() {
+  const box = binItems.getBoundingClientRect();
+  return {x: box.left + Math.min(90, box.width / 2), y: box.top + box.height / 2};
+}
+function renderBin() {
+  binItems.innerHTML = '';
+  if (!bin.length) {
+    const note = document.createElement('span');
+    note.className = 'bin-empty-note';
+    note.textContent = 'Nothing deleted yet.';
+    binItems.appendChild(note);
+  } else {
+    bin.forEach((entry, index) => {
+      const pill = document.createElement('button');
+      pill.type = 'button';
+      pill.className = 'bin-pill';
+      pill.style.animationDelay = Math.min(index * 40, 240) + 'ms';
+      pill.title = 'Restore ' + entry.path;
+      const icon = document.createElement('span');
+      icon.className = 'icon ' + entry.node.type;
+      const name = document.createElement('span');
+      name.className = 'name';
+      name.textContent = entry.node.name + (entry.node.type === 'dir' ? '/' : '');
+      const undo = document.createElement('span');
+      undo.className = 'undo';
+      undo.textContent = 'undo';
+      pill.append(icon, name, undo);
+      pill.addEventListener('click', () => doRestore(entry.node.name));
+      binItems.appendChild(pill);
+    });
+  }
+  binCount.textContent = bin.length ? bin.length + (bin.length === 1 ? ' item' : ' items') + ' recoverable' : 'empty';
+  binRestore.disabled = !bin.length;
+  binEl.classList.toggle('empty-state', !bin.length);
+  binLane.classList.remove('empty', 'caught');
+  if (bin.length) {
+    binLane.classList.add('caught');
+    binPath.textContent = bin.length + (bin.length === 1 ? ' item' : ' items');
+    binMeta.textContent = 'restorable with restore';
+  } else {
+    binLane.classList.add('empty');
+    binPath.textContent = 'empty';
+    binMeta.textContent = 'recoverable, not gone';
+  }
+}
+function catchBin() {
+  binEl.classList.add('caught');
+  const point = binTarget();
+  burst(point.x, point.y, '74,222,128');
+  setTimeout(() => binEl.classList.remove('caught'), 700);
+}
+
+/* ==================================================================
+   5. UI SYNC
+   ================================================================== */
+function renderCrumbs() {
+  crumbs.innerHTML = '';
+  const path = prettyPath(cwd);
+  let parts;
+  if (path === '/') parts = ['/'];
+  else if (path.startsWith('~')) parts = ['/', 'home', 'you', ...path.slice(1).split('/').filter(Boolean)];
+  else parts = ['/', ...path.split('/').filter(Boolean)];
+  parts.forEach((part, index) => {
+    if (index) {
+      const separator = document.createElement('span');
+      separator.className = 'sep';
+      separator.textContent = '›';
+      crumbs.appendChild(separator);
+    }
+    const crumb = document.createElement('span');
+    crumb.className = 'crumb';
+    if (!alive(cwd)) crumb.classList.add('gone');
+    crumb.style.animationDelay = (index * 45) + 'ms';
+    crumb.textContent = part === 'you' ? '~' : part;
+    crumbs.appendChild(crumb);
+  });
+}
+function iconHtml(node) {
+  return '<span class="icon ' + node.type + '"></span>';
+}
+function updateRowStates() {
+  rowOf.forEach((row, node) => {
+    row.classList.toggle('current', node === cwd);
+    row.classList.toggle('aimed', node === aimed);
+  });
+}
+function updateUI() {
+  psPath.textContent = prettyPath(cwd);
+  psPath.classList.toggle('ps-gone', !alive(cwd));
+  updateRowStates();
+  renderCrumbs();
+  renderChips();
+  renderPreview();
+}
+
+function setLane(lane, pathEl, metaEl, node, emptyText, metaText) {
+  if (!node) {
+    lane.classList.add('empty');
+    pathEl.textContent = emptyText;
+    metaEl.textContent = metaText;
+    return;
+  }
+  lane.classList.remove('empty');
+  pathEl.innerHTML = iconHtml(node) + '<span class="name">' + esc(node.name) + (node.type === 'dir' ? '/' : '') + '</span>';
+  metaEl.textContent = metaText;
+}
+function setCardState(state, status, statusClass) {
+  trashCard.classList.remove('armed', 'falling', 'done', 'blocked');
+  if (state) trashCard.classList.add(state);
+  trashStatus.className = 'trash-status' + (statusClass ? ' ' + statusClass : '');
+  trashStatus.textContent = status;
+}
+function updateTrashCard(preview) {
+  const target = preview ? (preview.plan && preview.plan[0] ? preview.plan[0].node : null) : (aimed || (lastContext ? lastContext.node : null));
+
+  if (preview) {
+    if (preview.error) {
+      setCardState('blocked', preview.error.short, 'blocked');
+      setLane(targetLane, targetPath, targetMeta, target, 'pick something', 'it will leave the map');
+      trashFoot.innerHTML = preview.error.tip;
+      return;
+    }
+    const first = preview.plan[0];
+    const total = preview.plan.reduce((sum, entry) => sum + 1 + countDeep(entry.node), 0);
+    const recursive = first.node.type === 'dir';
+    setCardState('armed', preview.flags.i ? 'will ask first' : total + (total === 1 ? ' item' : ' items') + ' to delete', preview.flags.i ? 'live' : 'live');
+    setLane(targetLane, targetPath, targetMeta, first.node, 'pick something', laneWeight(first.node));
+    targetLane.classList.remove('gone');
+    setLane(binLane, binPath, binMeta, null, 'empty', 'recoverable, not gone');
+    binLane.classList.remove('landed');
+    trashFoot.innerHTML = preview.plan.length > 1
+      ? '<b>' + preview.plan.length + '</b> items go to the bin at once. Wildcards can be wide — check the dry run first.'
+      : (recursive
+        ? 'Recursive: the folder <b>and everything inside it</b> go to the bin together.'
+        : 'One file goes to the bin. Nothing is lost — <b>restore</b> brings it back.');
+    return;
+  }
+
+  if (lastContext) {
+    setCardState('done', lastContext.verb, 'done');
+    setLane(targetLane, targetPath, targetMeta, lastContext.node, 'pick something', 'gone from the map');
+    targetLane.classList.add('gone');
+    trashFoot.innerHTML = lastContext.verb === 'restored'
+      ? 'Back on the map, exactly where it came from. The bin is a safety net, not a graveyard.'
+      : 'It is in the bin, not gone. Tap the item in the bin — or type <code>restore</code> — to undo.';
+    return;
+  }
+
+  setCardState(null, aimed ? 'aimed' : 'waiting for a deletion', aimed ? 'live' : '');
+  setLane(targetLane, targetPath, targetMeta, aimed, 'pick something', 'it will leave the map');
+  targetLane.classList.remove('gone');
+  trashFoot.innerHTML = 'Real rm is final. Here every deletion drops into the bin first, so you can put it back.';
+}
+
+function renderPreview() {
+  const raw = input.value.trim();
+  previewEl.className = 'preview';
+  if (pendingConfirm) {
+    previewEl.className = 'preview warn';
+    pvBody.innerHTML = '<span class="pv-verdict warn">answer the prompt</span><span class="pv-msg">type <code>y</code> to delete it, or <code>n</code> to keep it</span>';
+    updateTrashCard(null);
+    return;
+  }
+  if (!raw) {
+    pvBody.innerHTML = '<span class="pv-msg">' + (aimed
+      ? 'aimed at ' + esc(aimed.name) + ' — add a command to preview it'
+      : 'type an rm command to preview it before it happens') + '</span>';
+    updateTrashCard(null);
+    return;
+  }
+  const parts = tokenize(raw);
+  if (parts[0] !== 'rm') {
+    const label = parts[0] === 'ls' ? 'ls lists a folder — try it in the terminal.'
+      : parts[0] === 'pwd' ? 'pwd prints where you are standing.'
+      : parts[0] === 'restore' ? 'restore brings the newest binned item back.'
+      : parts[0] === 'bin' ? 'bin shows what is waiting to be restored.'
+      : parts[0] === 'cd' ? 'cd walks you between folders.'
+      : 'only rm is previewed here — this lab is about deleting safely.';
+    pvBody.innerHTML = '<span class="pv-msg">' + label + '</span>';
+    updateTrashCard(null);
+    return;
+  }
+  const plan = analyzeRm(parts.slice(1));
+  if (plan.help) {
+    pvBody.innerHTML = '<span class="pv-msg">rm flags: <code>-r</code> folders · <code>-i</code> ask first · <code>-f</code> force · <code>-v</code> report</span>';
+    updateTrashCard(null);
+    return;
+  }
+  if (plan.error) {
+    previewEl.className = 'preview bad';
+    pvBody.innerHTML = '<span class="pv-verdict bad">blocked</span><span class="pv-msg">' + esc(plan.error.short) + '</span>';
+    updateTrashCard(plan);
+    return;
+  }
+  const first = plan.plan[0];
+  const total = plan.plan.reduce((sum, entry) => sum + 1 + countDeep(entry.node), 0);
+  const items = plan.plan.slice(0, 3).map(entry => itemHtml(entry.node)).join('');
+  const more = plan.plan.length > 3 ? '<span class="pv-more">+' + (plan.plan.length - 3) + ' more</span>' : '';
+  if (plan.flags.i) {
+    previewEl.className = 'preview warn';
+    pvBody.innerHTML = items + more + '<span class="pv-verdict warn">asks first</span>';
+  } else {
+    previewEl.className = 'preview ok';
+    pvBody.innerHTML = items + more + '<span class="pv-verdict ok">' + total + (total === 1 ? ' item' : ' items') + ' · recoverable</span>';
+  }
+  updateTrashCard(plan);
+}
+function itemHtml(node) {
+  return '<span class="pv-item">' + iconHtml(node) + '<span class="name">' + esc(node.name) + (node.type === 'dir' ? '/' : '') + '</span></span>';
+}
+
+function renderChips() {
+  chips.innerHTML = '';
+  const mission = missions[Math.min(missionIndex, missionCount - 1)];
+  const list = [];
+  if (mission && mission.answer) list.push(mission.answer);
+  const files = cwd.children.filter(child => child.type === 'file' && !child.name.startsWith('.'));
+  const dirs = cwd.children.filter(child => child.type === 'dir' && !child.name.startsWith('.'));
+  if (files.length) list.push('rm ' + files[0].name);
+  if (dirs.length) list.push('rm -r ' + dirs[0].name);
+  if (bin.length) list.push('restore');
+  /* ls and pwd stay available no matter how full the row gets */
+  const essentials = ['ls', 'ls -l', 'pwd'];
+  const seen = new Set();
+  list.filter(command => {
+    if (seen.has(command)) return false;
+    seen.add(command);
+    return true;
+  }).slice(0, 4).concat(essentials).forEach(command => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'chip';
+    button.textContent = command;
+    button.addEventListener('click', () => { input.value = ''; execute(command); focusInput(); });
+    chips.appendChild(button);
+  });
+}
+
+/* ==================================================================
+   6. TERMINAL OUTPUT
+   ================================================================== */
+function log(html, className) {
+  const line = document.createElement('div');
+  line.className = 'line' + (className ? ' ' + className : '');
+  line.innerHTML = html;
+  term.appendChild(line);
+  term.scrollTop = term.scrollHeight;
+  return line;
+}
+function focusInput() {
+  try { input.focus({preventScroll: true}); } catch (error) { input.focus(); }
+}
+function shakeInput() {
+  form.classList.remove('shake');
+  void form.offsetWidth;
+  form.classList.add('shake');
+}
+function tip(html, danger) {
+  log('<span class="tip-line' + (danger ? ' danger' : '') + '">' + html + '</span>', 'tip-line-wrap');
+}
+
+/* ==================================================================
+   7. THE RM ENGINE
+   ================================================================== */
+function parseRmFlags(args) {
+  const flags = {r: false, f: false, i: false, v: false, R: false};
+  const operands = [];
+  let optionsEnded = false;
+  for (const arg of args) {
+    if (arg === '--help') return {help: true};
+    if (!optionsEnded && arg === '--') { optionsEnded = true; continue; }
+    if (!optionsEnded && arg.startsWith('--')) {
+      const names = {recursive: 'r', force: 'f', interactive: 'i', verbose: 'v'};
+      const key = arg.slice(2).split('=')[0];
+      if (!(key in names)) return {error: "unrecognized option '--" + arg.slice(2) + "'"};
+      flags[names[key]] = true;
+      continue;
+    }
+    if (!optionsEnded && arg.startsWith('-') && arg.length > 1) {
+      for (const flag of arg.slice(1)) {
+        if (flag === 'R') { flags.r = true; flags.R = true; continue; }
+        if (!(flag in flags)) return {error: "invalid option -- '" + flag + "'", tip: 'This lab understands <code>-r</code>, <code>-i</code>, <code>-f</code> and <code>-v</code>.'};
+        flags[flag] = true;
+      }
+      continue;
+    }
+    operands.push(arg);
+  }
+  return {flags, operands};
+}
+
+/* expand one operand into nodes (supports a wildcard in the final segment) */
+function expandOperand(spec) {
+  if (!hasGlob(spec)) {
+    const result = resolvePath(spec, cwd);
+    if (result.error) return {error: result.error, spec, name: result.name};
+    return {nodes: [result.node], glob: false};
+  }
+  const slash = spec.lastIndexOf('/');
+  const pattern = slash < 0 ? spec : spec.slice(slash + 1);
+  const parentSpec = slash < 0 ? '.' : slash === 0 ? '/' : spec.slice(0, slash);
+  const parentResult = resolvePath(parentSpec, cwd);
+  if (parentResult.error) return {error: parentResult.error, spec, name: parentResult.name};
+  if (parentResult.node.type !== 'dir') return {error: 'notdir', spec};
+  const matcher = globToRegExp(pattern);
+  const nodes = parentResult.node.children.filter(child => matcher.test(child.name)).sort(byName);
+  if (!nodes.length) return {error: 'missing', spec, glob: true};
+  return {nodes, glob: true};
+}
+
+function analyzeRm(args) {
+  const parsed = parseRmFlags(args);
+  if (parsed.help) return {help: true};
+  if (parsed.error) {
+    return {error: {
+      headline: 'rm: ' + parsed.error,
+      short: parsed.error,
+      tip: parsed.tip || 'Run <b>rm --help</b> to see what this lab supports.'
+    }};
+  }
+  const flags = parsed.flags;
+  const operands = parsed.operands;
+  if (!operands.length) {
+    return {error: {headline: 'rm: missing operand', short: 'rm needs something to delete', tip: 'Name one file: <code>rm old-draft.txt</code>. Folders need <code>-r</code>.'}};
+  }
+  const plan = [];
+  for (const spec of operands) {
+    if (spec === '.' || spec === '..' || spec === '/' || spec === '~') {
+      if (spec === '/' || spec === '~') {
+        return {error: {
+          headline: "rm: it is dangerous to operate recursively on '" + spec + "'",
+          short: 'refusing to wipe ' + spec,
+          tip: 'This lab will not delete an entire filesystem. Delete the specific files you do not need instead.'
+        }};
+      }
+      return {error: {
+        headline: "rm: cannot remove '" + spec + "': Device or resource busy",
+        short: 'refusing to delete ' + spec,
+        tip: 'Deleting <code>.</code> or <code>..</code> would erase the folder you are standing in. Name real files instead.'
+      }};
+    }
+    const expanded = expandOperand(spec);
+    if (expanded.error) {
+      if (expanded.error === 'missing' && flags.f) continue;
+      const reason = expanded.error === 'missing' ? 'No such file or directory' : expanded.error === 'notdir' ? 'Not a directory' : 'No such file or directory';
+      return {error: {
+        headline: "rm: cannot remove '" + spec + "': " + reason,
+        short: expanded.glob ? "no match for '" + spec + "'" : "cannot remove '" + spec + "'",
+        tip: expanded.glob
+          ? 'That wildcard matched nothing. Check the spelling, or run <b>ls</b> to see what is here.'
+          : 'Run <b>ls</b> to see the exact names — spelling and case both count.'
+      }};
+    }
+    for (const node of expanded.nodes) {
+      if (node.type === 'dir' && !flags.r) {
+        return {error: {
+          headline: "rm: cannot remove '" + node.name + "': Is a directory",
+          short: "'" + node.name + "' is a folder",
+          tip: 'Folders hold other things, so rm refuses without <code>-r</code>. Recursive means "everything inside goes too".'
+        }};
+      }
+      if (node === ROOT || node === HOME) {
+        return {error: {
+          headline: "rm: it is dangerous to operate recursively on '" + prettyPath(node) + "'",
+          short: 'refusing to wipe ' + prettyPath(node),
+          tip: 'This lab protects your home folder and the filesystem root. Remove the pieces you do not want.'
+        }};
+      }
+      plan.push({node, spec, glob: expanded.glob, size: countDeep(node)});
+    }
+  }
+  return {flags, plan};
+}
+
+/* remove one node: animate, detach, remember it in the bin */
+function executeRemoval(entry, context) {
+  const node = entry.node;
+  const parent = node.parent;
+  const from = centerOf(rowOf.get(node));
+  const path = prettyPath(node);
+  const deep = countDeep(node);
+
+  clearMotion();
+  const previous = snapshot();
+  const subtree = collectSubtree(node, new Set());
+  const row = rowOf.get(node);
+  row.classList.add('collapsing');
+
+  /* model: detach */
+  const index = parent.children.indexOf(node);
+  if (index > -1) parent.children.splice(index, 1);
+  node.deleted = true;
+  bin.push({node, path, parent, at: bin.length});
+
+  /* the item itself arcs down into the bin */
+  flyItem(node, from, binTarget, land => {
+    burst(land.x, land.y, '251,113,133');
+    catchBin();
+  }, false);
+
+  /* the row finishes collapsing, then the gap closes and the siblings glide up */
+  const cleanup = setTimeout(() => {
+    const wrap = wrapOf.get(node);
+    if (wrap) wrap.remove();
+    rowOf.delete(node);
+    wrapOf.delete(node);
+    childrenOf.delete(node);
+    pendingCleanups.delete(node);
+    playFlip(previous, subtree);
+    startWiring();
+  }, reduceMotion ? 0 : 480);
+  pendingCleanups.set(node, cleanup);
+
+  renderBin();
+  floatMarkDone(node);
+  moveAvatar(false);
+  return {path, deep, parent};
+}
+
+function floatMarkDone(node) {
+  const parent = node.parent;
+  const row = parent && rowOf.get(parent);
+  if (!row) return;
+  const mark = document.createElement('span');
+  mark.className = 'mark gone';
+  mark.textContent = 'rm ' + node.name;
+  row.appendChild(mark);
+  setTimeout(() => mark.remove(), 1200);
+}
+
+function doRm(args) {
+  const plan = analyzeRm(args);
+  if (plan.help) { showRmHelp(); return; }
+  if (plan.error) {
+    log(esc(plan.error.headline), 'err');
+    tip(plan.error.tip, true);
+    const quoted = plan.error.short.indexOf("'") > -1 ? plan.error.short.split("'")[1] : null;
+    if (quoted) {
+      const found = resolvePath(quoted, cwd);
+      if (!found.error) {
+        flashRow(found.node, 'blocked');
+        scrollToRow(found.node);
+      }
+    }
+    setCardState('blocked', plan.error.short, 'blocked');
+    shakeInput();
+    return;
+  }
+  if (!plan.plan.length) {
+    log('<span class="dim">rm: nothing to do (-f ignored the missing names)</span>');
+    return;
+  }
+
+  if (plan.flags.i && !pendingConfirm) {
+    askConfirm(plan);
+    return;
+  }
+  applyRemoval(plan);
+}
+
+function askConfirm(plan) {
+  const first = plan.plan[0];
+  pendingConfirm = plan;
+  form.classList.add('asking');
+  input.placeholder = 'answer y or n';
+  const label = first.node.type === 'dir' ? 'directory' : 'regular file';
+  const line = log("<span class=\"p\">rm: remove " + label + " '" + esc(first.spec) + "'?</span> ", 'prompt-line');
+  line.dataset.awaiting = 'y';
+  log('<span class="dim">' + (plan.plan.length > 1 ? 'This lab asks once per command, not once per file.' : 'Nothing happens until you answer.') + '</span>');
+  setCardState('armed', 'waiting for your answer', 'live');
+  focusInput();
+}
+
+function answerConfirm(raw) {
+  const plan = pendingConfirm;
+  pendingConfirm = null;
+  form.classList.remove('asking');
+  input.placeholder = 'type rm…';
+  const answer = raw.trim().toLowerCase();
+  const yes = answer === 'y' || answer === 'yes';
+  log('<span class="c">' + esc(raw.trim()) + '</span> <span class="' + (yes ? 'ok' : 'dim') + '">' + (yes ? '— deleting' : '— keeping it safe') + '</span>', yes ? 'confirm' : '');
+  if (!yes) {
+    log('<span class="dim">Nothing was deleted. That is what -i is for.</span>');
+    setCardState('armed', 'kept safe', '');
+    renderPreview();
+    return;
+  }
+  evidence.interactive = true;
+  plan.plan.forEach(entry => evidence.interactiveNodes.add(entry.node));
+  applyRemoval(plan, true);
+}
+
+function applyRemoval(plan, confirmed) {
+  const removed = [];
+  setCardState('falling', 'deleting…', 'flying');
+  plan.plan.forEach(entry => {
+    const result = executeRemoval(entry, plan);
+    removed.push(result);
+    if (plan.flags.v) {
+      const kind = entry.node.type === 'dir' ? 'directory' : 'regular file';
+      log("<span class=\"dim\">rm: removed " + kind + " '" + esc(result.path) + "'" + (result.deep > 0 ? ' and ' + result.deep + ' more' : '') + "</span>");
+    } else {
+      log('<span class="ok">removed ' + esc(result.path) + (result.deep > 0 ? ' <span class="dim">(+' + result.deep + ' inside)</span>' : '') + '</span>');
+    }
+  });
+
+  const context = {
+    command: 'rm',
+    node: plan.plan[0].node,
+    verb: removed.length > 1 ? removed.length + ' items binned' : 'binned',
+    removed,
+    flags: plan.flags,
+    confirmed: !!confirmed
+  };
+  lastContext = context;
+  aimed = null;
+  recordEvidence(plan.plan, removed);
+  updateRowStates();
+  log('<span class="dim">Recoverable: type <b>restore</b> or tap the item in the bin.</span>');
+
+  /* standing in a folder you just deleted is its own lesson */
+  if (!alive(cwd)) {
+    log('<span class="warn">bash: warning: you deleted the folder you were standing in.</span>');
+    tip('Your shell keeps the old location until you move, but the folder is gone. Type <code>cd ~</code> to climb out.', true);
+    avatarAlarm();
+  }
+  setTimeout(() => {
+    updateUI();
+    checkMission();
+  }, reduceMotion ? 60 : 700);
+}
+
+function showRmHelp() {
+  log('<span class="ok">rm — remove files and folders</span>');
+  log('  <span class="hl">rm FILE</span>            delete one file into the bin');
+  log('  <span class="hl">rm -r DIR</span>          delete a folder and everything in it');
+  log('  <span class="hl">rm -i FILE</span>          ask before deleting');
+  log('  <span class="hl">rm -f FILE</span>          delete even if it is already gone');
+  log('  <span class="hl">rm -v FILE</span>          report every removal');
+  log('  <span class="hl">rm *.log</span>            wildcards can hit many files at once');
+  log('  <span class="hl">restore [NAME]</span>      bring something back from the bin');
+  log('  <span class="hl">bin</span>                 look inside the bin');
+  log('');
+  log('<span class="dim">rm is permanent in a real shell. Here the bin keeps it undoable.</span>');
+}
+function showLsHelp() {
+  log('<span class="ok">ls — list what is here</span>');
+  log('  <span class="hl">ls</span>              names in the current folder');
+  log('  <span class="hl">ls -l</span>            long view: size, date, type');
+  log('  <span class="hl">ls -a</span>            include hidden names like .bashrc');
+  log('  <span class="hl">ls -A</span>            same idea, written the other way');
+  log('  <span class="hl">ls -h</span>            human-readable sizes with -l');
+  log('  <span class="hl">ls -t</span>            newest first');
+  log('  <span class="hl">ls -r</span>            reverse the order');
+  log('  <span class="hl">ls -1</span>            one entry per line');
+  log('  <span class="hl">ls PATH</span>          list another folder, e.g. <b>ls ~/documents</b>');
+  log('');
+  log('<span class="dim">Flags combine: <b>ls -lah</b>, <b>ls -lat</b>, <b>ls -a1</b>.</span>');
+}
+function showHelp() {
+  log('<span class="ok">Commands you can try:</span>');
+  log('  <span class="hl">rm SOURCE</span>            the star of this lab');
+  log('  <span class="hl">rm --help</span>            every flag explained');
+  log('  <span class="hl">restore / bin</span>        undo, and inspect the bin');
+  log('  <span class="hl">pwd</span>                  print the folder you are in');
+  log('  <span class="hl">ls / ls -l</span>            look around before you delete');
+  log('  <span class="hl">cd</span>                   walk between folders');
+  log('  <span class="hl">ls / ls -l</span>            see what is where');
+  log('  <span class="hl">cat FILE</span>              check what you are about to lose');
+  log('  <span class="hl">mkdir DIR</span>             create something to delete later');
+  log('  <span class="hl">clear</span>                 wipe the screen');
+}
+
+/* ---- restore ---- */
+function findInBin(name) {
+  if (!bin.length) return null;
+  if (!name) return bin[bin.length - 1];
+  return bin.find(entry => entry.node.name === name) || bin.find(entry => entry.path === name) || null;
+}
+function doRestore(name) {
+  const entry = findInBin(name);
+  if (!entry) {
+    if (bin.length) {
+      log("restore: '" + esc(name || '') + "' is not in the bin", 'err');
+      tip('Type <b>bin</b> to see what is waiting, then <code>restore NAME</code>.');
+    } else {
+      log('<span class="dim">The bin is empty — nothing to restore yet.</span>');
+    }
+    shakeInput();
+    return;
+  }
+  const node = entry.node;
+  const at = bin.indexOf(entry);
+  bin.splice(at, 1);
+
+  let home = entry.parent;
+  if (!alive(home)) {
+    home = alive(cwd) ? cwd : HOME;
+    log('<span class="warn">restore: the original folder is gone, so ' + esc(node.name) + ' came back into ' + esc(prettyPath(home)) + '.</span>');
+  }
+  const from = binTarget();
+
+  /* a restore can land before the row finished collapsing, so cancel that
+     cleanup and rebuild the row (and its subtree) from the model */
+  if (pendingCleanups.has(node)) {
+    clearTimeout(pendingCleanups.get(node));
+    pendingCleanups.delete(node);
+  }
+  const stale = wrapOf.get(node);
+  if (stale) stale.remove();
+  rowOf.delete(node);
+  wrapOf.delete(node);
+  childrenOf.delete(node);
+
+  clearMotion();
+  const previous = snapshot();
+  node.deleted = false;
+  home.children.push(node);
+  childrenContainer(home).appendChild(buildRow(node));
+  sortChildren(home);
+  paintRow(node);
+  updateRowStates();
+
+  playFlip(previous, [node]);
+  startWiring();
+  flashRow(node, 'pulse');
+  floatMark(node, 'restored', 'back');
+
+  /* the item rises back out of the bin and homes in on its restored row */
+  flyItem(node, from, () => {
+    const row = rowOf.get(node);
+    return row ? centerOf(row) : from;
+  }, land => {
+    burst(land.x, land.y, '74,222,128');
+  }, true);
+
+  renderBin();
+  log('<span class="ok">restored ' + esc(entry.path) + '</span>');
+  lastContext = {command: 'restore', node, verb: 'restored', removed: [], flags: {}, confirmed: false};
+  aimed = null;
+  evidence.restored = true;
+  evidence.restoredNodes.add(node);
+  scrollToRow(node);
+  setTimeout(() => { updateUI(); checkMission(); }, reduceMotion ? 60 : 520);
+}
+
+function doBin(args) {
+  if (args.includes('--empty') || args[0] === 'empty') {
+    if (!bin.length) { log('<span class="dim">The bin is already empty.</span>'); return; }
+    const count = bin.length;
+    bin.forEach((entry, index) => {
+      const pill = binItems.children[index];
+      if (pill) pill.style.animationDelay = (index * 70) + 'ms';
+      if (pill) pill.classList.add('emptying');
+    });
+    setTimeout(() => {
+      bin.forEach(entry => { entry.node.deleted = true; });
+      bin.length = 0;
+      renderBin();
+      log('<span class="warn">bin emptied — those ' + count + ' items are gone for good now.</span>');
+      tip('A real rm could never give them back. This is the part worth remembering.', true);
+      setCardState(null, 'bin emptied', '');
+    }, 620);
+    return;
+  }
+  if (!bin.length) { log('<span class="dim">The bin is empty.</span>'); return; }
+  log('<span class="ok">In the bin (newest last):</span>');
+  bin.forEach((entry, index) => {
+    log('<span class="' + (index === bin.length - 1 ? 'hl' : 'f') + '">' + String(index + 1).padStart(2, ' ') + '  ' + esc(entry.path) + '</span>  <span class="dim">' + esc(entry.node.type === 'dir' ? 'folder' : sizeLabel(entry.node)) + '</span>');
+  });
+  log('<span class="dim">Undo the newest with: restore ' + esc(bin[bin.length - 1].node.name) + '</span>');
+}
+
+/* ==================================================================
+   8. OTHER COMMANDS
+   ================================================================== */
+let history = [], historyIndex = -1;
+function tokenize(commandLine) {
+  return commandLine.match(/(?:[^\s"']+|"[^"]*"|'[^']*')+/g) || [];
+}
+function execute(raw) {
+  const commandLine = raw.trim();
+  if (!commandLine) return;
+  if (pendingConfirm) { answerConfirm(commandLine); return; }
+
+  history.push(commandLine);
+  historyIndex = -1;
+  const prompt = 'you@linux:' + prettyPath(cwd) + '$';
+  log('<span class="p">' + esc(prompt) + '</span> <span class="c">' + esc(commandLine) + '</span>');
+  if (commandLine === 'clear') { term.innerHTML = ''; return; }
+  if (commandLine === 'help' || commandLine === '--help') { showHelp(); return; }
+  const parts = tokenize(commandLine);
+  const command = parts[0];
+  const args = parts.slice(1).map(arg => arg.replace(/^"|"$/g, '').replace(/^'|'$/g, ''));
+  if (command === 'rm') doRm(args);
+  else if (command === 'restore' || command === 'undo') doRestore(args[0]);
+  else if (command === 'bin' || command === 'trash') doBin(args);
+  else if (command === 'cd') doCd(args);
+  else if (command === 'ls') doLs(args);
+  else if (command === 'pwd') doPwd();
+  else if (command === 'cat') doCat(args);
+  else if (command === 'mkdir') doMkdir(args);
+  else {
+    log('bash: ' + esc(command) + ': command not found', 'err');
+    log('<span class="dim">This playground is learning <b>rm</b>. Type <b>help</b> for the command list.</span>');
+    shakeInput();
+  }
+}
+
+function doCd(args) {
+  if (args.length > 1) { log('bash: cd: too many arguments', 'err'); shakeInput(); return; }
+  const arg = args[0] === undefined ? '' : args[0];
+  let target;
+  if (!arg) target = HOME;
+  else if (arg === '-') {
+    if (!prevDir) { log('bash: cd: OLDPWD not set', 'err'); shakeInput(); return; }
+    target = prevDir;
+  } else {
+    const result = resolvePath(arg, cwd);
+    if (result.error) {
+      log('bash: cd: ' + esc(arg) + ': ' + (result.error === 'missing' ? 'No such file or directory' : 'Not a directory'), 'err');
+      shakeInput();
+      return;
+    }
+    if (result.node.type !== 'dir') {
+      log('bash: cd: ' + esc(arg) + ': Not a directory', 'err');
+      tip('<b>' + esc(arg) + '</b> is a file. To delete it, use <code>rm ' + esc(arg) + '</code>.');
+      shakeInput();
+      return;
+    }
+    target = result.node;
+  }
+  if (target === cwd) { log('<span class="ok">You are already in ' + esc(prettyPath(cwd)) + '.</span>'); return; }
+  prevDir = cwd;
+  cwd = target;
+  aimed = null;
+  updateUI();
+  animateAvatarTo(cwd);
+  log('<span class="ok">Now in ' + esc(prettyPath(cwd)) + '</span>');
+}
+function doPwd() {
+  if (!alive(cwd)) {
+    log('<span class="warn">' + esc(absPath(cwd)) + ' (deleted — you are standing in a folder that no longer exists)</span>');
+    tip('Type <code>cd ~</code> to get back to solid ground.');
+    return;
+  }
+  log(esc(absPath(cwd)));
+}
+
+function parseLs(args) {
+  const flags = {a: false, l: false, t: false, r: false, one: false, h: false};
+  const paths = [];
+  let optionsEnded = false;
+  for (const arg of args) {
+    if (arg === '--help') return {help: true};
+    if (!optionsEnded && arg === '--') { optionsEnded = true; continue; }
+    if (!optionsEnded && arg.startsWith('--')) {
+      const names = {all: 'a', 'almost-all': 'a', long: 'l', 'time-sort': 't', reverse: 'r', oneline: 'one', 'human-readable': 'h'};
+      const key = arg.slice(2).split('=')[0];
+      if (!(key in names)) return {error: "unsupported option -- '" + arg.slice(2) + "'"};
+      flags[names[key]] = true;
+      continue;
+    }
+    if (!optionsEnded && arg.startsWith('-') && arg.length > 1) {
+      for (const flag of arg.slice(1)) {
+        if (flag === 'A') { flags.a = true; continue; }
+        if (flag === '1') { flags.one = true; continue; }
+        if (!(flag in flags)) return {error: "invalid option -- '" + flag + "'", tip: 'ls understands <code>-a</code>, <code>-A</code>, <code>-l</code>, <code>-h</code>, <code>-t</code>, <code>-r</code> and <code>-1</code>.'};
+        flags[flag] = true;
+      }
+      continue;
+    }
+    paths.push(arg);
+  }
+  if (paths.length > 1) return {error: 'this playground lists one path at a time'};
+  return {flags, path: paths[0] || '.'};
+}
+function doLs(args) {
+  const parsed = parseLs(args);
+  if (parsed.help) { showLsHelp(); return; }
+  if (parsed.error) { log('ls: ' + esc(parsed.error), 'err'); if (parsed.tip) tip(parsed.tip, true); shakeInput(); return; }
+  const result = resolvePath(parsed.path, cwd);
+  if (!result.error && !alive(result.node)) {
+    log("ls: cannot access '" + esc(parsed.path) + "': No such file or directory", 'err');
+    tip('That folder has been deleted. Type <code>cd ~</code> to go somewhere real.', true);
+    shakeInput();
+    return;
+  }
+  if (result.error) {
+    log("ls: cannot access '" + esc(parsed.path) + "': " + (result.error === 'missing' ? 'No such file or directory' : 'Not a directory'), 'err');
+    shakeInput();
+    return;
+  }
+  const node = result.node;
+  let entries = node.type === 'dir' ? node.children.slice() : [node];
+  if (node.type === 'dir' && !parsed.flags.a) entries = entries.filter(entry => !entry.name.startsWith('.'));
+  entries.sort(byName);
+  if (parsed.flags.t) entries.sort((left, right) => right.mtime - left.mtime);
+  if (parsed.flags.r) entries.reverse();
+  if (!entries.length) { log('<span class="dim">(empty)</span>'); return; }
+  if (parsed.flags.l) {
+    entries.forEach(entry => {
+      const size = entry.type === 'dir' ? 4096 : (entry.size || 1);
+      const shown = parsed.flags.h ? (size >= 1024 ? (size / 1024).toFixed(1) + 'K' : size + 'B') : String(size);
+      const date = new Date(entry.mtime).toLocaleDateString('en-US', {month: 'short', day: '2-digit'});
+      log((entry.type === 'dir' ? 'drwxr-xr-x' : entry.name.startsWith('.') ? '-rw-------' : '-rw-r--r--') +
+        '  you  you  ' + shown.padStart(5, ' ') + '  ' + date + '  ' +
+        '<span class="' + (entry.type === 'dir' ? 'd' : entry.name.startsWith('.') ? 'code' : 'f') + '">' +
+        esc(entry.name + (entry.type === 'dir' ? '/' : '')) + '</span>');
+    });
+  } else if (parsed.flags.one) {
+    entries.forEach(entry => log('<span class="' + (entry.type === 'dir' ? 'd' : entry.name.startsWith('.') ? 'code' : 'f') + '">' + esc(entry.name + (entry.type === 'dir' ? '/' : '')) + '</span>'));
+  } else {
+    log(entries.map(entry => '<span class="' + (entry.type === 'dir' ? 'd' : entry.name.startsWith('.') ? 'code' : 'f') + '">' + esc(entry.name + (entry.type === 'dir' ? '/' : '')) + '</span>').join('   '));
+  }
+  log('<span class="dim">' + entries.length + (entries.length === 1 ? ' entry' : ' entries') + ' in ' + esc(prettyPath(node)) + '</span>');
+}
+
+function doCat(args) {
+  const files = [];
+  const names = args.filter(arg => !arg.startsWith('-'));
+  if (!names.length) { log('cat: missing file operand', 'err'); shakeInput(); return; }
+  for (const spec of names) {
+    const result = resolvePath(spec, cwd);
+    if (result.error || result.node.type !== 'file') {
+      log("cat: '" + esc(spec) + "': " + (result.error === 'missing' ? 'No such file or directory' : result.error === 'notdir' ? 'Not a directory' : 'Is a directory'), 'err');
+      shakeInput();
+      return;
+    }
+    files.push(result.node);
+  }
+  log('<span class="dim">Last chance to read it before you rm it:</span>');
+  files.forEach((file, index) => {
+    if (files.length > 1) log('<span class="dim">── ' + esc(file.name) + ' ──</span>');
+    file.content.forEach((text, lineIndex) => log((args.includes('-n') ? '<span class="code">' + String(lineIndex + 1).padStart(3, ' ') + '</span> ' : '') + esc(text)));
+    if (index < files.length - 1) log('');
+  });
+}
+
+function doMkdir(args) {
+  const specs = args.filter(arg => !arg.startsWith('-'));
+  const makeParents = args.includes('-p') || args.includes('--parents');
+  if (!specs.length) { log('mkdir: missing operand', 'err'); shakeInput(); return; }
+  specs.forEach(spec => {
+    const isTilde = spec === '~' || spec.startsWith('~/');
+    const segments = spec.replace(/\/+$/, '').split('/').filter(segment => segment && segment !== '.');
+    if (!segments.length) { shakeInput(); return; }
+    let current = isTilde ? HOME : spec.startsWith('/') ? ROOT : cwd;
+    const created = [];
+    let failed = false;
+    const previous = snapshot();
+    segments.forEach((segment, index) => {
+      if (failed) return;
+      if (segment === '..') { current = current.parent || ROOT; return; }
+      const existing = current.children.find(child => child.name === segment);
+      if (existing) {
+        if (existing.type !== 'dir') { log("mkdir: cannot create directory '" + esc(spec) + "': File exists", 'err'); shakeInput(); failed = true; return; }
+        current = existing;
+        return;
+      }
+      if (!makeParents && index > 0) {
+        log("mkdir: cannot create directory '" + esc(spec) + "': No such file or directory", 'err');
+        tip('Add <code>-p</code> to create missing parents.');
+        shakeInput();
+        failed = true;
+        return;
+      }
+      const node = mk(segment);
+      node.parent = current;
+      current.children.push(node);
+      childrenContainer(current).appendChild(buildRow(node));
+      sortChildren(current);
+      paintRow(node);
+      current = node;
+      created.push(node);
+    });
+    if (failed) return;
+    const subtree = new Set();
+    created.forEach(node => collectSubtree(node, subtree));
+    playFlip(previous, subtree);
+    startWiring();
+    created.forEach(node => flashRow(node, 'pulse'));
+    if (created.length) log('<span class="ok">created ' + created.map(node => '<span class="code">' + esc(prettyPath(node)) + '</span>').join(' ') + '</span>');
+  });
+  updateUI();
+  checkMission();
+}
+
+/* clicking the map */
+function onNodeClick(node) {
+  if (pendingConfirm) {
+    log('<span class="dim">Answer the rm prompt first (y or n).</span>');
+    return;
+  }
+  if (node === aimed) {
+    aimed = null;
+    updateRowStates();
+    renderPreview();
+    return;
+  }
+  if (node.type === 'file') {
+    aimed = node;
+    input.value = 'rm ' + node.name + ' ';
+    renderPreview();
+    scrollToRow(node);
+    flashRow(node, 'aimed');
+    updateRowStates();
+    return;
+  }
+  if (aimed && aimed.type === 'file') {
+    const command = 'rm -r ' + (node.parent === cwd ? node.name : prettyPath(node));
+    aimed = null;
+    updateRowStates();
+    input.value = '';
+    execute(command);
+    focusInput();
+    return;
+  }
+  if (node === cwd) {
+    log('<span class="dim">You are already here. Tap a file to aim at it, or a folder to walk into it.</span>');
+    return;
+  }
+  aimed = null;
+  updateRowStates();
+  const command = node.parent === cwd ? 'cd ' + node.name : 'cd ' + prettyPath(node);
+  execute(command);
+}
+
+/* ==================================================================
+   9. MISSIONS
+   ================================================================== */
+const evidence = {file: false, recursive: false, glob: false, interactive: false, restored: false, nested: false,
+                  interactiveNodes: new Set(), restoredNodes: new Set()};
+function recordEvidence(entries, removed) {
+  entries.forEach(entry => {
+    if (entry.node.type === 'file') evidence.file = true;
+    else {
+      evidence.recursive = true;
+      if (entry.size > 1) evidence.nested = true;
+    }
+    if (entry.glob) evidence.glob = true;
+  });
+  if (removed.some(item => item.deep > 1)) evidence.nested = true;
+}
+const missions = [
+  {text: 'Delete <b>old-draft.txt</b>. Watch where it goes.',
+   hint: 'One file, no flags: <code>rm old-draft.txt</code>. It drops into the bin instead of vanishing.',
+   answer: 'rm old-draft.txt',
+   check: () => !alive(oldDraft)},
+
+  {text: 'Folders need <b>-r</b>. Remove the whole <b>cache</b> folder.',
+   hint: 'Try <code>rm cache</code> first and read the refusal, then <code>rm -r cache</code>.',
+   answer: 'rm -r cache',
+   check: () => !alive(cache)},
+
+  {text: 'Delete every <b>.log</b> file in one command using a wildcard.',
+   hint: 'A wildcard stands in for the name: <code>rm *.log</code>. The dry run shows how many match.',
+   answer: 'rm *.log',
+   check: () => !alive(serverLog) && !alive(bootLog)},
+
+  {text: 'Delete <b>secret.txt</b> <i>safely</i>: use <code>-i</code> and answer the prompt.',
+   hint: 'Run <code>rm -i secret.txt</code>, then type <b>y</b> and press enter when asked.',
+   answer: 'rm -i secret.txt',
+   check: () => evidence.interactiveNodes.has(secret) || !alive(secret)},
+
+  {text: 'Changed your mind. <b>Restore secret.txt</b> from the bin.',
+   hint: 'Type <code>restore secret.txt</code> — or just tap the item in the bin bar under the map.',
+   answer: 'restore secret.txt',
+   check: () => evidence.restoredNodes.has(secret)},
+
+  {text: 'Clear out <b>build</b>, including the <b>tmp</b> folder nested inside it.',
+   hint: 'One recursive command takes the whole tree: <code>rm -r build</code>. The bin keeps every piece.',
+   answer: 'rm -r build',
+   check: () => !alive(build)}
+];
+const missionCount = missions.length;
+let missionIndex = 0, missionLocked = false;
+
+function renderMission() {
+  const mission = missions[Math.min(missionIndex, missionCount - 1)];
+  missionBadge.textContent = 'Mission ' + (missionIndex + 1) + ' / ' + missionCount;
+  missionText.innerHTML = mission.text;
+  hintBar.textContent = '';
+  hintBar.classList.remove('show');
+  renderChips();
+}
+function checkMission() {
+  if (missionLocked || missionIndex >= missionCount) return;
+  let passed = false;
+  try { passed = missions[missionIndex].check(); } catch (error) { passed = false; }
+  if (passed) completeMission();
+}
+function completeMission() {
+  missionLocked = true;
+  stepsEl.children[missionIndex].classList.add('done');
+  missionEl.classList.add('complete');
+  setTimeout(() => {
+    missionEl.classList.remove('complete');
+    missionIndex++;
+    missionLocked = false;
+    if (missionIndex >= missionCount) finishAll();
+    else { renderMission(); checkMission(); }
+  }, 950);
+}
+function finishAll() {
+  missionBadge.textContent = 'All done';
+  missionText.innerHTML = 'You can delete on purpose and recover by instinct. Keep exploring!';
+  hintBtn.style.display = 'none';
+  hintBar.classList.remove('show');
+  confetti();
+  log('<span class="ok">All missions complete — nicely done!</span>');
+  log('<span class="dim">rm is the one command with no undo in a real shell. That is why -i, -r and the bin matter.</span>');
+}
+function confetti() {
+  const colors = ['#fb7185', '#4ade80', '#fbbf24', '#f472b6', '#fecdd3', '#fdba74'];
+  for (let i = 0; i < 55; i++) {
+    const piece = document.createElement('i');
+    piece.className = 'confetti';
+    piece.style.left = Math.random() * 100 + '%';
+    piece.style.background = colors[i % colors.length];
+    piece.style.animationDelay = (Math.random() * 0.45) + 's';
+    piece.style.animationDuration = (1.7 + Math.random() * 1.3) + 's';
+    piece.style.setProperty('--rot', (Math.random() * 900 - 450) + 'deg');
+    document.body.appendChild(piece);
+    setTimeout(() => piece.remove(), 3600);
+  }
+}
+
+hintBtn.addEventListener('click', () => {
+  if (hintBar.classList.contains('show')) { hintBar.classList.remove('show'); renderChips(); return; }
+  const mission = missions[Math.min(missionIndex, missionCount - 1)];
+  hintBar.innerHTML = mission.hint;
+  hintBar.classList.add('show');
+  renderChips();
+});
+input.addEventListener('input', () => { if (!pendingConfirm) renderPreview(); });
+binRestore.addEventListener('click', () => { doRestore(); focusInput(); });
+
+/* ==================================================================
+   10. INPUT HANDLING
+   ================================================================== */
+form.addEventListener('submit', event => {
+  event.preventDefault();
+  const value = input.value;
+  input.value = '';
+  if (!pendingConfirm) renderPreview();
+  execute(value);
+  focusInput();
+});
+input.addEventListener('keydown', event => {
+  if (pendingConfirm) {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      answerConfirm('n');
+    }
+    return;
+  }
+  if (event.key === 'ArrowUp') {
+    event.preventDefault();
+    if (historyIndex < history.length - 1) {
+      historyIndex++;
+      input.value = history[history.length - 1 - historyIndex];
+      input.setSelectionRange(input.value.length, input.value.length);
+      renderPreview();
+    }
+  } else if (event.key === 'ArrowDown') {
+    event.preventDefault();
+    if (historyIndex > 0) {
+      historyIndex--;
+      input.value = history[history.length - 1 - historyIndex];
+    } else {
+      historyIndex = -1;
+      input.value = '';
+    }
+    renderPreview();
+  } else if (event.key === 'Tab') {
+    event.preventDefault();
+    completeToken();
+  }
+});
+function completeToken() {
+  const value = input.value;
+  const tokens = value.split(/\s+/);
+  const last = tokens[tokens.length - 1] || '';
+  if (!last) return;
+  const slash = last.lastIndexOf('/');
+  const dirPart = slash > -1 ? last.slice(0, slash + 1) : '';
+  const fragment = slash > -1 ? last.slice(slash + 1) : last;
+  let candidates = [];
+  if (fragment.startsWith('-') && tokens.length > 1) {
+    candidates = ['-r', '-rf', '-i', '-f', '-v', '--recursive', '--interactive', '--force', '--verbose'];
+  } else {
+    const result = resolvePath(dirPart || '.', cwd);
+    if (result.error || result.node.type !== 'dir') return;
+    candidates = result.node.children.map(child => child.name + (child.type === 'dir' ? '/' : ''));
+  }
+  const hits = candidates.filter(candidate => candidate.startsWith(fragment));
+  if (!hits.length) return;
+  if (hits.length === 1) {
+    const suffix = hits[0].endsWith('/') ? '' : ' ';
+    input.value = value.slice(0, value.length - last.length) + dirPart + hits[0] + suffix;
+    input.setSelectionRange(input.value.length, input.value.length);
+  } else {
+    log('<span class="dim">' + esc(hits.join('  ')) + '</span>');
+  }
+  renderPreview();
+}
+
+/* ==================================================================
+   11. RESET + BOOT
+   ================================================================== */
+function resetLab() {
+  flightToken++;
+  buildModel();
+  buildTree();
+  cwd = HOME;
+  prevDir = null;
+  aimed = null;
+  lastContext = null;
+  pendingConfirm = null;
+  bin.length = 0;
+  pendingCleanups.forEach(clearTimeout);
+  pendingCleanups.clear();
+  history = [];
+  historyIndex = -1;
+  missionIndex = 0;
+  missionLocked = false;
+  Object.keys(evidence).forEach(key => {
+    if (evidence[key] instanceof Set) evidence[key].clear();
+    else evidence[key] = false;
+  });
+  term.innerHTML = '';
+  stepsEl.innerHTML = '';
+  missions.forEach(() => stepsEl.appendChild(document.createElement('i')));
+  hintBtn.style.display = '';
+  input.value = '';
+  input.placeholder = 'type rm…';
+  form.classList.remove('asking');
+  trashCard.className = 'trash-card';
+  flightLayer.innerHTML = '';
+  renderBin();
+  requestAnimationFrame(() => {
+    moveAvatar(false);
+    updateUI();
+    renderMission();
+    log('<span class="hl">Fresh filesystem, empty bin.</span> Every mission is live again.');
+  });
+}
+resetBtn.addEventListener('click', () => {
+  resetLab();
+  resetBtn.classList.remove('spin');
+  void resetBtn.offsetWidth;
+  resetBtn.classList.add('spin');
+  setTimeout(() => resetBtn.classList.remove('spin'), 600);
+});
+window.addEventListener('resize', () => moveAvatar(false));
+
+HOME = buildModel();
+buildTree();
+stepsEl.innerHTML = '';
+missions.forEach(() => stepsEl.appendChild(document.createElement('i')));
+cwd = HOME;
+renderBin();
+
+requestAnimationFrame(() => {
+  moveAvatar(false);
+  updateUI();
+  renderMission();
+  log('<span class="hl">Welcome to the visual rm terminal.</span>');
+  log('rm deletes — and in a real shell there is no undo.');
+  log('Here every deletion falls into the <span class="hl">bin</span> under the map, so you can always put it back.');
+  log('');
+  log('<span class="dim">Try this first:</span> <span class="code">rm old-draft.txt</span>');
+});
+
+if (!('ontouchstart' in window) && window.innerWidth > 900) setTimeout(focusInput, 400);
+</script>
+</body>
+</html>

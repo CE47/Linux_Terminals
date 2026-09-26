@@ -1,0 +1,2026 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Learn `mv` — Visual Linux</title>
+<style>
+:root{
+  --bg:#0a0714;
+  --txt:#efeaff;
+  --dim:#9a90b8;
+  --accent:#a78bfa;
+  --accent2:#fbbf24;
+  --ok:#4ade80;
+  --err:#fb7185;
+  --line:rgba(255,255,255,.11);
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;min-height:100dvh;font-family:var(--mono);color:var(--txt);background:var(--bg);overflow-x:hidden;-webkit-font-smoothing:antialiased}
+body::before{content:'';position:fixed;inset:0;z-index:-2;background:radial-gradient(900px 620px at 10% -12%,rgba(167,139,250,.19),transparent 62%),radial-gradient(820px 600px at 100% 2%,rgba(251,191,36,.1),transparent 60%),radial-gradient(760px 700px at 46% 118%,rgba(244,114,182,.11),transparent 63%),#0a0714}
+body::after{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;background-image:linear-gradient(rgba(255,255,255,.027) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.027) 1px,transparent 1px);background-size:46px 46px;-webkit-mask-image:radial-gradient(ellipse at 50% 0%,#000 14%,transparent 74%);mask-image:radial-gradient(ellipse at 50% 0%,#000 14%,transparent 74%)}
+.app{max-width:1320px;margin:0 auto;min-height:100dvh;display:flex;flex-direction:column;padding:14px 16px 16px;gap:11px}
+.top{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:11px}
+.logo{width:38px;height:38px;flex:0 0 auto;border-radius:11px;display:grid;place-items:center;font-size:17px;font-weight:800;letter-spacing:-.06em;color:#150a2b;background:linear-gradient(150deg,#ddd6fe,#a78bfa 45%,#7c3aed);box-shadow:0 8px 22px -8px rgba(167,139,250,.9),inset 0 1px 0 rgba(255,255,255,.7);animation:logoPulse 3.2s ease-in-out infinite}
+@keyframes logoPulse{0%,100%{box-shadow:0 8px 22px -8px rgba(167,139,250,.9),inset 0 1px 0 rgba(255,255,255,.7)}50%{box-shadow:0 8px 32px -6px rgba(167,139,250,1),inset 0 1px 0 rgba(255,255,255,.7)}}
+.brand h1{margin:0;font-size:16px;letter-spacing:.01em;font-weight:700}
+.brand h1 code{color:#ddd6fe;background:rgba(167,139,250,.15);padding:1px 7px;border-radius:6px;border:1px solid rgba(167,139,250,.32)}
+.brand p{margin:2px 0 0;font-size:11.5px;color:var(--dim)}
+.steps{display:flex;gap:7px;align-items:center}
+.steps i{width:9px;height:9px;border-radius:50%;display:block;background:rgba(255,255,255,.13);transition:all .45s cubic-bezier(.34,1.56,.64,1)}
+.steps i.done{background:var(--ok);box-shadow:0 0 0 4px rgba(74,222,128,.14),0 0 14px rgba(74,222,128,.7);transform:scale(1.15)}
+.reset-btn{font:inherit;font-size:10.5px;letter-spacing:.04em;color:var(--dim);cursor:pointer;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);padding:5px 10px;border-radius:9px;white-space:nowrap;transition:.2s;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.reset-btn:hover{color:var(--txt);background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.26)}
+.reset-btn:active{transform:scale(.95)}
+.reset-btn.spin{animation:resetSpin .55s cubic-bezier(.34,1.3,.64,1)}
+@keyframes resetSpin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+.mission{display:flex;align-items:center;gap:12px;padding:10px 13px;border-radius:14px;background:linear-gradient(90deg,rgba(167,139,250,.12),rgba(167,139,250,.02));border:1px solid rgba(167,139,250,.24);transition:background .35s,border-color .35s,transform .35s,box-shadow .35s}
+.mission.complete{background:linear-gradient(90deg,rgba(74,222,128,.24),rgba(74,222,128,.05));border-color:rgba(74,222,128,.55);transform:scale(1.012);box-shadow:0 0 30px -8px rgba(74,222,128,.5)}
+.badge{font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;padding:5px 9px;border-radius:999px;white-space:nowrap;color:#ddd6fe;background:rgba(167,139,250,.17);border:1px solid rgba(167,139,250,.32);transition:all .3s}
+.mission.complete .badge{color:#86efac;background:rgba(74,222,128,.2);border-color:rgba(74,222,128,.45)}
+.mission-text{flex:1;font-size:13px;line-height:1.4;min-width:0}
+.mission-text b{color:#ddd6fe}
+.mission.complete .mission-text b{color:#86efac}
+.hint-btn{font:inherit;font-size:11px;color:var(--dim);cursor:pointer;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);padding:6px 11px;border-radius:9px;white-space:nowrap;transition:.2s}
+.hint-btn:hover{color:var(--txt);background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.24)}
+.hint{max-height:0;overflow:hidden;opacity:0;font-size:12.5px;color:var(--dim);padding:0 14px;border-radius:12px;transition:max-height .3s ease,opacity .3s ease,padding .3s ease,background .3s}
+.hint.show{max-height:80px;opacity:1;padding:9px 14px;background:rgba(255,255,255,.035)}
+.hint code{color:#fde68a;background:rgba(251,191,36,.13);padding:1px 6px;border-radius:5px}
+main{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1.08fr) minmax(0,1fr);grid-template-rows:minmax(0,1fr);gap:13px}
+.panel{background:linear-gradient(180deg,rgba(255,255,255,.048),rgba(255,255,255,.014));border:1px solid rgba(255,255,255,.08);border-radius:17px;padding:12px;display:flex;flex-direction:column;min-height:0;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:0 22px 44px -24px rgba(0,0,0,.9),inset 0 1px 0 rgba(255,255,255,.055)}
+.panel-head{display:flex;align-items:center;gap:9px;padding:1px 4px 9px}
+.title{font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:var(--dim);font-weight:700}
+.sub{font-size:11px;color:rgba(154,144,184,.65);margin-left:auto}
+.dots{display:flex;gap:5px;margin-right:2px}
+.dots i{width:9px;height:9px;border-radius:50%;display:block}
+.dots i:nth-child(1){background:#fb7185}
+.dots i:nth-child(2){background:#fbbf24}
+.dots i:nth-child(3){background:#4ade80}
+
+/* ============ MOVE LANE CARD ============ */
+.crumbs{display:flex;align-items:center;flex-wrap:wrap;gap:3px;padding:7px 9px;margin-bottom:8px;border-radius:11px;background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.055);min-height:37px}
+.crumb{font-size:12px;padding:3px 9px;border-radius:7px;background:rgba(167,139,250,.14);color:#c4b5fd;border:1px solid rgba(167,139,250,.24);animation:crumbIn .32s cubic-bezier(.34,1.56,.64,1) backwards}
+.crumb:last-child{color:#fde68a;background:rgba(251,191,36,.11);border-color:rgba(251,191,36,.26)}
+@keyframes crumbIn{from{opacity:0;transform:translateY(-5px) scale(.85)}to{opacity:1;transform:none}}
+.sep{color:rgba(154,144,184,.5);font-size:11px;padding:0 1px}
+.move-card{position:relative;display:flex;flex-direction:column;gap:9px;padding:10px 11px 9px;margin-bottom:8px;border-radius:13px;background:linear-gradient(120deg,rgba(167,139,250,.11),rgba(251,191,36,.04) 48%,rgba(167,139,250,.09));border:1px solid rgba(167,139,250,.24);overflow:hidden;transition:background .35s,border-color .35s,box-shadow .35s,transform .35s}
+.move-card::before{content:'';position:absolute;inset:0;pointer-events:none;background:linear-gradient(105deg,transparent 0%,rgba(255,255,255,.09) 45%,transparent 70%);transform:translateX(-110%);animation:laneShimmer 5s ease-in-out infinite}
+@keyframes laneShimmer{0%,55%{transform:translateX(-110%)}78%,100%{transform:translateX(110%)}}
+.move-card.armed{border-color:rgba(167,139,250,.7);box-shadow:0 0 34px -14px rgba(167,139,250,.95)}
+.move-card.in-flight{border-color:rgba(251,191,36,.72);box-shadow:0 0 34px -14px rgba(251,191,36,.95)}
+.move-card.done{border-color:rgba(74,222,128,.6);box-shadow:0 0 34px -14px rgba(74,222,128,.85)}
+.move-card.blocked{border-color:rgba(251,113,133,.62);box-shadow:0 0 30px -14px rgba(251,113,133,.8);animation:nudge .38s ease}
+@keyframes nudge{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+.move-top{display:flex;align-items:center;justify-content:space-between;gap:8px;position:relative;z-index:1;min-width:0}
+.move-label{font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:#c4b5fd;font-weight:700;flex:0 0 auto}
+.move-status{font-size:9.5px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;max-width:64%;transition:color .3s}
+.move-status.live{color:#c4b5fd}
+.move-status.flying{color:#fcd34d}
+.move-status.done{color:#86efac}
+.move-status.blocked{color:var(--err)}
+.move-grid{display:grid;grid-template-columns:minmax(0,1fr) 70px minmax(0,1fr);align-items:stretch;gap:7px;position:relative;z-index:1}
+.lane{min-width:0;min-height:67px;padding:8px 9px;border-radius:10px;background:rgba(0,0,0,.22);border:1px solid rgba(255,255,255,.08);transition:background .3s,border-color .3s,box-shadow .3s,opacity .3s}
+.lane.source{border-color:rgba(167,139,250,.28);background:linear-gradient(145deg,rgba(167,139,250,.11),rgba(0,0,0,.2))}
+.lane.destination{border-color:rgba(251,191,36,.26);background:linear-gradient(145deg,rgba(251,191,36,.09),rgba(0,0,0,.2))}
+.lane.destination.armed{border-style:dashed;border-color:rgba(251,191,36,.6)}
+.lane.destination.landed{border-color:rgba(74,222,128,.7);background:linear-gradient(145deg,rgba(74,222,128,.16),rgba(0,0,0,.2));box-shadow:0 0 20px -8px rgba(74,222,128,.7)}
+.lane.empty{opacity:.6}
+.lane.gone{border-style:dashed;border-color:rgba(255,255,255,.15);background:rgba(0,0,0,.24);opacity:.62}
+.lane.gone .lane-path{text-decoration:line-through;color:var(--dim)}
+.lane.gone .lane-meta{color:var(--dim)}
+.lane-label{display:flex;align-items:center;gap:5px;font-size:8.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--dim);font-weight:700}
+.lane-dot{width:6px;height:6px;border-radius:50%;display:block}
+.lane-dot.source{background:var(--accent);box-shadow:0 0 9px rgba(167,139,250,.85)}
+.lane-dot.destination{background:var(--accent2);box-shadow:0 0 9px rgba(251,191,36,.85)}
+.lane-path{display:flex;align-items:center;gap:6px;margin-top:8px;color:#fbfaff;font-size:12px;font-weight:700;overflow:hidden;white-space:nowrap}
+.lane-path .name{overflow:hidden;text-overflow:ellipsis}
+.lane-meta{display:block;margin-top:4px;color:var(--dim);font-size:9.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lane-meta em{font-style:normal;color:#fcd34d}
+.move-arrow{position:relative;min-height:67px;display:grid;place-items:center}
+.move-arrow::before{content:'';position:absolute;left:5px;right:8px;top:33px;height:2px;border-radius:2px;background:linear-gradient(90deg,var(--accent),rgba(251,191,36,.3) 50%,var(--accent2));box-shadow:0 0 12px rgba(167,139,250,.5)}
+.move-arrow::after{content:'';position:absolute;right:2px;top:27px;width:10px;height:10px;border-top:2px solid var(--accent2);border-right:2px solid var(--accent2);transform:rotate(45deg);filter:drop-shadow(0 0 5px rgba(251,191,36,.65))}
+.arrow-word{position:relative;z-index:1;margin-top:25px;padding:1px 4px;border-radius:4px;background:#0a0714;color:#c4b5fd;font-size:8px;letter-spacing:.08em}
+.move-packet{position:absolute;z-index:3;left:8px;top:27px;width:13px;height:13px;border-radius:3px;background:linear-gradient(145deg,#ede9fe,#a78bfa);border:1px solid rgba(255,255,255,.9);box-shadow:0 0 14px rgba(167,139,250,.95);opacity:0;transform:translateX(0) rotate(45deg)}
+.move-card.in-flight .move-packet{animation:packetFlight .8s cubic-bezier(.2,.8,.2,1) forwards}
+@keyframes packetFlight{0%{opacity:0;transform:translateX(0) rotate(45deg) scale(.7)}18%{opacity:1}78%{opacity:1}100%{opacity:0;transform:translateX(51px) rotate(45deg) scale(1.2)}}
+.move-foot{position:relative;z-index:1;padding-top:7px;border-top:1px solid rgba(255,255,255,.07);color:var(--dim);font-size:9.5px;line-height:1.45;min-height:2.9em;max-height:2.9em;overflow:hidden}
+
+/* ============ TREE ============ */
+.tree-scroll{flex:1;min-height:0;overflow:auto;padding:4px 2px 6px;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.16) transparent;-webkit-overflow-scrolling:touch}
+.tree-scroll::-webkit-scrollbar{width:8px;height:8px}
+.tree-scroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:99px}
+.tree-scroll::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.26)}
+.tree-inner{position:relative;display:inline-block;vertical-align:top;min-width:100%;padding:6px 58px 16px 2px}
+.node{position:relative}
+.children{margin-left:16px;padding-left:12px;border-left:2px solid var(--line);transition:border-color .3s}
+.children>.node::before{content:'';position:absolute;left:-14px;top:17px;width:14px;height:2px;background:var(--line);border-radius:2px;transition:background .3s}
+.tree-inner.wiring .children{border-color:rgba(255,255,255,.03)}
+.tree-inner.wiring .children>.node::before{background:rgba(255,255,255,.03)}
+.node.lift{transition:transform .34s cubic-bezier(.34,1.3,.64,1);z-index:7}
+.node.lift> .row{box-shadow:0 0 0 1px rgba(251,191,36,.5),0 16px 34px -14px rgba(251,191,36,.75)}
+.row{display:inline-flex;align-items:center;gap:8px;min-height:34px;padding:5px 11px 5px 9px;border-radius:10px;cursor:pointer;white-space:nowrap;position:relative;transition:background .22s,box-shadow .22s,transform .18s;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.row:hover{background:rgba(255,255,255,.055);transform:translateX(2px)}
+.row.current{background:linear-gradient(90deg,rgba(167,139,250,.22),rgba(167,139,250,.03));box-shadow:inset 0 0 0 1px rgba(167,139,250,.42)}
+.row.current .label{color:#fff;font-weight:700}
+.row.current::after{content:'';position:absolute;left:0;top:0;bottom:0;width:2px;background:linear-gradient(180deg,transparent,var(--accent),transparent);animation:edgeGlow 2.6s ease-in-out infinite}
+@keyframes edgeGlow{0%,100%{opacity:.35}50%{opacity:1}}
+.row.picked{box-shadow:inset 0 0 0 1px rgba(167,139,250,.75);background:rgba(167,139,250,.14)}
+.row.picked .label{color:#fff}
+.row.ghosted{opacity:0}
+.row.leaving{animation:rowLeaving .62s cubic-bezier(.4,0,.6,1) forwards;pointer-events:none}
+@keyframes rowLeaving{0%{opacity:1;transform:none;filter:blur(0)}35%{opacity:.5;transform:translateY(-9px) scale(.94);filter:blur(1.4px)}100%{opacity:0;transform:translateY(-26px) scale(.82);filter:blur(3px)}}
+.row.arriving{animation:rowArriving .72s cubic-bezier(.34,1.56,.64,1)}
+@keyframes rowArriving{0%{opacity:0;transform:translateY(-12px) scale(.8);box-shadow:0 0 0 2px rgba(74,222,128,.95),0 0 40px rgba(74,222,128,.8)}55%{opacity:1;transform:translateY(2px) scale(1.05);background:rgba(74,222,128,.22)}100%{opacity:1;transform:none;box-shadow:inset 0 0 0 1px rgba(74,222,128,.35)}}
+.row.renamed{background-image:linear-gradient(100deg,transparent 0%,rgba(255,255,255,.24) 45%,transparent 70%);background-size:220% 100%;background-repeat:no-repeat;animation:rowRenamed .82s cubic-bezier(.34,1.56,.64,1)}
+@keyframes rowRenamed{0%{box-shadow:inset 0 0 0 1px rgba(251,191,36,.9);background-color:rgba(251,191,36,.2);background-position:150% 0}100%{box-shadow:inset 0 0 0 1px rgba(251,191,36,0);background-color:transparent;background-position:-60% 0}}
+.row.renamed .label{animation:labelMorph .5s cubic-bezier(.34,1.4,.64,1)}
+@keyframes labelMorph{0%{opacity:0;transform:translateY(-9px) scale(.9);filter:blur(2px)}100%{opacity:1;transform:none;filter:blur(0)}}
+.row.blocked{animation:rowBlocked .5s ease}
+@keyframes rowBlocked{0%,100%{background:transparent}40%{background:rgba(251,113,133,.2);box-shadow:inset 0 0 0 1px rgba(251,113,133,.7)}}
+.row.doomed .label{color:var(--err);text-decoration:line-through}
+.row.file{opacity:.82}
+.row .tag{position:relative;z-index:1}
+.mark{position:absolute;left:8px;bottom:calc(100% - 2px);z-index:9;padding:2px 7px;border-radius:999px;font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;white-space:nowrap;pointer-events:none;animation:markRise 1.15s cubic-bezier(.22,.9,.3,1) forwards}
+.mark.move{color:#fde68a;background:rgba(251,191,36,.22);border:1px solid rgba(251,191,36,.55);box-shadow:0 6px 18px -8px rgba(251,191,36,.9)}
+.mark.rename{color:#ddd6fe;background:rgba(167,139,250,.24);border:1px solid rgba(167,139,250,.6);box-shadow:0 6px 18px -8px rgba(167,139,250,.9)}
+@keyframes markRise{0%{opacity:0;transform:translateY(6px) scale(.8)}22%{opacity:1;transform:translateY(-4px) scale(1)}70%{opacity:1;transform:translateY(-16px)}100%{opacity:0;transform:translateY(-30px)}}
+.icon{width:18px;height:14px;flex:0 0 auto;position:relative;border-radius:3px;transition:box-shadow .3s;z-index:1}
+.icon.dir{background:linear-gradient(180deg,#fcd34d,#f59e0b);box-shadow:0 2px 7px rgba(251,191,36,.22)}
+.icon.dir::before{content:'';position:absolute;top:-4px;left:0;width:8px;height:6px;background:#fcd34d;border-radius:3px 3px 0 0}
+.icon.file{width:16px;height:20px;border-radius:2px;background:linear-gradient(180deg,var(--c1,#c4b5fd),var(--c2,#8b5cf6));clip-path:polygon(0 0,68% 0,100% 28%,100% 100%,0 100%);box-shadow:0 2px 8px rgba(0,0,0,.35)}
+.icon.file::after{content:'';position:absolute;top:0;left:0;width:100%;height:5px;background:rgba(0,0,0,.22)}
+.icon .ext{position:absolute;left:0;right:0;bottom:2px;text-align:center;font-size:6px;line-height:1;font-weight:700;letter-spacing:.02em;color:rgba(12,6,26,.78)}
+.row.current .icon.dir{box-shadow:0 0 0 3px rgba(167,139,250,.3),0 2px 12px rgba(251,191,36,.75)}
+.row.picked .icon.file{box-shadow:0 0 0 3px rgba(167,139,250,.28),0 2px 14px rgba(167,139,250,.6)}
+.row.arriving .icon{box-shadow:0 0 0 3px rgba(74,222,128,.25),0 2px 16px rgba(74,222,128,.6)}
+.label{font-size:13.5px;letter-spacing:.01em;position:relative;z-index:1}
+.tag{font-size:9.5px;padding:2px 6px;border-radius:99px;font-weight:700;background:rgba(74,222,128,.16);color:#86efac;border:1px solid rgba(74,222,128,.3)}
+.cnt{font-size:9px;padding:2px 6px;border-radius:99px;font-weight:700;color:var(--dim);background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.09);font-variant-numeric:tabular-nums}
+.cnt.hot{color:#fde68a;background:rgba(251,191,36,.14);border-color:rgba(251,191,36,.3)}
+
+/* ---- avatar ---- */
+.avatar{position:absolute;left:0;top:0;width:30px;height:30px;z-index:6;pointer-events:none;transition:transform .62s cubic-bezier(.34,1.3,.64,1);will-change:transform}
+.avatar .body{width:100%;height:100%;border-radius:50% 50% 46% 46%;background:radial-gradient(circle at 34% 28%,#ede9fe,#a78bfa 52%,#6d28d9);box-shadow:0 0 0 3px rgba(167,139,250,.18),0 9px 20px -4px rgba(124,58,237,.8);display:grid;place-items:center;animation:idle 2.8s ease-in-out infinite}
+@keyframes idle{0%,100%{transform:translateY(0)}50%{transform:translateY(-2.5px)}}
+.avatar.hop .body{animation:hop .58s cubic-bezier(.34,1.3,.64,1)}
+@keyframes hop{0%{transform:translateY(0) scale(1,1)}28%{transform:translateY(-11px) scale(.9,1.12)}58%{transform:translateY(0) scale(1.12,.88)}80%{transform:translateY(-3px) scale(.98,1.03)}100%{transform:translateY(0) scale(1,1)}}
+.eyes{display:flex;gap:5px}
+.eyes i{width:4px;height:6.5px;background:#1e1035;border-radius:50%;display:block;animation:blink 4.6s infinite}
+@keyframes blink{0%,92%,100%{transform:scaleY(1)}95%{transform:scaleY(.1)}}
+.ping{position:absolute;left:0;top:0;width:0;height:0;pointer-events:none;z-index:4}
+.ping i{position:absolute;left:-17px;top:-17px;width:34px;height:34px;border-radius:50%;border:2px solid rgba(74,222,128,.85);display:block;animation:pingA .75s ease-out forwards}
+@keyframes pingA{0%{transform:scale(.2);opacity:1}100%{transform:scale(1.9);opacity:0}}
+
+/* ---- flight: arc, trail, burst ---- */
+.flyer{position:absolute;left:0;top:0;z-index:9;display:flex;align-items:center;gap:7px;padding:4px 10px 4px 7px;border-radius:10px;background:rgba(20,12,38,.94);border:1px solid rgba(167,139,250,.6);box-shadow:0 0 0 1px rgba(255,255,255,.06),0 18px 36px -14px rgba(0,0,0,.95),0 0 26px -6px rgba(167,139,250,.7);pointer-events:none;will-change:transform;white-space:nowrap}
+.flyer .fl-name{font-size:12px;font-weight:700;color:#fbfaff;max-width:150px;overflow:hidden;text-overflow:ellipsis}
+.flyer .fl-arrow{font-size:11px;color:var(--accent2)}
+.trail-dot{position:absolute;left:0;top:0;width:9px;height:9px;margin:-4.5px 0 0 -4.5px;border-radius:50%;z-index:8;pointer-events:none;animation:trailFade .46s ease-out forwards}
+@keyframes trailFade{0%{opacity:.9;transform:scale(1)}100%{opacity:0;transform:scale(.15)}}
+.burst{position:absolute;left:0;top:0;width:0;height:0;z-index:8;pointer-events:none}
+.burst i{position:absolute;left:-3px;top:-3px;width:6px;height:6px;border-radius:50%;background:var(--accent2);box-shadow:0 0 10px rgba(251,191,36,.9);animation:spark .72s ease-out forwards}
+@keyframes spark{0%{opacity:1;transform:translate(0,0) scale(1)}100%{opacity:0;transform:translate(var(--dx,0),var(--dy,0)) scale(.15)}}
+.burst .ring{position:absolute;border:1.5px solid var(--accent2);border-radius:50%;opacity:.9;animation:ringOut .68s ease-out forwards}
+@keyframes ringOut{0%{width:10px;height:10px;margin:-5px 0 0 -5px;opacity:.95}100%{width:74px;height:74px;margin:-37px 0 0 -37px;opacity:0}}
+
+/* ============ TERMINAL ============ */
+.term{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:12px 13px;border-radius:12px;background:rgba(0,0,0,.36);border:1px solid rgba(255,255,255,.055);font-size:12.5px;line-height:1.7;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.16) transparent;-webkit-overflow-scrolling:touch}
+.term::-webkit-scrollbar{width:8px}
+.term::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:99px}
+.term::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.26)}
+.line{white-space:pre-wrap;word-break:break-word;animation:lineIn .22s ease-out}
+@keyframes lineIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+.line .p{color:#a7f3d0;opacity:.9}
+.line .c{color:#f8faff;font-weight:600}
+.line.err{color:var(--err)}
+.line .d{color:#c4b5fd;font-weight:600}
+.line .f{color:#cbd5e1}
+.line .hl{color:#c4b5fd;font-weight:700}
+.line .ok{color:#86efac}
+.line .warn{color:#fcd34d}
+.line .dim{color:var(--dim)}
+.line .code{color:#fde68a;background:rgba(251,191,36,.11);padding:1px 7px;border-radius:6px;border:1px solid rgba(251,191,36,.2)}
+.tip-line{margin-top:4px;padding:6px 10px;border-radius:8px;background:rgba(251,191,36,.08);border-left:3px solid rgba(251,191,36,.55);color:#fcd34d;font-size:12px}
+.tip-line.danger{background:rgba(251,113,133,.09);border-left-color:rgba(251,113,133,.6);color:#fda4af}
+.chips{display:flex;gap:7px;overflow-x:auto;padding:10px 1px 2px;scrollbar-width:none;-ms-overflow-style:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{font:inherit;font-size:11.5px;white-space:nowrap;cursor:pointer;padding:6px 11px;border-radius:9px;color:#c4b5fd;background:rgba(167,139,250,.1);border:1px solid rgba(167,139,250,.26);transition:.18s;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.chip:hover{background:rgba(167,139,250,.22);color:#ede9fe;transform:translateY(-1px);box-shadow:0 6px 16px -12px rgba(167,139,250,.9)}
+.chip:active{transform:translateY(0) scale(.96)}
+
+/* ---- dry run preview ---- */
+.preview{display:flex;align-items:center;gap:8px;margin-top:9px;padding:8px 10px;border-radius:12px;background:rgba(0,0,0,.34);border:1px dashed rgba(255,255,255,.13);min-height:40px;transition:border-color .25s,background .25s}
+.preview.ok{border-style:solid;border-color:rgba(74,222,128,.4);background:rgba(74,222,128,.05)}
+.preview.warn{border-style:solid;border-color:rgba(251,191,36,.45);background:rgba(251,191,36,.05)}
+.preview.bad{border-style:solid;border-color:rgba(251,113,133,.45);background:rgba(251,113,133,.05)}
+.pv-label{font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);font-weight:700;flex:0 0 auto}
+.pv-body{flex:1;min-width:0;display:flex;align-items:center;gap:7px;flex-wrap:wrap;font-size:11.5px;color:var(--dim)}
+.pv-body .pv-item{display:inline-flex;align-items:center;gap:6px;max-width:100%;padding:2px 8px 2px 4px;border-radius:8px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);color:var(--txt);font-weight:600;overflow:hidden}
+.pv-body .pv-item .name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pv-body .pv-arrow{color:var(--accent2)}
+.pv-verdict{font-size:9px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;padding:2px 7px;border-radius:99px;white-space:nowrap;animation:pop .28s cubic-bezier(.34,1.56,.64,1)}
+@keyframes pop{from{opacity:0;transform:scale(.8) translateY(3px)}to{opacity:1;transform:none}}
+.pv-verdict.ok{color:#86efac;background:rgba(74,222,128,.16);border:1px solid rgba(74,222,128,.32)}
+.pv-verdict.warn{color:#fde68a;background:rgba(251,191,36,.16);border:1px solid rgba(251,191,36,.34)}
+.pv-verdict.bad{color:#fda4af;background:rgba(251,113,133,.16);border:1px solid rgba(251,113,133,.34)}
+.pv-msg{color:var(--dim);line-height:1.4;max-width:100%;max-height:2.9em;overflow:hidden}
+.pv-body code,.pv-body .code{color:#fde68a;background:rgba(251,191,36,.12);padding:1px 6px;border-radius:5px;border:1px solid rgba(251,191,36,.2)}
+.preview.bad .pv-msg{color:#fda4af}
+
+.input-row{display:flex;align-items:center;gap:8px;margin-top:9px;padding:9px 10px;border-radius:12px;background:rgba(0,0,0,.4);border:1px solid rgba(167,139,250,.28);transition:border-color .2s,box-shadow .2s}
+.input-row:focus-within{border-color:rgba(167,139,250,.75);box-shadow:0 0 0 3px rgba(167,139,250,.14)}
+.input-row.shake{animation:shake .4s}
+@keyframes shake{10%,90%{transform:translateX(-2px)}20%,80%{transform:translateX(4px)}30%,50%,70%{transform:translateX(-6px)}40%,60%{transform:translateX(6px)}}
+.ps1{font-size:12.5px;color:#a7f3d0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:0 1 auto}
+.ps1 .ps-user{color:#a7f3d0;opacity:.85}
+.input-row input{flex:1;min-width:40px;background:none;border:none;outline:none;color:#f1f5f9;font:inherit;font-size:13px;padding:0}
+.input-row input::placeholder{color:rgba(154,144,184,.5)}
+.send{font:inherit;font-size:14px;line-height:1;cursor:pointer;width:30px;height:30px;flex:0 0 auto;border-radius:9px;color:#150a2b;background:linear-gradient(150deg,#ddd6fe,#a78bfa);border:none;display:grid;place-items:center;transition:.18s;box-shadow:0 4px 14px -4px rgba(167,139,250,.85)}
+.send:hover{transform:translateY(-1px);box-shadow:0 6px 18px -4px rgba(167,139,250,1)}
+.send:active{transform:scale(.93)}
+.confetti{position:fixed;top:-14px;width:8px;height:13px;border-radius:2px;z-index:999;pointer-events:none;animation:fall linear forwards}
+@keyframes fall{to{transform:translateY(108vh) rotate(var(--rot,360deg));opacity:.05}}
+
+/* ============ RESPONSIVE ============ */
+@media (min-width:901px){
+  html,body{height:100%;min-height:0;overflow:hidden}
+  .app{height:100%;min-height:0;overflow:hidden}
+  .term{flex:1 1 auto}
+}
+@media (max-width:900px){
+  .app{padding:12px 12px calc(16px + env(safe-area-inset-bottom));gap:10px}
+  /* minmax(0,1fr), not 1fr: a plain 1fr is minmax(auto,1fr) and its auto
+     minimum lets the wide chip row drag the column past the viewport */
+  main{grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto;flex:none}
+  .panel{min-height:0;min-width:0}
+  .panel-head,.crumbs,.term,.input-row,.preview{min-width:0}
+  .chips{min-width:0;max-width:100%}
+  .tree-scroll{max-height:32vh}
+  .term{min-height:150px;max-height:26vh}
+  .brand h1{font-size:15px}
+  .brand p{display:none}
+  .mission{padding:9px 11px}
+  .mission-text{font-size:12.5px;line-height:1.35}
+  .ps1 .ps-user{display:none}
+  .sub{display:none}
+  .move-grid{grid-template-columns:minmax(0,1fr) 46px minmax(0,1fr)}
+  .lane{min-height:54px;padding:7px 8px}
+  .lane-path{margin-top:6px;font-size:11.5px}
+  .move-foot{min-height:1.5em;max-height:2.9em}
+}
+@media (max-width:560px){
+  .logo{width:34px;height:34px;font-size:15px}
+  .badge{font-size:9px;padding:4px 7px}
+  .mission{gap:8px;padding:8px 10px}
+  .hint-btn{padding:5px 9px;font-size:10.5px}
+  .label{font-size:13px}
+  .tree-inner{padding-right:48px}
+  .tree-scroll{max-height:28vh}
+  .term{max-height:24vh}
+  .crumbs{min-height:34px;padding:6px 8px}
+  .move-grid{grid-template-columns:minmax(0,1fr) 38px minmax(0,1fr);gap:5px}
+  .move-card{gap:7px;padding:9px 9px 8px}
+  .lane{min-height:46px}
+  .lane-label{font-size:8px;letter-spacing:.1em}
+  .lane-meta{font-size:9px}
+  .move-arrow::before{left:2px;right:5px;top:22px}
+  .move-arrow::after{right:0;top:17px;width:8px;height:8px}
+  .move-arrow{min-height:46px}
+  .move-packet{left:3px;top:17px;width:11px;height:11px}
+  .move-card.in-flight .move-packet{animation:packetFlight .8s cubic-bezier(.2,.8,.2,1) forwards}
+  @keyframes packetFlight{0%{opacity:0;transform:translateX(0) rotate(45deg) scale(.7)}18%{opacity:1}78%{opacity:1}100%{opacity:0;transform:translateX(34px) rotate(45deg) scale(1.2)}}
+  .cnt{display:none}
+  .preview{padding:7px 9px;min-height:36px}
+  .pv-verdict{font-size:8.5px}
+}
+@media (max-width:380px){
+  .move-grid{grid-template-columns:1fr;gap:5px}
+  .move-arrow{min-height:24px}
+  .move-arrow::before{left:16px;right:16px;top:12px}
+  .move-arrow::after{right:16px;top:7px}
+  .arrow-word{display:none}
+  .move-packet{left:16px;top:7px}
+  .move-card.in-flight .move-packet{animation:packetDrop .8s cubic-bezier(.2,.8,.2,1) forwards}
+  @keyframes packetDrop{0%{opacity:0;transform:translate(0,0) rotate(45deg) scale(.7)}18%{opacity:1}100%{opacity:0;transform:translateY(30px) rotate(45deg) scale(1.2)}}
+}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <div class="logo">mv</div>
+      <div>
+        <h1>Learn <code>mv</code></h1>
+        <p>Move and rename files — watch the source disappear.</p>
+      </div>
+    </div>
+    <div class="steps" id="steps"></div>
+    <button class="reset-btn" id="resetBtn" type="button" title="Rebuild the filesystem from scratch">↺ reset</button>
+  </header>
+
+  <div class="mission" id="mission">
+    <span class="badge" id="missionBadge">Mission 1 / 6</span>
+    <span class="mission-text" id="missionText">Loading…</span>
+    <button class="hint-btn" id="hintBtn" type="button">Hint</button>
+  </div>
+  <div class="hint" id="hintBar"></div>
+
+  <main>
+    <section class="panel">
+      <div class="panel-head">
+        <span class="title">Filesystem map</span>
+        <span class="sub">tap a file, then a folder</span>
+      </div>
+      <div class="crumbs" id="crumbs"></div>
+      <div class="move-card" id="moveCard" aria-live="polite">
+        <div class="move-top"><span class="move-label">Move lane</span><span class="move-status" id="moveStatus">waiting for a move</span></div>
+        <div class="move-grid">
+          <div class="lane source empty" id="sourceLane">
+            <div class="lane-label"><span class="lane-dot source"></span>Source</div>
+            <span class="lane-path" id="sourcePath">pick a file</span>
+            <span class="lane-meta" id="sourceMeta">it will vanish from here</span>
+          </div>
+          <div class="move-arrow" aria-hidden="true"><span class="arrow-word">MOVE</span><span class="move-packet" id="movePacket"></span></div>
+          <div class="lane destination empty" id="destinationLane">
+            <div class="lane-label"><span class="lane-dot destination"></span>Destination</div>
+            <span class="lane-path" id="destinationPath">choose a target</span>
+            <span class="lane-meta" id="destinationMeta">it reappears over there</span>
+          </div>
+        </div>
+        <div class="move-foot" id="moveFoot">mv never copies. The source lane empties because the item is gone from there.</div>
+      </div>
+      <div class="tree-scroll" id="treeScroll">
+        <div class="tree" id="tree"></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <span class="dots"><i></i><i></i><i></i></span>
+        <span class="title">Terminal</span>
+      </div>
+      <div class="term" id="term" aria-live="polite"></div>
+      <div class="chips" id="chips"></div>
+      <div class="preview" id="preview">
+        <span class="pv-label">Dry run</span>
+        <span class="pv-body" id="pvBody"><span class="pv-msg">type an mv command to preview it before it happens</span></span>
+      </div>
+      <form class="input-row" id="form" autocomplete="off">
+        <span class="ps1"><span class="ps-user">you@linux:</span><span id="psPath">~</span>$</span>
+        <input id="cmd" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="type mv…">
+        <button class="send" type="submit" aria-label="Run command">↵</button>
+      </form>
+    </section>
+  </main>
+</div>
+
+<script>
+/* ==================================================================
+   1. FILESYSTEM MODEL
+   ================================================================== */
+let uid = 0;
+let clock = 1700000000000;
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const FILE_SKIN = {
+  txt:  {c1:'#bae6fd', c2:'#0ea5e9', tag:'TXT'},
+  md:   {c1:'#a7f3d0', c2:'#059669', tag:'MD'},
+  js:   {c1:'#fde68a', c2:'#d97706', tag:'JS'},
+  css:  {c1:'#ddd6fe', c2:'#7c3aed', tag:'CSS'},
+  png:  {c1:'#fbcfe8', c2:'#db2777', tag:'PNG'},
+  mp3:  {c1:'#fed7aa', c2:'#ea580c', tag:'MP3'},
+  log:  {c1:'#e2e8f0', c2:'#64748b', tag:'LOG'},
+  bak:  {c1:'#e2e8f0', c2:'#475569', tag:'BAK'},
+  sys:  {c1:'#cffafe', c2:'#0891b2', tag:'SYS'}
+};
+function skin(node) {
+  if (node.type === 'dir') return null;
+  if (node.skin) return FILE_SKIN[node.skin];
+  const ext = node.name.includes('.') ? node.name.split('.').pop().toLowerCase() : '';
+  return FILE_SKIN[ext] || FILE_SKIN.sys;
+}
+
+const mk = (name, type = 'dir', extra = {}) => ({
+  id: ++uid, name, type,
+  children: type === 'dir' ? [] : null,
+  parent: null,
+  size: type === 'dir' ? 4096 : 1,
+  mtime: clock++,
+  content: type === 'file' ? [] : null,
+  ...extra
+});
+
+let ROOT, HOME, documents, projects, pictures, music, etc, tmp;
+let notes, readme, hostsBak, report, meeting, beach, sunset, playlist, lofi, appJs, themeCss, hosts, passwd, buildLog;
+
+function buildModel() {
+  uid = 0;
+  clock = 1700000000000;
+  ROOT = mk('/');
+  const homeDir = mk('home');
+  HOME = mk('you');
+  documents = mk('documents');
+  projects = mk('projects');
+  pictures = mk('pictures');
+  music = mk('music');
+  etc = mk('etc');
+  tmp = mk('tmp');
+  notes = mk('notes.txt', 'file', {size:1840, content:[
+    'Kitchen notes',
+    'mv does two jobs: rename and relocate.',
+    'A move never leaves a copy behind.',
+    'If in doubt, add -v and read the report.'
+  ]});
+  readme = mk('README.md', 'file', {size:980, content:[
+    '# Home folder',
+    'Everything personal lives in here.',
+    'Renaming a file with mv keeps its contents.',
+    'Only the name and the parent change.'
+  ]});
+  hostsBak = mk('hosts.bak', 'file', {size:220, content:[
+    '127.0.0.1 localhost',
+    'A stale copy that should be replaced.'
+  ]});
+  report = mk('report.md', 'file', {size:1340, content:[
+    '# Quarterly report',
+    'Draft three. The final version lives in documents.',
+    'Renaming this file will not change its contents.'
+  ]});
+  meeting = mk('meeting-notes.txt', 'file', {size:1120, content:[
+    'Standup 09:15',
+    '- ship the move lesson',
+    '- keep the map interactive'
+  ]});
+  beach = mk('beach.png', 'file', {size:248000, content:['beach photo placeholder']});
+  sunset = mk('sunset.png', 'file', {size:196000, content:['sunset photo placeholder']});
+  playlist = mk('playlist.txt', 'file', {size:640, content:['1. morning fog','2. night drive','3. slow compile']});
+  lofi = mk('lofi.mp3', 'file', {size:5240000, content:['audio placeholder']});
+  appJs = mk('app.js', 'file', {size:2320, content:['const move = (from, to) => to;','console.log(move("a", "b"));']});
+  themeCss = mk('theme.css', 'file', {size:1420, content:['body { color: white; }','.row { border-radius: 10px; }']});
+  hosts = mk('hosts', 'file', {size:220, content:['127.0.0.1 localhost','::1 localhost ip6-localhost']});
+  passwd = mk('passwd', 'file', {size:410, content:['root:x:0:0:root:/root:/bin/bash','you:x:1000:1000::/home/you:/bin/bash']});
+  buildLog = mk('build.log', 'file', {size:8410, content:['compiling...','all targets up to date']});
+  const bashrc = mk('.bashrc', 'file', {size:640, content:['export PS1="\\u@\\h:\\w\\$ "','alias ll="ls -l"']});
+  const config = mk('.config', 'dir');
+
+  ROOT.children = [homeDir, etc, tmp];
+  homeDir.children = [HOME];
+  HOME.children = [bashrc, config, documents, projects, pictures, music, notes, readme, hostsBak];
+  config.children = [mk('editor.conf', 'file', {size:180, content:['tab-size = 2']})];
+  documents.children = [report, meeting];
+  projects.children = [appJs, themeCss];
+  pictures.children = [beach, sunset];
+  music.children = [playlist, lofi];
+  etc.children = [hosts, passwd];
+  tmp.children = [buildLog];
+  link(ROOT, null);
+  sortModel(ROOT);
+  return HOME;
+}
+function link(node, parent) {
+  node.parent = parent;
+  if (node.children) node.children.forEach(child => link(child, node));
+}
+function byName(left, right) {
+  if (left.type !== right.type) return left.type === 'dir' ? -1 : 1;
+  return left.name.localeCompare(right.name, undefined, {numeric: true, sensitivity: 'base'});
+}
+function sortModel(node) {
+  if (!node.children) return;
+  node.children.sort(byName);
+  node.children.forEach(sortModel);
+}
+
+/* ---- path helpers ---- */
+function absPath(node) {
+  if (node === ROOT) return '/';
+  const parts = [];
+  let current = node;
+  while (current && current !== ROOT) { parts.unshift(current.name); current = current.parent; }
+  return '/' + parts.join('/');
+}
+function prettyPath(node) {
+  const path = absPath(node);
+  if (path === '/home/you') return '~';
+  if (path.startsWith('/home/you/')) return '~' + path.slice(9);
+  return path;
+}
+function baseName(node) { return node === ROOT ? '/' : node.name; }
+function countLabel(node) {
+  if (node.type !== 'dir') return null;
+  return String(node.children.length);
+}
+function isAncestor(node, ancestor) {
+  let current = node;
+  while (current) { if (current === ancestor) return true; current = current.parent; }
+  return false;
+}
+function sizeLabel(node) {
+  if (node.type === 'dir') return 'folder';
+  const bytes = node.size || 1;
+  if (bytes >= 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return bytes + ' B';
+}
+function laneWeight(node) {
+  if (!node) return 'it will vanish from here';
+  if (node.type === 'dir') return node.children.length + (node.children.length === 1 ? ' item' : ' items') + ' · will vanish here';
+  return sizeLabel(node) + ' · will vanish here';
+}
+function resolvePath(spec, base) {
+  let current, rest = spec;
+  if (spec === '~' || spec.startsWith('~/')) { current = HOME; rest = spec.slice(1); }
+  else if (spec.startsWith('/')) { current = ROOT; rest = spec.slice(1); }
+  else current = base;
+  if (current.type !== 'dir') return {error:'notdir', name:spec};
+  const segments = rest.split('/').filter(Boolean);
+  for (let i = 0; i < segments.length; i++) {
+    const segment = segments[i];
+    if (segment === '.') continue;
+    if (segment === '..') { current = current.parent || ROOT; continue; }
+    const next = current.children.find(child => child.name === segment);
+    if (!next) return {error:'missing', name:segment};
+    if (next.type !== 'dir' && i < segments.length - 1) return {error:'notdir', name:segment};
+    current = next;
+  }
+  return {node: current};
+}
+const esc = value => String(value).replace(/[&<>"']/g, char =>
+  ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+
+/* ==================================================================
+   2. DOM REFS
+   ================================================================== */
+const treeEl = document.getElementById('tree');
+const treeScroll = document.getElementById('treeScroll');
+const crumbs = document.getElementById('crumbs');
+const term = document.getElementById('term');
+const chips = document.getElementById('chips');
+const form = document.getElementById('form');
+const input = document.getElementById('cmd');
+const psPath = document.getElementById('psPath');
+const stepsEl = document.getElementById('steps');
+const missionEl = document.getElementById('mission');
+const missionBadge = document.getElementById('missionBadge');
+const missionText = document.getElementById('missionText');
+const hintBtn = document.getElementById('hintBtn');
+const hintBar = document.getElementById('hintBar');
+const resetBtn = document.getElementById('resetBtn');
+const moveCard = document.getElementById('moveCard');
+const moveStatus = document.getElementById('moveStatus');
+const sourceLane = document.getElementById('sourceLane');
+const destinationLane = document.getElementById('destinationLane');
+const sourcePath = document.getElementById('sourcePath');
+const sourceMeta = document.getElementById('sourceMeta');
+const destinationPath = document.getElementById('destinationPath');
+const destinationMeta = document.getElementById('destinationMeta');
+const moveFoot = document.getElementById('moveFoot');
+const previewEl = document.getElementById('preview');
+const pvBody = document.getElementById('pvBody');
+
+let treeInner, avatarEl;
+let cwd = null, prevDir = null, selectedSource = null, lastContext = null;
+const rowOf = new Map();
+const wrapOf = new Map();
+const childrenOf = new Map();
+let motionEls = [];
+let flightToken = 0;
+let wiringTimer = null;
+
+/* ==================================================================
+   3. TREE RENDERING
+   ================================================================== */
+function paintRow(node) {
+  const row = rowOf.get(node);
+  if (!row) return;
+  const label = row.querySelector('.label');
+  const icon = row.querySelector('.icon');
+  label.textContent = baseName(node);
+  icon.className = 'icon ' + node.type;
+  let ext = icon.querySelector('.ext');
+  const palette = skin(node);
+  if (node.type === 'file') {
+    icon.style.setProperty('--c1', palette.c1);
+    icon.style.setProperty('--c2', palette.c2);
+    if (!ext) { ext = document.createElement('span'); ext.className = 'ext'; icon.appendChild(ext); }
+    ext.textContent = palette.tag;
+  } else if (ext) {
+    ext.remove();
+  }
+  const count = row.querySelector('.cnt');
+  if (node.type === 'dir') {
+    if (count) count.textContent = countLabel(node);
+  } else if (count) {
+    count.remove();
+  }
+}
+
+function buildRow(node) {
+  const wrap = document.createElement('div');
+  wrap.className = 'node';
+  const row = document.createElement('div');
+  row.className = 'row' + (node.type === 'file' ? ' file' : '');
+  const icon = document.createElement('span');
+  icon.className = 'icon ' + node.type;
+  const label = document.createElement('span');
+  label.className = 'label';
+  row.append(icon, label);
+  if (node === HOME) {
+    const tag = document.createElement('span');
+    tag.className = 'tag';
+    tag.textContent = '~';
+    row.appendChild(tag);
+  }
+  if (node.type === 'dir' && node !== ROOT) {
+    const count = document.createElement('span');
+    count.className = 'cnt';
+    count.textContent = countLabel(node);
+    row.appendChild(count);
+  }
+  row.addEventListener('click', () => onNodeClick(node));
+  wrap.appendChild(row);
+  rowOf.set(node, row);
+  wrapOf.set(node, wrap);
+  if (node.children && node.children.length) {
+    const kids = document.createElement('div');
+    kids.className = 'children';
+    childrenOf.set(node, kids);
+    node.children.forEach(child => kids.appendChild(buildRow(child)));
+    wrap.appendChild(kids);
+  }
+  paintRow(node);
+  return wrap;
+}
+
+function buildTree() {
+  treeEl.innerHTML = '';
+  rowOf.clear();
+  wrapOf.clear();
+  childrenOf.clear();
+  treeInner = document.createElement('div');
+  treeInner.className = 'tree-inner';
+  treeInner.appendChild(buildRow(ROOT));
+  avatarEl = document.createElement('div');
+  avatarEl.className = 'avatar';
+  avatarEl.innerHTML = '<div class="body"><span class="eyes"><i></i><i></i></span></div>';
+  treeInner.appendChild(avatarEl);
+  treeEl.appendChild(treeInner);
+}
+
+function childrenContainer(node) {
+  let kids = childrenOf.get(node);
+  if (!kids) {
+    kids = document.createElement('div');
+    kids.className = 'children';
+    const wrap = wrapOf.get(node);
+    wrap.appendChild(kids);
+    childrenOf.set(node, kids);
+  }
+  return kids;
+}
+
+/* ---- geometry helpers ---- */
+function innerRect() { return treeInner.getBoundingClientRect(); }
+function relRect(el) {
+  const box = el.getBoundingClientRect();
+  const base = innerRect();
+  return {left: box.left - base.left, top: box.top - base.top, width: box.width, height: box.height};
+}
+function rowCenter(node) {
+  const box = relRect(rowOf.get(node));
+  return {x: box.left + 16, y: box.top + box.height / 2};
+}
+function clearMotion() {
+  motionEls.forEach(el => { el.style.transition = ''; el.style.transform = ''; });
+  motionEls = [];
+}
+function snapshot() {
+  const map = new Map();
+  rowOf.forEach((row, node) => {
+    const box = relRect(row);
+    map.set(node, box);
+  });
+  return map;
+}
+function playFlip(previous, skipNodes) {
+  const skip = new Set(skipNodes || []);
+  rowOf.forEach((row, node) => {
+    if (skip.has(node)) return;
+    const before = previous.get(node);
+    if (!before) return;
+    const after = relRect(row);
+    const dx = before.left - after.left;
+    const dy = before.top - after.top;
+    if (Math.abs(dx) < 0.6 && Math.abs(dy) < 0.6) return;
+    row.style.transition = 'none';
+    row.style.transform = 'translate(' + dx + 'px,' + dy + 'px)';
+    motionEls.push(row);
+    requestAnimationFrame(() => {
+      row.style.transition = 'transform .5s cubic-bezier(.22,.9,.28,1)';
+      row.style.transform = '';
+    });
+  });
+}
+function playLift(node) {
+  const wrap = wrapOf.get(node);
+  if (!wrap) return;
+  wrap.style.transition = 'none';
+  wrap.style.transform = 'scale(1.035)';
+  motionEls.push(wrap);
+  requestAnimationFrame(() => {
+    wrap.style.transition = 'transform .42s cubic-bezier(.22,.9,.28,1)';
+    wrap.style.transform = '';
+  });
+}
+function playFlipWrap(node, before) {
+  const wrap = wrapOf.get(node);
+  if (!wrap) return;
+  const after = relRect(wrap);
+  const dx = before.left - after.left;
+  const dy = before.top - after.top;
+  if (Math.abs(dx) < 0.6 && Math.abs(dy) < 0.6) return;
+  wrap.style.transition = 'none';
+  wrap.style.transform = 'translate(' + dx + 'px,' + dy + 'px)';
+  motionEls.push(wrap);
+  requestAnimationFrame(() => {
+    wrap.style.transition = 'transform .52s cubic-bezier(.22,.9,.28,1)';
+    wrap.style.transform = '';
+  });
+}
+function collectSubtree(node, into) {
+  into.add(node);
+  if (node.children) node.children.forEach(child => collectSubtree(child, into));
+  return into;
+}
+function startWiring() {
+  treeInner.classList.add('wiring');
+  clearTimeout(wiringTimer);
+  wiringTimer = setTimeout(() => {
+    treeInner.classList.remove('wiring');
+    clearMotion();
+  }, 640);
+}
+
+/* ---- the flight: arc + ghost trail + landing burst ---- */
+function flyItem(node, from, onLand) {
+  const token = ++flightToken;
+  const palette = skin(node);
+  const flyer = document.createElement('div');
+  flyer.className = 'flyer';
+  const iconHtml = node.type === 'dir'
+    ? '<span class="icon dir"></span>'
+    : '<span class="icon file" style="--c1:' + palette.c1 + ';--c2:' + palette.c2 + '"><span class="ext">' + palette.tag + '</span></span>';
+  flyer.innerHTML = iconHtml + '<span class="fl-name">' + esc(node.name) + '</span><span class="fl-arrow">→</span>';
+  treeInner.appendChild(flyer);
+
+  const duration = reduceMotion ? 1 : 620;
+  const t0 = performance.now();
+  let lastTrail = 0;
+  const trailDots = [];
+
+  function target() {
+    const row = rowOf.get(node);
+    if (!row) return from;
+    const box = relRect(row);
+    return {x: box.left + 14, y: box.top + box.height / 2};
+  }
+  function frame(now) {
+    if (token !== flightToken) { flyer.remove(); trailDots.forEach(dot => dot.remove()); return; }
+    const raw = Math.min(1, (now - t0) / duration);
+    const t = raw < 0.5 ? 4 * raw * raw * raw : 1 - Math.pow(-2 * raw + 2, 3) / 2;
+    const to = target();
+    const cx = (from.x + to.x) / 2;
+    const cy = Math.min(from.y, to.y) - Math.abs(to.x - from.x) * 0.16 - 26;
+    const mt = 1 - t;
+    const x = mt * mt * from.x + 2 * mt * t * cx + t * t * to.x;
+    const y = mt * mt * from.y + 2 * mt * t * cy + t * t * to.y;
+    const tilt = (t - 0.5) * 16 * (to.x >= from.x ? 1 : -1);
+    const scale = raw < 0.78 ? 1 + 0.1 * Math.sin(raw / 0.78 * Math.PI) : 1 - 0.16 * ((raw - 0.78) / 0.22);
+    flyer.style.transform = 'translate(' + x + 'px,' + y + 'px) rotate(' + tilt + 'deg) scale(' + scale + ')';
+
+    if (now - lastTrail > 55 && raw < 0.94 && !reduceMotion) {
+      lastTrail = now;
+      const dot = document.createElement('i');
+      dot.className = 'trail-dot';
+      dot.style.left = x + 'px';
+      dot.style.top = y + 'px';
+      dot.style.background = node.type === 'dir' ? '#fbbf24' : palette.c2;
+      dot.style.boxShadow = '0 0 10px ' + (node.type === 'dir' ? 'rgba(251,191,36,.8)' : palette.c2);
+      treeInner.appendChild(dot);
+      trailDots.push(dot);
+      setTimeout(() => { dot.remove(); trailDots.splice(trailDots.indexOf(dot), 1); }, 480);
+    }
+    if (raw < 1) requestAnimationFrame(frame);
+    else {
+      flyer.remove();
+      trailDots.forEach(dot => dot.remove());
+      onLand(to);
+    }
+  }
+  requestAnimationFrame(frame);
+}
+
+function burst(x, y, warm) {
+  if (reduceMotion) return;
+  const holder = document.createElement('div');
+  holder.className = 'burst';
+  holder.style.transform = 'translate(' + x + 'px,' + y + 'px)';
+  const tint = warm ? '251,191,36' : '74,222,128';
+  holder.innerHTML = '<span class="ring"></span><span class="ring" style="animation-delay:.1s;border-color:rgba(' + tint + ',.6)"></span>';
+  for (let i = 0; i < 9; i++) {
+    const angle = (Math.PI * 2 * i) / 9 + Math.random() * 0.4;
+    const distance = 26 + Math.random() * 26;
+    const spark = document.createElement('i');
+    spark.style.setProperty('--dx', (Math.cos(angle) * distance).toFixed(1) + 'px');
+    spark.style.setProperty('--dy', (Math.sin(angle) * distance).toFixed(1) + 'px');
+    spark.style.background = 'rgb(' + tint + ')';
+    spark.style.boxShadow = '0 0 10px rgba(' + tint + ',.9)';
+    spark.style.animationDelay = (i * 12) + 'ms';
+    holder.appendChild(spark);
+  }
+  treeInner.appendChild(holder);
+  setTimeout(() => holder.remove(), 900);
+}
+
+function floatMark(node, text, kind) {
+  const row = rowOf.get(node);
+  if (!row) return;
+  const mark = document.createElement('span');
+  mark.className = 'mark ' + kind;
+  mark.textContent = text;
+  row.appendChild(mark);
+  setTimeout(() => mark.remove(), 1200);
+}
+
+function flashRow(node, className) {
+  const row = rowOf.get(node);
+  if (!row) return;
+  row.classList.remove('flash', 'arriving', 'renamed', 'blocked');
+  void row.offsetWidth;
+  row.classList.add(className);
+  setTimeout(() => row.classList.remove(className), 1200);
+}
+
+function scrollToRow(node, smooth) {
+  const row = rowOf.get(node);
+  if (!row) return;
+  const box = relRect(row);
+  const target = box.top + box.height / 2 - treeScroll.clientHeight / 2;
+  treeScroll.scrollTo({top: Math.max(0, target), behavior: smooth === false ? 'auto' : 'smooth'});
+}
+
+function ping(x, y) {
+  const element = document.createElement('div');
+  element.className = 'ping';
+  element.style.transform = 'translate(' + x + 'px,' + y + 'px)';
+  element.innerHTML = '<i></i>';
+  treeInner.appendChild(element);
+  setTimeout(() => element.remove(), 800);
+}
+
+/* ---- avatar ---- */
+function avatarTarget(node) {
+  const row = rowOf.get(node);
+  const base = innerRect();
+  const box = row.getBoundingClientRect();
+  return {x: box.right - base.left + 7, y: box.top - base.top + box.height / 2 - 15};
+}
+function moveAvatar(animate, node) {
+  const target = avatarTarget(node || cwd);
+  if (!animate) avatarEl.style.transition = 'none';
+  avatarEl.style.transform = 'translate(' + target.x + 'px, ' + target.y + 'px)';
+  if (!animate) requestAnimationFrame(() => { avatarEl.style.transition = ''; });
+}
+function animateAvatarTo(node) {
+  moveAvatar(true, node);
+  avatarEl.classList.remove('hop');
+  void avatarEl.offsetWidth;
+  avatarEl.classList.add('hop');
+  const center = rowCenter(node);
+  ping(center.x, center.y);
+  flashRow(node, 'flash');
+  scrollToRow(node);
+}
+
+/* ==================================================================
+   4. UI SYNC
+   ================================================================== */
+function renderCrumbs() {
+  crumbs.innerHTML = '';
+  const path = prettyPath(cwd);
+  let parts;
+  if (path === '/') parts = ['/'];
+  else if (path.startsWith('~')) parts = ['/', 'home', 'you', ...path.slice(1).split('/').filter(Boolean)];
+  else parts = ['/', ...path.split('/').filter(Boolean)];
+  parts.forEach((part, index) => {
+    if (index) {
+      const separator = document.createElement('span');
+      separator.className = 'sep';
+      separator.textContent = '›';
+      crumbs.appendChild(separator);
+    }
+    const crumb = document.createElement('span');
+    crumb.className = 'crumb';
+    crumb.style.animationDelay = (index * 45) + 'ms';
+    crumb.textContent = part === 'you' ? '~' : part;
+    crumbs.appendChild(crumb);
+  });
+}
+
+function iconHtml(node) {
+  const palette = skin(node);
+  if (node.type === 'dir') return '<span class="icon dir"></span>';
+  return '<span class="icon file" style="--c1:' + palette.c1 + ';--c2:' + palette.c2 + '"><span class="ext">' + palette.tag + '</span></span>';
+}
+
+function updateRowStates() {
+  rowOf.forEach((row, node) => {
+    row.classList.toggle('current', node === cwd);
+    row.classList.toggle('picked', node === selectedSource);
+  });
+}
+
+function updateUI() {
+  psPath.textContent = prettyPath(cwd);
+  updateRowStates();
+  renderCrumbs();
+  renderChips();
+  renderPreview();
+}
+
+/* ---- move lane card ---- */
+function setLane(lane, pathEl, metaEl, node, emptyText, metaText) {
+  if (!node) {
+    lane.classList.add('empty');
+    pathEl.textContent = emptyText;
+    metaEl.textContent = metaText;
+    return;
+  }
+  lane.classList.remove('empty');
+  pathEl.innerHTML = iconHtml(node) + '<span class="name">' + esc(baseName(node)) + '</span>';
+  metaEl.textContent = metaText;
+}
+function setCardState(state, status, statusClass) {
+  moveCard.classList.remove('armed', 'in-flight', 'done', 'blocked');
+  if (state) moveCard.classList.add(state);
+  moveStatus.className = 'move-status' + (statusClass ? ' ' + statusClass : '');
+  moveStatus.textContent = status;
+}
+function updateMoveCard(preview) {
+  const source = preview ? preview.source : (selectedSource || (lastContext ? lastContext.source : null));
+  const target = preview ? preview.target : (lastContext ? lastContext.target : null);
+
+  if (preview) {
+    if (preview.error) {
+      setCardState('blocked', preview.error.short, 'blocked');
+      setLane(sourceLane, sourcePath, sourceMeta, preview.source, 'pick a file', laneWeight(preview.source));
+      sourceLane.classList.remove('gone');
+      destinationLane.classList.remove('landed', 'armed', 'gone');
+      setLane(destinationLane, destinationPath, destinationMeta, null, 'blocked', 'nothing will move');
+      moveFoot.innerHTML = preview.error.tip;
+      return;
+    }
+    const first = preview.plan[0];
+    const clash = first && (first.needsForce || first.skipped);
+    setCardState('armed', clash ? (first.skipped ? 'skipped by -n' : 'needs -f') : (preview.mode === 'rename' ? 'rename pending' : 'move pending'), clash ? 'blocked' : 'live');
+    setLane(sourceLane, sourcePath, sourceMeta, preview.source, 'pick a file', 'it will vanish from here');
+    sourceLane.classList.remove('gone');
+    destinationLane.classList.remove('gone');
+    destinationLane.classList.add('armed');
+    setLane(destinationLane, destinationPath, destinationMeta, preview.target, 'choose a target', 'it reappears over there');
+    if (first && first.skipped) {
+      moveFoot.innerHTML = '<code>-n</code> means never overwrite — the item will stay exactly where it is.';
+    } else if (clash) {
+      moveFoot.innerHTML = 'Something already has that name. Add <code>-f</code> to force the move, or <code>-n</code> to always skip.';
+    } else {
+      moveFoot.textContent = preview.mode === 'rename'
+        ? 'Rename: same folder, new name. The contents never change.'
+        : 'Move: the item leaves its folder entirely and appears in the destination.';
+    }
+    return;
+  }
+
+  if (lastContext) {
+    setCardState('done', lastContext.plan.length > 1 ? lastContext.plan.length + ' items moved' : (lastContext.mode === 'rename' ? 'renamed' : 'moved'), 'done');
+    setLane(sourceLane, sourcePath, sourceMeta, {name: lastContext.fromName || '', type: lastContext.source.type}, 'empty', 'gone — nothing was copied here');
+    sourceLane.classList.add('gone');
+    destinationLane.classList.remove('empty', 'armed');
+    destinationLane.classList.add('landed');
+    setLane(destinationLane, destinationPath, destinationMeta, lastContext.target, 'choose a target', 'now lives here');
+    moveFoot.textContent = 'mv moved the file, not you. The source lane is empty because nothing was copied.';
+    return;
+  }
+
+  setCardState(null, selectedSource ? 'source picked' : 'waiting for a move', selectedSource ? 'live' : '');
+  setLane(sourceLane, sourcePath, sourceMeta, selectedSource, 'pick a file', laneWeight(selectedSource));
+  sourceLane.classList.remove('gone');
+  destinationLane.classList.remove('gone', 'landed', 'armed');
+  destinationLane.classList.add('empty');
+  destinationPath.textContent = 'choose a target';
+  destinationMeta.textContent = 'it reappears over there';
+  moveFoot.textContent = 'mv never copies. The source lane empties because the item is gone from there.';
+}
+
+/* ---- dry run preview ---- */
+function renderPreview() {
+  const raw = input.value.trim();
+  previewEl.className = 'preview';
+  if (!raw) {
+    pvBody.innerHTML = '<span class="pv-msg">' + (selectedSource
+      ? 'source armed: type a destination, or tap a folder on the map'
+      : 'type an mv command to preview it before it happens') + '</span>';
+    updateMoveCard(null);
+    return;
+  }
+  const parts = tokenize(raw);
+  if (parts[0] !== 'mv') {
+    pvBody.innerHTML = '<span class="pv-msg">only <code>mv</code> is previewed here — this lab is about moving things</span>';
+    updateMoveCard(null);
+    return;
+  }
+  const plan = analyzeMove(parts.slice(1), {quiet: true});
+  if (plan.help) {
+    previewEl.className = 'preview';
+    pvBody.innerHTML = '<span class="pv-msg">mv flags: <code>-f</code> force overwrite · <code>-n</code> never overwrite · <code>-v</code> report</span>';
+    updateMoveCard(null);
+    return;
+  }
+  if (plan.error) {
+    previewEl.className = 'preview bad';
+    pvBody.innerHTML = '<span class="pv-verdict bad">blocked</span><span class="pv-msg">' + esc(plan.error.short) + '</span>';
+    updateMoveCard(plan);
+    return;
+  }
+  const first = plan.plan[0];
+  const extra = plan.plan.length > 1 ? '<span class="pv-verdict ok">+' + (plan.plan.length - 1) + ' more</span>' : '';
+  if (first.needsForce) {
+    previewEl.className = 'preview warn';
+    pvBody.innerHTML = itemHtml(first.source) + '<span class="pv-arrow">→</span>' + itemHtml(first.target) +
+      '<span class="pv-verdict warn">exists · needs -f</span>' + extra;
+  } else if (first.skipped) {
+    previewEl.className = 'preview warn';
+    pvBody.innerHTML = itemHtml(first.source) + '<span class="pv-arrow">→</span>' + itemHtml(first.target) +
+      '<span class="pv-verdict warn">skipped by -n</span>' + extra;
+  } else {
+    previewEl.className = 'preview ok';
+    pvBody.innerHTML = itemHtml(first.source) + '<span class="pv-arrow">→</span>' + itemHtml(first.target) +
+      '<span class="pv-verdict ok">' + (first.mode === 'rename' ? 'rename in place' : 'move') + '</span>' + extra;
+  }
+  updateMoveCard(plan);
+}
+function itemHtml(node) {
+  return '<span class="pv-item">' + iconHtml(node) + '<span class="name">' + esc(baseName(node)) + '</span></span>';
+}
+
+function renderChips() {
+  chips.innerHTML = '';
+  const mission = missions[Math.min(missionIndex, missionCount - 1)];
+  const list = [];
+  if (mission && mission.answer) list.push(mission.answer);
+  const files = cwd.children.filter(child => child.type === 'file' && !child.name.startsWith('.'));
+  const dirs = cwd.children.filter(child => child.type === 'dir' && !child.name.startsWith('.'));
+  if (files.length && dirs.length) list.push('mv ' + files[0].name + ' ' + dirs[0].name + '/');
+  if (files.length > 1) list.push('mv -v ' + files[0].name + ' ' + files[1].name);
+  list.push('ls', 'ls -l', 'cd ..', 'pwd', 'help');
+  const seen = new Set();
+  list.filter(command => {
+    if (seen.has(command)) return false;
+    seen.add(command);
+    return true;
+  }).slice(0, 6).forEach(command => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'chip';
+    button.textContent = command;
+    button.addEventListener('click', () => { input.value = ''; execute(command); focusInput(); });
+    chips.appendChild(button);
+  });
+}
+
+/* ==================================================================
+   5. TERMINAL OUTPUT
+   ================================================================== */
+function log(html, className) {
+  const line = document.createElement('div');
+  line.className = 'line' + (className ? ' ' + className : '');
+  line.innerHTML = html;
+  term.appendChild(line);
+  term.scrollTop = term.scrollHeight;
+}
+function focusInput() {
+  try { input.focus({preventScroll: true}); } catch (error) { input.focus(); }
+}
+function shakeInput() {
+  form.classList.remove('shake');
+  void form.offsetWidth;
+  form.classList.add('shake');
+}
+function tip(html, danger) {
+  log('<span class="tip-line' + (danger ? ' danger' : '') + '">' + html + '</span>', 'tip-line-wrap');
+}
+
+/* ==================================================================
+   6. THE MOVE ENGINE
+   ================================================================== */
+function parseMvFlags(args) {
+  const flags = {f:false, n:false, v:false};
+  const operands = [];
+  let optionsEnded = false;
+  for (const arg of args) {
+    if (arg === '--help') return {help: true};
+    if (!optionsEnded && arg === '--') { optionsEnded = true; continue; }
+    if (!optionsEnded && arg.startsWith('--')) {
+      const names = {force:'f', 'no-clobber':'n', verbose:'v'};
+      const key = arg.slice(2).split('=')[0];
+      if (!(key in names)) return {error: "unrecognized option '--" + arg.slice(2) + "'"};
+      flags[names[key]] = true;
+      continue;
+    }
+    if (!optionsEnded && arg.startsWith('-') && arg.length > 1) {
+      for (const flag of arg.slice(1)) {
+        if (flag === 'i') return {error: "option '--interactive' is not supported in this lab", tip:'There are no prompts here. Use <code>-f</code> to overwrite or <code>-n</code> to never overwrite.'};
+        if (!(flag in flags)) return {error: "invalid option -- '" + flag + "'", tip:'mv understands <code>-f</code>, <code>-n</code> and <code>-v</code> in this lab.'};
+        flags[flag] = true;
+      }
+      continue;
+    }
+    operands.push(arg);
+  }
+  return {flags, operands};
+}
+
+/* resolve where a destination argument points */
+function resolveDest(spec, source) {
+  const trailing = spec.length > 1 && spec.endsWith('/');
+  const trimmed = spec.replace(/\/+$/, '');
+  if (trailing) {
+    const result = resolvePath(trimmed || '/', cwd);
+    if (result.error) return {error: result.error, spec};
+    if (result.node.type !== 'dir') return {error: 'notdir', spec};
+    return {parent: result.node, name: source.name, into: true};
+  }
+  const direct = resolvePath(spec, cwd);
+  if (!direct.error && direct.node.type === 'dir') {
+    return {parent: direct.node, name: source.name, into: true};
+  }
+  const slash = spec.lastIndexOf('/');
+  const name = slash < 0 ? spec : spec.slice(slash + 1);
+  if (!name || name === '.' || name === '..') {
+    const result = resolvePath(spec, cwd);
+    if (result.error) return {error: result.error, spec};
+    if (result.node.type !== 'dir') return {error: 'notdir', spec};
+    return {parent: result.node, name: source.name, into: true};
+  }
+  const parentSpec = slash < 0 ? '.' : slash === 0 ? '/' : spec.slice(0, slash);
+  const parentResult = resolvePath(parentSpec, cwd);
+  if (parentResult.error) return {error: parentResult.error, spec};
+  if (parentResult.node.type !== 'dir') return {error: 'notdir', spec};
+  return {parent: parentResult.node, name, into: false};
+}
+
+function analyzeMove(args) {
+  const parsed = parseMvFlags(args);
+  if (parsed.help) return {help: true};
+  if (parsed.error) {
+    return {error: {
+      headline: 'mv: ' + parsed.error,
+      short: parsed.error,
+      tip: parsed.tip || 'Run <b>mv --help</b> to see the flags this lab supports.'
+    }};
+  }
+  const flags = parsed.flags;
+  const operands = parsed.operands;
+  if (!operands.length) {
+    return {error: {headline: 'mv: missing file operand', short: 'mv needs a source', tip: 'Say what to move: <code>mv notes.txt journal.txt</code>'}};
+  }
+  if (operands.length < 2) {
+    return {error: {
+      headline: "mv: missing destination file operand after '" + operands[0] + "'",
+      short: 'no destination given',
+      tip: 'A move needs two things: a source and a destination. Try <code>mv ' + esc(operands[0]) + ' documents/</code>'
+    }};
+  }
+  const sourceArgs = operands.slice(0, -1);
+  const destArg = operands[operands.length - 1];
+  const sources = [];
+  for (const spec of sourceArgs) {
+    const result = resolvePath(spec, cwd);
+    if (result.error) {
+      const reason = result.error === 'missing' ? 'No such file or directory' : 'Not a directory';
+      return {error: {
+        headline: "mv: cannot stat '" + spec + "': " + reason,
+        short: "cannot stat '" + spec + "'",
+        tip: 'Run <b>ls</b> to see the exact names here — spelling and case both count.'
+      }};
+    }
+    sources.push(result.node);
+  }
+  const probe = resolveDest(destArg, sources[0]);
+  if (probe.error) {
+    const reason = probe.error === 'missing' ? 'No such file or directory' : 'Not a directory';
+    return {error: {
+      headline: "mv: cannot move '" + sourceArgs.join(' ') + "' to '" + destArg + "': " + reason,
+      short: "cannot move to '" + destArg + "'",
+      tip: 'That folder is not there yet. Make it with <code>mkdir ' + esc(destArg.replace(/\/+$/, '')) + '</code> first.'
+    }, source: sources[0]};
+  }
+  if (sources.length > 1 && !probe.into) {
+    return {error: {
+      headline: "mv: target '" + destArg + "' is not a directory",
+      short: 'several sources need a folder',
+      tip: 'Move many files at once by ending the command with a folder: <code>mv a.txt b.txt documents/</code>'
+    }, source: sources[0]};
+  }
+  const plan = [];
+  for (const source of sources) {
+    const dest = resolveDest(destArg, source);
+    if (dest.error) {
+      const reason = dest.error === 'missing' ? 'No such file or directory' : 'Not a directory';
+      return {error: {
+        headline: "mv: cannot move '" + baseName(source) + "' to '" + destArg + "': " + reason,
+        short: 'cannot move to the destination',
+        tip: 'The destination folder must exist. Try <b>ls</b> first.'
+      }, source};
+    }
+    if (source === ROOT) {
+      return {error: {
+        headline: "mv: cannot move '/': Permission denied",
+        short: 'the root folder cannot move',
+        tip: '<code>/</code> is the bottom of the tree. Nothing can be moved into or out of it here.'
+      }};
+    }
+    if (source.type === 'dir' && isAncestor(dest.parent, source)) {
+      return {error: {
+        headline: "mv: cannot move '" + baseName(source) + "' to a subdirectory of itself, '" + prettyPath(dest.parent) + "'",
+        short: 'a folder cannot contain itself',
+        tip: 'Move a folder to a <b>sibling</b> instead — a folder can never live inside itself.'
+      }, source};
+    }
+    const existing = dest.parent.children.find(child => child.name === dest.name) || null;
+    if (existing === source) {
+      return {error: {
+        headline: "mv: '" + prettyPath(source) + "' and '" + prettyPath(source) + "' are the same file",
+        short: 'source and destination match',
+        tip: 'Pick a different destination name.'
+      }, source};
+    }
+    if (existing && existing.type !== source.type) {
+      const head = source.type === 'dir'
+        ? "mv: cannot overwrite non-directory '" + dest.name + "' with directory '" + baseName(source) + "'"
+        : "mv: cannot overwrite directory '" + dest.name + "' with non-directory '" + baseName(source) + "'";
+      return {error: {
+        headline: head,
+        short: 'a folder and a file cannot trade places',
+        tip: 'Pick a name that is free, or add a <code>/</code> to drop the item <i>inside</i> the folder.'
+      }, source};
+    }
+    if (existing && existing.type === 'dir' && existing.children.length) {
+      return {error: {
+        headline: "mv: cannot move '" + baseName(source) + "' to '" + prettyPath(existing) + "': File exists",
+        short: 'destination folder is not empty',
+        tip: 'A folder can only be replaced when the destination is empty. Choose another name.'
+      }, source};
+    }
+    const entry = {
+      source,
+      parent: dest.parent,
+      name: dest.name,
+      target: {name: dest.name, type: source.type},
+      existing,
+      mode: dest.parent === source.parent ? 'rename' : 'move',
+      needsForce: !!existing && !flags.f && !flags.n,
+      skipped: !!existing && flags.n && !flags.f
+    };
+    plan.push(entry);
+  }
+  return {flags, plan, destArg, sourceArgs, source: plan[0].source, target: plan[0].target, mode: plan[0].mode};
+}
+
+/* relocate the DOM node (subtree travels with it) */
+function moveWrapTo(node, parent) {
+  const wrap = wrapOf.get(node);
+  childrenContainer(parent).appendChild(wrap);
+  return wrap;
+}
+function sortChildren(parent) {
+  const kids = childrenOf.get(parent);
+  if (!kids) return;
+  const order = parent.children.slice().sort(byName);
+  order.forEach(child => kids.appendChild(wrapOf.get(child)));
+  parent.children = order;
+}
+function touchCounts(node) {
+  if (node.type !== 'dir') return;
+  const row = rowOf.get(node);
+  const count = row && row.querySelector('.cnt');
+  if (count) {
+    count.textContent = countLabel(node);
+    count.classList.add('hot');
+    setTimeout(() => count.classList.remove('hot'), 900);
+  }
+}
+
+/* perform one planned move with animation */
+function executeMove(entry, context) {
+  const node = entry.source;
+  const oldParent = node.parent;
+  const row = rowOf.get(node);
+  const box = relRect(row);
+  const from = {x: box.left + 16, y: box.top + box.height / 2};
+  const wrapBefore = relRect(wrapOf.get(node));
+  entry.fromPath = prettyPath(node);
+  entry.fromName = node.name;
+  entry.toPath = prettyPath(entry.parent) + '/' + entry.name;
+
+  /* a lingering ghost of where the item used to live */
+  if (entry.mode === 'move' && !reduceMotion) {
+    const ghost = row.cloneNode(true);
+    ghost.classList.add('leaving');
+    ghost.style.position = 'absolute';
+    ghost.style.left = box.left + 'px';
+    ghost.style.top = (box.top + box.height / 2) + 'px';
+    ghost.style.marginTop = (-box.height / 2) + 'px';
+    ghost.style.zIndex = '5';
+    treeInner.appendChild(ghost);
+    setTimeout(() => ghost.remove(), 700);
+  }
+
+  if (entry.existing && context.force) {
+    const doomed = entry.existing;
+    const doomedRow = rowOf.get(doomed);
+    if (doomedRow) {
+      doomedRow.classList.add('doomed');
+      if (!reduceMotion) {
+        const doomedBox = relRect(doomedRow);
+        const puff = doomedRow.cloneNode(true);
+        puff.style.position = 'absolute';
+        puff.style.left = doomedBox.left + 'px';
+        puff.style.top = (doomedBox.top + doomedBox.height / 2) + 'px';
+        puff.style.marginTop = (-doomedBox.height / 2) + 'px';
+        puff.classList.add('leaving');
+        treeInner.appendChild(puff);
+        setTimeout(() => puff.remove(), 700);
+      }
+    }
+    const doomedIndex = doomed.parent.children.indexOf(doomed);
+    if (doomedIndex > -1) doomed.parent.children.splice(doomedIndex, 1);
+    const doomedWrap = wrapOf.get(doomed);
+    if (doomedWrap) doomedWrap.remove();
+    wrapOf.delete(doomed);
+    rowOf.delete(doomed);
+    childrenOf.delete(doomed);
+  }
+
+  /* model + DOM mutation */
+  clearMotion();
+  const previous = snapshot();
+  const oldIndex = oldParent.children.indexOf(node);
+  if (oldIndex > -1) oldParent.children.splice(oldIndex, 1);
+  node.name = entry.name;
+  node.parent = entry.parent;
+  entry.parent.children.push(node);
+  moveWrapTo(node, entry.parent);
+  paintRow(node);
+  if (oldParent !== entry.parent) sortChildren(oldParent);
+  sortChildren(entry.parent);
+  updateRowStates();
+
+  const subtree = collectSubtree(node, new Set());
+  if (node.type === 'file') {
+    row.classList.add('ghosted');
+    playFlip(previous, subtree);
+    startWiring();
+    flyItem(node, from, land => {
+      row.classList.remove('ghosted');
+      flashRow(node, entry.mode === 'rename' ? 'renamed' : 'arriving');
+      floatMark(node, entry.mode === 'rename' ? 'renamed' : 'moved', entry.mode === 'rename' ? 'rename' : 'move');
+      burst(land.x, land.y, entry.mode === 'rename');
+      scrollToRow(node);
+      touchCounts(entry.parent);
+      moveAvatar(false);
+    });
+  } else {
+    playFlip(previous, subtree);
+    playFlipWrap(node, wrapBefore);
+    playLift(node);
+    startWiring();
+    flashRow(node, 'arriving');
+    floatMark(node, 'moved', 'move');
+    setTimeout(() => {
+      const center = rowCenter(node);
+      burst(center.x, center.y, false);
+      scrollToRow(node);
+      touchCounts(entry.parent);
+      moveAvatar(false);
+    }, reduceMotion ? 0 : 280);
+  }
+  moveAvatar(false);
+  renderChips();
+}
+
+/* ==================================================================
+   7. COMMANDS
+   ================================================================== */
+let history = [], historyIndex = -1;
+
+function tokenize(commandLine) {
+  return commandLine.match(/(?:[^\s"']+|"[^"]*"|'[^']*')+/g) || [];
+}
+function execute(raw) {
+  const commandLine = raw.trim();
+  if (!commandLine) return;
+  history.push(commandLine);
+  historyIndex = -1;
+  const prompt = 'you@linux:' + prettyPath(cwd) + '$';
+  log('<span class="p">' + esc(prompt) + '</span> <span class="c">' + esc(commandLine) + '</span>');
+  if (commandLine === 'clear') { term.innerHTML = ''; return; }
+  if (commandLine === 'help' || commandLine === '--help') { showHelp(); return; }
+  const parts = tokenize(commandLine);
+  const command = parts[0];
+  const args = parts.slice(1).map(arg => arg.replace(/^"|"$/g, '').replace(/^'|'$/g, ''));
+  if (command === 'mv') doMv(args);
+  else if (command === 'cd') doCd(args);
+  else if (command === 'ls') doLs(args);
+  else if (command === 'pwd') doPwd();
+  else if (command === 'cat') doCat(args);
+  else if (command === 'mkdir') doMkdir(args);
+  else {
+    log('bash: ' + esc(command) + ': command not found', 'err');
+    log('<span class="dim">This playground is learning <b>mv</b>. Type <b>help</b> for the command list.</span>');
+    shakeInput();
+  }
+}
+
+function doMv(args) {
+  const plan = analyzeMove(args);
+  if (plan.help) { showMvHelp(); return; }
+  if (plan.error) {
+    log(esc(plan.error.headline), 'err');
+    tip(plan.error.tip);
+    const quoted = plan.error.short.indexOf("'") > -1 ? plan.error.short.split("'")[1] : null;
+    if (quoted) {
+      const found = resolvePath(quoted, cwd);
+      if (!found.error && found.node.type === 'file') {
+        const row = rowOf.get(found.node);
+        row.classList.remove('blocked');
+        void row.offsetWidth;
+        row.classList.add('blocked');
+        setTimeout(() => row.classList.remove('blocked'), 900);
+      }
+    }
+    updateMoveCard(plan);
+    shakeInput();
+    return;
+  }
+  const context = {
+    command: 'mv',
+    flags: plan.flags,
+    destArg: plan.destArg,
+    sourceArgs: plan.sourceArgs,
+    plan: plan.plan,
+    source: plan.plan[0].source,
+    target: plan.plan[0].source,
+    mode: plan.plan[0].mode,
+    force: plan.flags.f
+  };
+  const applied = [];
+  setCardState('in-flight', 'moving…', 'flying');
+  plan.plan.forEach(entry => {
+    if (entry.skipped) {
+      log("<span class=\"dim\">mv: not overwriting '" + esc(prettyPath(entry.parent) + '/' + entry.name) + "' (because of -n)</span>");
+      flashRow(entry.existing, 'blocked');
+      return;
+    }
+    if (entry.needsForce) {
+      log("mv: '" + esc(baseName(entry.source)) + "' already exists at the destination", 'err');
+      tip('Real <b>mv</b> clobbers it silently. This lab makes you say so: <code>-f</code> forces it, <code>-n</code> always skips.', true);
+      flashRow(entry.existing, 'blocked');
+      setCardState('blocked', 'needs -f', 'blocked');
+      shakeInput();
+      return;
+    }
+    executeMove(entry, context);
+    applied.push(entry);
+  });
+  if (!applied.length) {
+    const blockedEntry = plan.plan.find(entry => entry.existing);
+    if (blockedEntry) {
+      setCardState('blocked', blockedEntry.skipped ? 'skipped by -n' : 'needs -f', 'blocked');
+      setLane(sourceLane, sourcePath, sourceMeta, blockedEntry.source, 'pick a file', laneWeight(blockedEntry.source));
+      sourceLane.classList.remove('gone');
+      destinationLane.classList.remove('landed', 'armed', 'gone');
+      setLane(destinationLane, destinationPath, destinationMeta, blockedEntry.existing, 'choose a target', 'already sitting here');
+      moveFoot.innerHTML = blockedEntry.skipped
+        ? '<code>-n</code> means never overwrite, so the item stayed exactly where it was.'
+        : 'This lab will not clobber a name silently. Add <code>-f</code> to force it, or <code>-n</code> to always skip.';
+    }
+    checkMission();
+    return;
+  }
+  lastContext = context;
+  context.fromName = applied[0].fromName;
+  context.fromPath = applied[0].fromPath;
+  selectedSource = null;
+  recordEvidence(applied);
+  if (plan.flags.v) {
+    applied.forEach(entry => {
+      const verb = entry.mode === 'rename' ? 'renamed' : 'moved';
+      log("<span class=\"dim\">mv: " + verb + " '" + esc(entry.fromPath) + "' → '" + esc(entry.toPath) + "'</span>");
+    });
+  } else {
+    applied.forEach(entry => {
+      const verb = entry.mode === 'rename' ? 'renamed' : 'moved';
+      log('<span class="ok">' + esc(entry.fromPath) + ' ' + verb + ' → ' + esc(entry.toPath) + '</span>');
+    });
+    if (applied.some(entry => entry.mode === 'rename')) {
+      log('<span class="dim">Same folder, new name. The contents rode along untouched.</span>');
+    }
+    if (applied.some(entry => entry.existing)) {
+      log('<span class="dim">-f replaced whatever was sitting at the destination.</span>');
+    }
+  }
+  updateRowStates();
+  renderChips();
+  setTimeout(() => {
+    updateUI();
+    checkMission();
+  }, reduceMotion ? 60 : 820);
+}
+
+function showMvHelp() {
+  log('<span class="ok">mv — move or rename a file or folder</span>');
+  log('  <span class="hl">mv SOURCE DEST</span>       rename inside the current folder');
+  log('  <span class="hl">mv SOURCE DIR/</span>       drop it inside a folder, name unchanged');
+  log('  <span class="hl">mv DIR NEWNAME</span>       a whole folder travels, contents and all');
+  log('  <span class="hl">mv -v SOURCE DEST</span>    report every move');
+  log('  <span class="hl">mv -f SOURCE DEST</span>    overwrite what is already there');
+  log('  <span class="hl">mv -n SOURCE DEST</span>    never overwrite');
+  log('  <span class="hl">mv a b c/</span>            move several items into one folder');
+  log('');
+  log('<span class="dim">Remember: mv never copies. The source is empty afterwards.</span>');
+}
+function showHelp() {
+  log('<span class="ok">Commands you can try:</span>');
+  log('  <span class="hl">mv SOURCE DEST</span>       the star of this lab');
+  log('  <span class="hl">mv --help</span>            every mv flag explained');
+  log('  <span class="hl">cd / pwd</span>              walk and locate');
+  log('  <span class="hl">ls / ls -l</span>            see what is where');
+  log('  <span class="hl">cat FILE</span>              check a file survived the move');
+  log('  <span class="hl">mkdir DIR</span>             create a destination folder');
+  log('  <span class="hl">clear</span>                 wipe the screen');
+}
+
+function doCd(args) {
+  if (args.length > 1) { log('bash: cd: too many arguments', 'err'); shakeInput(); return; }
+  const arg = args[0] === undefined ? '' : args[0];
+  let target;
+  if (!arg) target = HOME;
+  else if (arg === '-') {
+    if (!prevDir) { log('bash: cd: OLDPWD not set', 'err'); shakeInput(); return; }
+    target = prevDir;
+  } else {
+    const result = resolvePath(arg, cwd);
+    if (result.error) {
+      log('bash: cd: ' + esc(arg) + ': ' + (result.error === 'missing' ? 'No such file or directory' : 'Not a directory'), 'err');
+      shakeInput();
+      return;
+    }
+    if (result.node.type !== 'dir') {
+      log('bash: cd: ' + esc(arg) + ': Not a directory', 'err');
+      tip('<b>' + esc(arg) + '</b> is a file. To move a file somewhere, use <code>mv ' + esc(arg) + ' DEST/</code>.');
+      shakeInput();
+      return;
+    }
+    target = result.node;
+  }
+  if (target === cwd) { log('<span class="ok">You are already in ' + esc(prettyPath(cwd)) + '.</span>'); return; }
+  prevDir = cwd;
+  cwd = target;
+  selectedSource = null;
+  updateUI();
+  animateAvatarTo(cwd);
+  log('<span class="ok">Now in ' + esc(prettyPath(cwd)) + '</span>');
+}
+
+function doPwd() { log(esc(absPath(cwd))); }
+
+function parseLs(args) {
+  const flags = {a:false, l:false, t:false, r:false, one:false, h:false};
+  const paths = [];
+  let optionsEnded = false;
+  for (const arg of args) {
+    if (arg === '--help') return {help: true};
+    if (!optionsEnded && arg === '--') { optionsEnded = true; continue; }
+    if (!optionsEnded && arg.startsWith('--')) {
+      const names = {all:'a', 'almost-all':'a', long:'l', 'time-sort':'t', reverse:'r', oneline:'one', 'human-readable':'h'};
+      const key = arg.slice(2).split('=')[0];
+      if (!(key in names)) return {error: "unsupported option -- '" + arg.slice(2) + "'"};
+      flags[names[key]] = true;
+      continue;
+    }
+    if (!optionsEnded && arg.startsWith('-') && arg.length > 1) {
+      for (const flag of arg.slice(1)) {
+        if (!(flag in flags)) return {error: "invalid option -- '" + flag + "'"};
+        flags[flag] = true;
+      }
+      continue;
+    }
+    paths.push(arg);
+  }
+  if (paths.length > 1) return {error: 'this playground lists one path at a time'};
+  return {flags, path: paths[0] || '.'};
+}
+function doLs(args) {
+  const parsed = parseLs(args);
+  if (parsed.help) { showHelp(); return; }
+  if (parsed.error) { log('ls: ' + esc(parsed.error), 'err'); shakeInput(); return; }
+  const result = resolvePath(parsed.path, cwd);
+  if (result.error) {
+    log("ls: cannot access '" + esc(parsed.path) + "': " + (result.error === 'missing' ? 'No such file or directory' : 'Not a directory'), 'err');
+    shakeInput();
+    return;
+  }
+  const node = result.node;
+  let entries = node.type === 'dir' ? node.children.slice() : [node];
+  if (node.type === 'dir' && !parsed.flags.a) entries = entries.filter(entry => !entry.name.startsWith('.'));
+  entries.sort((left, right) => left.name.localeCompare(right.name, undefined, {numeric: true, sensitivity: 'base'}));
+  if (parsed.flags.t) entries.sort((left, right) => right.mtime - left.mtime);
+  if (parsed.flags.r) entries.reverse();
+  if (!entries.length) { log('<span class="dim">(empty)</span>'); return; }
+  if (parsed.flags.l) {
+    entries.forEach(entry => {
+      const size = entry.type === 'dir' ? 4096 : (entry.size || 1);
+      const shown = parsed.flags.h ? (size >= 1024 ? (size / 1024).toFixed(1) + 'K' : size + 'B') : String(size);
+      const date = new Date(entry.mtime).toLocaleDateString('en-US', {month: 'short', day: '2-digit'});
+      log((entry.type === 'dir' ? 'drwxr-xr-x' : entry.name.startsWith('.') ? '-rw-------' : '-rw-r--r--') +
+        '  you  you  ' + shown.padStart(5, ' ') + '  ' + date + '  ' +
+        '<span class="' + (entry.type === 'dir' ? 'd' : entry.name.startsWith('.') ? 'code' : 'f') + '">' +
+        esc(entry.name + (entry.type === 'dir' ? '/' : '')) + '</span>');
+    });
+  } else if (parsed.flags.one) {
+    entries.forEach(entry => log('<span class="' + (entry.type === 'dir' ? 'd' : entry.name.startsWith('.') ? 'code' : 'f') + '">' + esc(entry.name + (entry.type === 'dir' ? '/' : '')) + '</span>'));
+  } else {
+    log(entries.map(entry => '<span class="' + (entry.type === 'dir' ? 'd' : entry.name.startsWith('.') ? 'code' : 'f') + '">' + esc(entry.name + (entry.type === 'dir' ? '/' : '')) + '</span>').join('   '));
+  }
+  log('<span class="dim">' + entries.length + (entries.length === 1 ? ' entry' : ' entries') + ' in ' + esc(prettyPath(node)) + '</span>');
+}
+
+function doCat(args) {
+  if (!args.length) { log('cat: missing file operand', 'err'); shakeInput(); return; }
+  const files = [];
+  for (const spec of args) {
+    if (spec === '-n' || spec === '-b') continue;
+    const result = resolvePath(spec, cwd);
+    if (result.error || result.node.type !== 'file') {
+      log("cat: '" + esc(spec) + "': " + (result.error === 'missing' ? 'No such file or directory' : result.error === 'notdir' ? 'Not a directory' : 'Is a directory'), 'err');
+      shakeInput();
+      return;
+    }
+    files.push(result.node);
+  }
+  files.forEach((file, index) => {
+    if (files.length > 1) log('<span class="dim">── ' + esc(file.name) + ' ──</span>');
+    file.content.forEach((text, lineIndex) => log((args.includes('-n') ? '<span class="code">' + String(lineIndex + 1).padStart(3, ' ') + '</span> ' : '') + esc(text)));
+    if (index < files.length - 1) log('');
+  });
+}
+
+function doMkdir(args) {
+  const specs = args.filter(arg => !arg.startsWith('-'));
+  const makeParents = args.includes('-p') || args.includes('--parents');
+  if (!specs.length) { log('mkdir: missing operand', 'err'); shakeInput(); return; }
+  specs.forEach(spec => {
+    const isTilde = spec === '~' || spec.startsWith('~/');
+    const segments = spec.replace(/\/+$/, '').split('/').filter(segment => segment && segment !== '.');
+    if (!segments.length) {
+      log("mkdir: cannot create directory '" + esc(spec) + "': No such file or directory", 'err');
+      shakeInput();
+      return;
+    }
+    let current = isTilde ? HOME : spec.startsWith('/') ? ROOT : cwd;
+    const created = [];
+    let failed = false;
+    const previous = snapshot();
+    segments.forEach((segment, index) => {
+      if (failed) return;
+      if (segment === '..') { current = current.parent || ROOT; return; }
+      const existing = current.children.find(child => child.name === segment);
+      if (existing) {
+        if (existing.type !== 'dir') {
+          log("mkdir: cannot create directory '" + esc(spec) + "': File exists", 'err');
+          shakeInput();
+          failed = true;
+          return;
+        }
+        current = existing;
+        return;
+      }
+      if (!makeParents && index > 0) {
+        log("mkdir: cannot create directory '" + esc(spec) + "': No such file or directory", 'err');
+        tip('The parent folder is missing. Add <code>-p</code> to create every level, or make them one at a time.');
+        shakeInput();
+        failed = true;
+        return;
+      }
+      const node = mk(segment);
+      node.parent = current;
+      current.children.push(node);
+      childrenContainer(current).appendChild(buildRow(node));
+      sortChildren(current);
+      paintRow(node);
+      current = node;
+      created.push(node);
+    });
+    if (failed) return;
+    const subtree = new Set();
+    created.forEach(node => collectSubtree(node, subtree));
+    playFlip(previous, subtree);
+    startWiring();
+    created.forEach(node => {
+      flashRow(node, 'arriving');
+      floatMark(node, 'created', 'rename');
+    });
+    if (created.length) {
+      log('<span class="ok">created ' + created.map(node => '<span class="code">' + esc(prettyPath(node)) + '</span>').join(' ') + '</span>');
+    }
+  });
+  updateUI();
+  checkMission();
+}
+
+/* clicking the map */
+function onNodeClick(node) {
+  if (node === selectedSource) {
+    selectedSource = null;
+    updateRowStates();
+    renderPreview();
+    return;
+  }
+  if (node.type === 'file') {
+    selectedSource = node;
+    updateRowStates();
+    input.value = 'mv ' + node.name + ' ';
+    renderPreview();
+    scrollToRow(node);
+    flashRow(node, 'picked');
+    return;
+  }
+  if (selectedSource) {
+    const dest = node.parent === cwd ? node.name + '/' : prettyPath(node) + '/';
+    const command = 'mv ' + selectedSource.name + ' ' + dest;
+    selectedSource = null;
+    updateRowStates();
+    input.value = '';
+    execute(command);
+    focusInput();
+    return;
+  }
+  if (node === cwd) {
+    log('<span class="dim">You are already here. Tap a file to pick it up, then tap a folder to drop it in.</span>');
+    return;
+  }
+  const command = node.parent === cwd ? 'cd ' + node.name : 'cd ' + prettyPath(node);
+  execute(command);
+}
+
+/* ==================================================================
+   8. MISSIONS
+   ================================================================== */
+/* Evidence is recorded the moment an action succeeds, so missions still
+   resolve when a learner works ahead of the bar or resets and retries. */
+const evidence = {renamedInPlace: false, enteredDocuments: false, crossedWithRename: false, folderRenamed: false, overwrote: false, dirIntoDir: false};
+function recordEvidence(entries) {
+  entries.forEach(entry => {
+    const renamed = entry.name !== entry.fromName;
+    if (entry.source.type === 'file') {
+      if (entry.mode === 'rename') evidence.renamedInPlace = true;
+      if (entry.mode === 'move' && renamed) evidence.crossedWithRename = true;
+    } else {
+      if (entry.mode === 'rename') evidence.folderRenamed = true;
+      if (entry.mode === 'move') evidence.dirIntoDir = true;
+    }
+    if (entry.mode === 'move' && entry.parent === documents) evidence.enteredDocuments = true;
+    if (entry.existing) evidence.overwrote = true;
+  });
+}
+const missions = [
+  {text: 'Rename <b>notes.txt</b> to <b>journal.txt</b> without leaving your home folder.',
+   hint: 'Same folder, new name: <code>mv notes.txt journal.txt</code>. Watch the dry run before you press enter.',
+   answer: 'mv notes.txt journal.txt',
+   check: () => evidence.renamedInPlace || (notes.parent === HOME && notes.name !== 'notes.txt')},
+
+  {text: 'Now move that file into the <b>documents</b> folder, keeping its name.',
+   hint: 'A destination ending in <code>/</code> means “drop it inside”. Type: <code>mv journal.txt documents/</code>',
+   answer: 'mv journal.txt documents/',
+   check: () => evidence.enteredDocuments || notes.parent === documents},
+
+  {text: 'Move it into <b>pictures</b> <i>and</i> rename it to <b>memories.txt</b> in one command.',
+   hint: 'Give a full new path as the destination: <code>mv ~/documents/journal.txt ~/pictures/memories.txt</code>',
+   answer: 'mv ~/documents/journal.txt ~/pictures/memories.txt',
+   check: () => evidence.crossedWithRename || (notes.parent === pictures && notes.name !== 'journal.txt')},
+
+  {text: 'Rename the whole <b>projects</b> folder to <b>work</b>. Everything inside must travel with it.',
+   hint: 'A folder renames like a file — and its contents come along: <code>mv projects work</code>',
+   answer: 'mv projects work',
+   check: () => evidence.folderRenamed || (projects.parent === HOME && projects.name !== 'projects')},
+
+  {text: 'Replace <b>~/hosts.bak</b> with the real <b>/etc/hosts</b>. Something is already sitting at that name.',
+   hint: 'This lab will not overwrite silently. Add <code>-f</code>: <code>mv -f /etc/hosts ~/hosts.bak</code>',
+   answer: 'mv -f /etc/hosts ~/hosts.bak',
+   check: () => evidence.overwrote || (hosts.parent === HOME && hosts.name !== 'hosts')},
+
+  {text: 'Move the entire <b>pictures</b> folder inside <b>music</b>, and use <code>-v</code> so the terminal reports it.',
+   hint: 'Dropping a folder into a folder: <code>mv -v pictures music/</code>. Watch the subtree glide on the map.',
+   answer: 'mv -v pictures music/',
+   check: () => evidence.dirIntoDir || pictures.parent === music}
+];
+const missionCount = missions.length;
+let missionIndex = 0, missionLocked = false;
+
+function renderMission() {
+  const mission = missions[Math.min(missionIndex, missionCount - 1)];
+  missionBadge.textContent = 'Mission ' + (missionIndex + 1) + ' / ' + missionCount;
+  missionText.innerHTML = mission.text;
+  hintBar.textContent = '';
+  hintBar.classList.remove('show');
+  renderChips();
+}
+function checkMission() {
+  if (missionLocked || missionIndex >= missionCount) return;
+  let passed = false;
+  try { passed = missions[missionIndex].check(); } catch (error) { passed = false; }
+  if (passed) completeMission();
+}
+function completeMission() {
+  missionLocked = true;
+  stepsEl.children[missionIndex].classList.add('done');
+  missionEl.classList.add('complete');
+  setTimeout(() => {
+    missionEl.classList.remove('complete');
+    missionIndex++;
+    missionLocked = false;
+    if (missionIndex >= missionCount) finishAll();
+    else { renderMission(); checkMission(); }
+  }, 950);
+}
+function finishAll() {
+  missionBadge.textContent = 'All done';
+  missionText.innerHTML = 'You can rename and relocate with confidence. Keep exploring!';
+  hintBtn.style.display = 'none';
+  hintBar.classList.remove('show');
+  confetti();
+  log('<span class="ok">All missions complete — nicely done!</span>');
+  log('<span class="dim">mv = rename + relocate. Nothing is ever copied, so the source is always gone.</span>');
+}
+function confetti() {
+  const colors = ['#a78bfa', '#fbbf24', '#4ade80', '#f472b6', '#c4b5fd', '#ddd6fe'];
+  for (let i = 0; i < 55; i++) {
+    const piece = document.createElement('i');
+    piece.className = 'confetti';
+    piece.style.left = Math.random() * 100 + '%';
+    piece.style.background = colors[i % colors.length];
+    piece.style.animationDelay = (Math.random() * 0.45) + 's';
+    piece.style.animationDuration = (1.7 + Math.random() * 1.3) + 's';
+    piece.style.setProperty('--rot', (Math.random() * 900 - 450) + 'deg');
+    document.body.appendChild(piece);
+    setTimeout(() => piece.remove(), 3600);
+  }
+}
+
+hintBtn.addEventListener('click', () => {
+  if (hintBar.classList.contains('show')) { hintBar.classList.remove('show'); renderChips(); return; }
+  const mission = missions[Math.min(missionIndex, missionCount - 1)];
+  hintBar.innerHTML = mission.hint;
+  hintBar.classList.add('show');
+  renderChips();
+});
+input.addEventListener('input', renderPreview);
+
+/* ==================================================================
+   9. INPUT HANDLING
+   ================================================================== */
+form.addEventListener('submit', event => {
+  event.preventDefault();
+  const value = input.value;
+  input.value = '';
+  renderPreview();
+  execute(value);
+  focusInput();
+});
+input.addEventListener('keydown', event => {
+  if (event.key === 'ArrowUp') {
+    event.preventDefault();
+    if (historyIndex < history.length - 1) {
+      historyIndex++;
+      input.value = history[history.length - 1 - historyIndex];
+      input.setSelectionRange(input.value.length, input.value.length);
+      renderPreview();
+    }
+  } else if (event.key === 'ArrowDown') {
+    event.preventDefault();
+    if (historyIndex > 0) {
+      historyIndex--;
+      input.value = history[history.length - 1 - historyIndex];
+    } else {
+      historyIndex = -1;
+      input.value = '';
+    }
+    renderPreview();
+  } else if (event.key === 'Tab') {
+    event.preventDefault();
+    completeToken();
+  }
+});
+function completeToken() {
+  const value = input.value;
+  const tokens = value.split(/\s+/);
+  const last = tokens[tokens.length - 1] || '';
+  if (!last) return;
+  const slash = last.lastIndexOf('/');
+  const dirPart = slash > -1 ? last.slice(0, slash + 1) : '';
+  const fragment = slash > -1 ? last.slice(slash + 1) : last;
+  let candidates = [];
+  if (fragment.startsWith('-') && tokens.length > 1) {
+    candidates = ['-f', '-n', '-v', '--force', '--no-clobber', '--verbose'];
+  } else {
+    const result = resolvePath(dirPart || '.', cwd);
+    if (result.error || result.node.type !== 'dir') return;
+    candidates = result.node.children.map(child => child.name + (child.type === 'dir' ? '/' : ''));
+  }
+  const hits = candidates.filter(candidate => candidate.startsWith(fragment));
+  if (!hits.length) return;
+  if (hits.length === 1) {
+    const suffix = hits[0].endsWith('/') ? '' : ' ';
+    input.value = value.slice(0, value.length - last.length) + dirPart + hits[0] + suffix;
+    input.setSelectionRange(input.value.length, input.value.length);
+  } else {
+    log('<span class="dim">' + esc(hits.join('  ')) + '</span>');
+  }
+  renderPreview();
+}
+
+/* ==================================================================
+   10. RESET + BOOT
+   ================================================================== */
+function resetLab() {
+  flightToken++;
+  buildModel();
+  buildTree();
+  cwd = HOME;
+  prevDir = null;
+  selectedSource = null;
+  lastContext = null;
+  history = [];
+  historyIndex = -1;
+  missionIndex = 0;
+  missionLocked = false;
+  Object.keys(evidence).forEach(key => { evidence[key] = false; });
+  term.innerHTML = '';
+  stepsEl.innerHTML = '';
+  missions.forEach(() => stepsEl.appendChild(document.createElement('i')));
+  hintBtn.style.display = '';
+  input.value = '';
+  moveCard.className = 'move-card';
+  requestAnimationFrame(() => {
+    moveAvatar(false);
+    updateUI();
+    renderMission();
+    log('<span class="hl">Fresh filesystem.</span> Every mission is live again.');
+  });
+}
+resetBtn.addEventListener('click', () => {
+  resetLab();
+  resetBtn.classList.remove('spin');
+  void resetBtn.offsetWidth;
+  resetBtn.classList.add('spin');
+  setTimeout(() => resetBtn.classList.remove('spin'), 600);
+});
+
+HOME = buildModel();
+buildTree();
+stepsEl.innerHTML = '';
+missions.forEach(() => stepsEl.appendChild(document.createElement('i')));
+cwd = HOME;
+prevDir = null;
+
+requestAnimationFrame(() => {
+  moveAvatar(false);
+  updateUI();
+  renderMission();
+  log('<span class="hl">Welcome to the visual mv terminal.</span>');
+  log('<span class="hl">mv</span> renames a file or moves it somewhere else — it never copies.');
+  log('Tap a file on the map to pick it up, then tap a folder to drop it in.');
+  log('');
+  log('<span class="dim">Try this first:</span> <span class="code">mv notes.txt journal.txt</span>');
+});
+
+window.addEventListener('resize', () => moveAvatar(false));
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => moveAvatar(false));
+if (!('ontouchstart' in window) && window.innerWidth > 900) setTimeout(focusInput, 400);
+</script>
+</body>
+</html>

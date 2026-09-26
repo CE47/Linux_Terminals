@@ -1,0 +1,1663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Learn `chmod` — Visual Linux</title>
+<style>
+/* ============ TOKENS ============ */
+:root{
+  --bg:#100c04;
+  --txt:#e8f7f0;
+  --dim:#8ba79b;
+  --accent:#eab308;
+  --accent2:#fde68a;
+  --mark:#f59e0b;
+  --green:#4ade80;
+  --err:#fda4af;
+  --line:rgba(255,255,255,.11);
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;min-height:100dvh;font-family:var(--mono);color:var(--txt);background:var(--bg);overflow-x:hidden;-webkit-font-smoothing:antialiased}
+body::before{content:'';position:fixed;inset:0;z-index:-2;background:radial-gradient(900px 620px at 10% -12%,rgba(234,179,8,.17),transparent 62%),radial-gradient(820px 600px at 100% 3%,rgba(245,158,11,.09),transparent 60%),radial-gradient(760px 700px at 46% 118%,rgba(253,230,138,.08),transparent 63%),#100c04}
+body::after{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;background-image:linear-gradient(rgba(255,255,255,.026) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.026) 1px,transparent 1px);background-size:46px 46px;-webkit-mask-image:radial-gradient(ellipse at 50% 0%,#000 14%,transparent 74%);mask-image:radial-gradient(ellipse at 50% 0%,#000 14%,transparent 74%)}
+
+/* ============ LAYOUT ============ */
+.app{max-width:1320px;margin:0 auto;min-height:100dvh;display:flex;flex-direction:column;padding:14px 16px 16px;gap:11px}
+.top{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:11px}
+.logo{width:38px;height:38px;flex:0 0 auto;border-radius:11px;display:grid;place-items:center;position:relative;font-size:13px;font-weight:800;letter-spacing:-.06em;color:#1c1408;background:linear-gradient(150deg,#fef3c7,#eab308 45%,#b45309);box-shadow:0 8px 22px -8px rgba(234,179,8,.9),inset 0 1px 0 rgba(255,255,255,.6);animation:logoPulse 3.2s ease-in-out infinite}
+@keyframes logoPulse{0%,100%{box-shadow:0 8px 22px -8px rgba(234,179,8,.9),inset 0 1px 0 rgba(255,255,255,.6)}50%{box-shadow:0 8px 32px -6px rgba(234,179,8,1),inset 0 1px 0 rgba(255,255,255,.6)}}
+.logo::after{content:'';position:absolute;left:4px;right:4px;top:7px;height:2px;border-radius:2px;background:rgba(43,20,3,.35);box-shadow:0 5px 0 rgba(43,20,3,.35),0 10px 0 rgba(43,20,3,.2)}
+.brand h1{margin:0;font-size:16px;letter-spacing:.01em;font-weight:700}
+.brand h1 code{color:#fef3c7;background:rgba(234,179,8,.16);padding:1px 7px;border-radius:6px;border:1px solid rgba(234,179,8,.32)}
+.brand p{margin:2px 0 0;font-size:11.5px;color:var(--dim)}
+.steps{display:flex;gap:7px;align-items:center}
+.steps i{width:9px;height:9px;border-radius:50%;display:block;background:rgba(255,255,255,.13);transition:all .45s cubic-bezier(.34,1.56,.64,1)}
+.steps i.done{background:var(--green);box-shadow:0 0 0 4px rgba(74,222,128,.15),0 0 14px rgba(74,222,128,.7);transform:scale(1.15)}
+.reset-btn{font:inherit;font-size:10.5px;letter-spacing:.04em;color:var(--dim);cursor:pointer;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);padding:5px 10px;border-radius:9px;white-space:nowrap;transition:.2s;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.reset-btn:hover{color:var(--txt);background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.26)}
+.reset-btn:active{transform:scale(.95)}
+.reset-btn.spin{animation:resetSpin .55s cubic-bezier(.34,1.3,.64,1)}
+@keyframes resetSpin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+
+/* ---- mission bar ---- */
+.mission{display:flex;align-items:center;gap:12px;padding:10px 13px;border-radius:14px;background:linear-gradient(90deg,rgba(234,179,8,.12),rgba(234,179,8,.02));border:1px solid rgba(234,179,8,.24);transition:background .35s,border-color .35s,transform .35s,box-shadow .35s}
+.mission.complete{background:linear-gradient(90deg,rgba(74,222,128,.24),rgba(74,222,128,.05));border-color:rgba(74,222,128,.55);transform:scale(1.012);box-shadow:0 0 30px -8px rgba(74,222,128,.5)}
+.badge{font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;padding:5px 9px;border-radius:999px;white-space:nowrap;color:#fef3c7;background:rgba(234,179,8,.16);border:1px solid rgba(234,179,8,.3);transition:all .3s}
+.mission.complete .badge{color:#86efac;background:rgba(74,222,128,.2);border-color:rgba(74,222,128,.45)}
+.mission-text{flex:1;font-size:13px;line-height:1.4;min-width:0}
+.mission-text b{color:#fef3c7}
+.mission.complete .mission-text b{color:#86efac}
+.hint-btn{font:inherit;font-size:11px;color:var(--dim);cursor:pointer;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);padding:6px 11px;border-radius:9px;white-space:nowrap;transition:.2s}
+.hint-btn:hover{color:var(--txt);background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.24)}
+.hint{max-height:0;overflow:hidden;opacity:0;font-size:12.5px;color:var(--dim);padding:0 14px;border-radius:12px;transition:max-height .3s ease,opacity .3s ease,padding .3s ease,background .3s}
+.hint.show{max-height:80px;opacity:1;padding:9px 14px;background:rgba(255,255,255,.035)}
+.hint code{color:#fef08a;background:rgba(245,158,11,.13);padding:1px 6px;border-radius:5px}
+
+/* ---- main grid ---- */
+main{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1.08fr) minmax(0,1fr);grid-template-rows:minmax(0,1fr);gap:13px}
+.panel{background:linear-gradient(180deg,rgba(255,255,255,.048),rgba(255,255,255,.014));border:1px solid rgba(255,255,255,.08);border-radius:17px;padding:12px;display:flex;flex-direction:column;min-height:0;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:0 22px 44px -24px rgba(0,0,0,.9),inset 0 1px 0 rgba(255,255,255,.055)}
+.panel-head{display:flex;align-items:center;gap:9px;padding:1px 4px 9px;min-width:0}
+.title{font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:var(--dim);font-weight:700}
+.sub{font-size:11px;color:rgba(164,144,127,.65);margin-left:auto}
+.dots{display:flex;gap:5px;margin-right:2px}
+.dots i{width:9px;height:9px;border-radius:50%;display:block}
+.dots i:nth-child(1){background:#fda4af}
+.dots i:nth-child(2){background:#f59e0b}
+.dots i:nth-child(3){background:#4ade80}
+
+/* ---- changed counter ---- */
+.counter{margin-left:auto;display:flex;align-items:center;gap:5px;font-size:10.5px;letter-spacing:.04em;color:#fef08a;padding:4px 10px;border-radius:99px;background:rgba(245,158,11,.11);border:1px solid rgba(245,158,11,.26);transition:background .3s,border-color .3s,color .3s}
+.counter b{font-size:12.5px;color:var(--mark);min-width:9px;text-align:center}
+.counter.zero{background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.1);color:var(--dim)}
+.counter.zero b{color:var(--dim)}
+.counter.pop{animation:counterPop .55s cubic-bezier(.34,1.56,.64,1)}
+@keyframes counterPop{0%{transform:scale(1)}40%{transform:scale(1.22);box-shadow:0 0 24px rgba(245,158,11,.55)}100%{transform:scale(1)}}
+
+/* ============ CRUMBS + TREE (cd.html design) ============ */
+.crumbs{display:flex;align-items:center;flex-wrap:wrap;gap:3px;padding:7px 9px;margin-bottom:8px;border-radius:11px;background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.055);min-height:37px;min-width:0}
+.crumb{font-size:12px;padding:3px 9px;border-radius:7px;background:rgba(234,179,8,.13);color:#fde68a;border:1px solid rgba(234,179,8,.22);animation:crumbIn .32s cubic-bezier(.34,1.56,.64,1) backwards}
+.crumb:last-child{color:#fef08a;background:rgba(245,158,11,.11);border-color:rgba(245,158,11,.26)}
+@keyframes crumbIn{from{opacity:0;transform:translateY(-5px) scale(.85)}to{opacity:1;transform:none}}
+.sep{color:rgba(164,144,127,.5);font-size:11px;padding:0 1px}
+.tree-scroll{flex:1;min-height:0;overflow:auto;padding:4px 2px 6px;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.16) transparent;-webkit-overflow-scrolling:touch;min-width:0}
+.tree-scroll::-webkit-scrollbar{width:8px;height:8px}
+.tree-scroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:99px}
+.tree-scroll::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.26)}
+.tree-inner{position:relative;display:inline-block;vertical-align:top;min-width:100%;padding:6px 58px 16px 2px}
+.node{position:relative}
+.children{margin-left:16px;padding-left:12px;border-left:2px solid var(--line)}
+.children>.node::before{content:'';position:absolute;left:-14px;top:17px;width:14px;height:2px;background:var(--line);border-radius:2px}
+.row{display:inline-flex;align-items:center;gap:8px;min-height:34px;padding:5px 11px 5px 9px;border-radius:10px;cursor:pointer;white-space:nowrap;position:relative;transition:background .22s,box-shadow .22s,transform .18s;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.row:hover{background:rgba(255,255,255,.055);transform:translateX(2px)}
+.row.current{background:linear-gradient(90deg,rgba(234,179,8,.22),rgba(234,179,8,.03));box-shadow:inset 0 0 0 1px rgba(234,179,8,.4)}
+.row.current .label{color:#fff;font-weight:700}
+.row.file{opacity:.55}
+.row.target{box-shadow:inset 0 0 0 1px rgba(234,179,8,.85);background:rgba(234,179,8,.16);opacity:1}
+.row.target .label{color:#fff}
+.row.edited{animation:rowEdited .8s cubic-bezier(.34,1.56,.64,1)}
+@keyframes rowEdited{0%{background:rgba(245,158,11,.4);box-shadow:0 0 0 2px rgba(245,158,11,.95),0 0 34px rgba(245,158,11,.7)}100%{background:transparent;box-shadow:inset 0 0 0 1px rgba(245,158,11,.3)}}
+.row.born{animation:rowBorn .55s cubic-bezier(.34,1.56,.64,1)}
+@keyframes rowBorn{0%{opacity:0;transform:translateX(-10px) scale(.9);background:rgba(74,222,128,.35)}100%{opacity:1;transform:none;background:transparent}}
+.row.reverted{animation:rowReverted .8s ease}
+@keyframes rowReverted{0%{background:rgba(167,139,250,.3);box-shadow:inset 0 0 0 1px rgba(167,139,250,.8)}100%{background:transparent;box-shadow:inset 0 0 0 1px rgba(255,255,255,0)}}
+.icon{width:18px;height:14px;flex:0 0 auto;position:relative;border-radius:3px;transition:box-shadow .3s;z-index:1}
+.icon.dir{background:linear-gradient(180deg,#fcd34d,#f59e0b);box-shadow:0 2px 7px rgba(251,191,36,.22)}
+.icon.dir::before{content:'';position:absolute;top:-4px;left:0;width:8px;height:6px;background:#fcd34d;border-radius:3px 3px 0 0}
+.icon.file{background:linear-gradient(180deg,#a8b6c9,#64748b);border-radius:2px 5px 2px 2px}
+.icon.link{width:16px;height:11px;background:linear-gradient(180deg,#fef3c7,#fbbf24);border-radius:2px 6px 2px 2px}
+.row.current .icon.dir{box-shadow:0 0 0 3px rgba(251,146,60,.28),0 2px 12px rgba(251,191,36,.75)}
+.label{font-size:13.5px;letter-spacing:.01em;position:relative;z-index:1}
+.tag{font-size:9.5px;padding:2px 6px;border-radius:99px;font-weight:700;background:rgba(74,222,128,.16);color:#86efac;border:1px solid rgba(74,222,128,.3);position:relative;z-index:1}
+.badge-new{font-size:8.5px;padding:2px 6px;border-radius:99px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#86efac;background:rgba(74,222,128,.14);border:1px solid rgba(74,222,128,.3);position:relative;z-index:1}
+.badge-bak{font-size:8.5px;padding:2px 6px;border-radius:99px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#fef3c7;background:rgba(253,230,138,.14);border:1px solid rgba(253,230,138,.32);position:relative;z-index:1}
+.kb{font-size:9px;color:rgba(164,144,127,.5);position:relative;z-index:1;transition:color .3s}
+.row.edited .kb{color:var(--mark)}
+.ping{position:absolute;left:0;top:0;width:0;height:0;pointer-events:none;z-index:6}
+.ping i{position:absolute;left:-16px;top:-16px;width:32px;height:32px;border-radius:50%;border:2px solid rgba(245,158,11,.85);display:block;animation:pingA .7s ease-out forwards}
+@keyframes pingA{0%{transform:scale(.2);opacity:1}100%{transform:scale(1.9);opacity:0}}
+.mark{position:absolute;left:8px;bottom:calc(100% - 2px);z-index:9;padding:2px 7px;border-radius:999px;font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;white-space:nowrap;pointer-events:none;color:#fef08a;background:rgba(245,158,11,.22);border:1px solid rgba(245,158,11,.55);box-shadow:0 6px 18px -8px rgba(245,158,11,.9);animation:markRise 1.1s cubic-bezier(.22,.9,.3,1) forwards}
+.mark.back{color:#fef3c7;background:rgba(253,230,138,.22);border-color:rgba(253,230,138,.5);box-shadow:0 6px 18px -8px rgba(253,230,138,.9)}
+@keyframes markRise{0%{opacity:0;transform:translateY(6px) scale(.8)}22%{opacity:1;transform:translateY(-4px) scale(1)}70%{opacity:1;transform:translateY(-15px)}100%{opacity:0;transform:translateY(-28px)}}
+
+/* ---- avatar ---- */
+.avatar{position:absolute;left:0;top:0;width:30px;height:30px;z-index:7;pointer-events:none;transition:transform .62s cubic-bezier(.34,1.3,.64,1);will-change:transform}
+.avatar .body{width:100%;height:100%;border-radius:50% 50% 46% 46%;background:radial-gradient(circle at 34% 28%,#fef3c7,#eab308 52%,#92400e);box-shadow:0 0 0 3px rgba(234,179,8,.18),0 9px 20px -4px rgba(194,65,12,.8);display:grid;place-items:center;animation:idle 2.8s ease-in-out infinite}
+@keyframes idle{0%,100%{transform:translateY(0)}50%{transform:translateY(-2.5px)}}
+.avatar.hop .body{animation:hop .58s cubic-bezier(.34,1.3,.64,1)}
+@keyframes hop{0%{transform:translateY(0) scale(1,1)}28%{transform:translateY(-11px) scale(.9,1.12)}58%{transform:translateY(0) scale(1.12,.88)}80%{transform:translateY(-3px) scale(.98,1.03)}100%{transform:translateY(0) scale(1,1)}}
+.eyes{display:flex;gap:5px}
+.eyes i{width:4px;height:6.5px;background:#1c1408;border-radius:50%;display:block;animation:blink 4.6s infinite}
+@keyframes blink{0%,92%,100%{transform:scaleY(1)}95%{transform:scaleY(.1)}}
+
+/* ============ SED STREAM ============ */
+.stream{flex:0 0 auto;margin-top:8px;border-radius:12px;background:linear-gradient(180deg,rgba(234,179,8,.05),rgba(0,0,0,.3));border:1px dashed rgba(234,179,8,.28);transition:border-color .3s,box-shadow .3s,background .3s;min-width:0}
+.stream.active{border-color:rgba(234,179,8,.7);background:linear-gradient(180deg,rgba(234,179,8,.11),rgba(0,0,0,.3));box-shadow:0 0 28px -12px rgba(234,179,8,.9)}
+.stream.saved{border-style:solid;border-color:rgba(74,222,128,.7);background:linear-gradient(180deg,rgba(74,222,128,.1),rgba(0,0,0,.3));box-shadow:0 0 28px -12px rgba(74,222,128,.85)}
+.stream-top{display:flex;align-items:center;gap:8px;padding:7px 10px 0;min-width:0}
+.stream-label{font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:#fde68a;font-weight:700;flex:0 0 auto}
+.stream-file{font-size:10px;color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.stream-stat{margin-left:auto;font-size:9.5px;color:var(--dim);white-space:nowrap;flex:0 0 auto}
+.permbar{padding:8px 9px 7px;background:rgba(0,0,0,.3);border-bottom:1px solid var(--line);min-height:118px}
+.perm-empty{font-size:9.5px;color:var(--dim);opacity:.75}
+.pm-head{display:flex;align-items:baseline;gap:8px;margin-bottom:7px;flex-wrap:wrap}
+.pm-file{font-size:11px;color:#fde68a;font-weight:700}
+.pm-mode{font-family:var(--mono);font-size:11px;color:var(--txt);letter-spacing:.06em}
+.pm-octal{margin-left:auto;font-size:11px;font-weight:700;color:#fbbf24;background:rgba(245,158,11,.16);border:1px solid rgba(245,158,11,.4);border-radius:6px;padding:1px 7px}
+.pm-grid{display:grid;grid-template-columns:52px repeat(3,minmax(0,1fr));gap:3px;align-items:center}
+.pm-col,.pm-who{font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);text-align:center}
+.pm-who{text-align:left;padding-left:2px}
+.pm-cell{font:inherit;font-size:11px;font-weight:700;height:26px;border-radius:6px;cursor:pointer;color:rgba(255,255,255,.3);background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);transition:.18s;-webkit-tap-highlight-color:transparent;touch-action:manipulation;display:grid;place-items:center}
+.pm-cell:hover{border-color:rgba(253,230,138,.6);color:#fef3c7;transform:translateY(-1px)}
+.pm-cell:active{transform:scale(.94)}
+.pm-cell.on{color:#3b2606;background:linear-gradient(160deg,#fde68a,#eab308);border-color:rgba(253,230,138,.85);box-shadow:0 0 12px -4px rgba(234,179,8,.95)}
+.pm-cell.dir.on{background:linear-gradient(160deg,#bef264,#84cc16);border-color:rgba(190,242,100,.85);box-shadow:0 0 12px -4px rgba(132,204,22,.9)}
+.pm-cell.flip{animation:pmFlip .34s cubic-bezier(.34,1.56,.64,1)}
+@keyframes pmFlip{0%{transform:scale(.6) rotate(-8deg)}60%{transform:scale(1.12)}100%{transform:none}}
+.pm-hint{margin-top:7px;font-size:9px;color:var(--dim);opacity:.8}
+.pm-hint b{color:#fde68a}
+.mode-chip{font-size:8.5px;color:rgba(253,230,138,.62);background:rgba(234,179,8,.1);border-radius:4px;padding:0 4px;flex:0 0 auto}
+.mode-chip.dir{color:rgba(190,242,100,.6);background:rgba(132,204,22,.1)}
+.orow{display:flex;align-items:baseline;gap:8px;padding:1px 4px;border-radius:6px;font-size:11px;line-height:1.55;animation:orowIn .34s cubic-bezier(.34,1.3,.64,1) backwards}
+@keyframes orowIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.orow .sl-n{color:rgba(253,230,138,.5);min-width:16px;text-align:right;flex:0 0 auto;user-select:none;font-size:10px}
+.orow .sl-tx{min-width:0;word-break:break-word;white-space:pre-wrap;color:#d7f5ef}
+.orow.moved .sl-n{color:#f59e0b}
+.orow .from{font-size:8.5px;color:rgba(255,255,255,.34);flex:0 0 auto;white-space:nowrap}
+.orow.dup{background:rgba(245,158,11,.09);box-shadow:inset 2px 0 0 #f59e0b}
+.orow.dup .sl-tx{color:#ecfccb}
+.grp-badge{font-size:8.5px;font-weight:700;color:#365314;background:#fcd34d;border-radius:99px;padding:0 6px;flex:0 0 auto;align-self:center}
+.more-note{font-size:9.5px;color:var(--dim);padding:3px 4px 1px;opacity:.85}
+.stream-body{max-height:172px;overflow-y:auto;padding:6px 6px 7px;scrollbar-width:thin;min-width:0}
+.stream-body::-webkit-scrollbar{width:7px}
+.stream-body::-webkit-scrollbar-thumb{background:rgba(255,255,255,.13);border-radius:99px}
+.sl{display:flex;align-items:baseline;gap:8px;padding:2px 6px 2px 4px;border-radius:7px;font-size:11px;line-height:1.5;animation:slIn .3s ease-out backwards}
+@keyframes slIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.sl .sl-n{color:rgba(164,144,127,.4);min-width:16px;text-align:right;flex:0 0 auto;user-select:none;font-size:10px}
+.sl .sl-tx{color:#fef3c7;min-width:0;word-break:break-word;white-space:pre-wrap}
+.sl.changed{background:rgba(245,158,11,.07);box-shadow:inset 0 0 0 1px rgba(245,158,11,.22)}
+.sl .was{color:rgba(251,113,133,.8);text-decoration:line-through;text-decoration-color:rgba(251,113,133,.5)}
+.sl .arrow{color:var(--mark);font-size:10px;flex:0 0 auto}
+.sl .now{color:#fef08a;background:rgba(245,158,11,.2);border-radius:4px;padding:0 4px;box-shadow:inset 0 -2px 0 rgba(245,158,11,.3);animation:nowPop .5s cubic-bezier(.34,1.56,.64,1)}
+@keyframes nowPop{0%{background:rgba(245,158,11,.85);color:#1c1408;box-shadow:0 0 0 4px rgba(245,158,11,.3)}100%{background:rgba(245,158,11,.2);color:#fef08a;box-shadow:inset 0 -2px 0 rgba(245,158,11,.3)}}
+.sl.gone{background:rgba(251,113,133,.07);box-shadow:inset 0 0 0 1px rgba(251,113,133,.2)}
+.sl.gone .sl-tx{color:rgba(251,113,133,.6);text-decoration:line-through}
+.sl .del{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#fda4af;flex:0 0 auto}
+.stream-none{font-size:10.5px;color:var(--dim);padding:6px 8px 4px;display:block;line-height:1.5}
+.stream-bar{position:absolute;left:0;right:0;height:26px;pointer-events:none;z-index:2;background:linear-gradient(180deg,transparent,rgba(234,179,8,.26) 50%,transparent);border-top:1px solid rgba(234,179,8,.5);border-bottom:1px solid rgba(234,179,8,.5);animation:streamSweep .8s cubic-bezier(.45,.05,.55,.95) forwards}
+@keyframes streamSweep{0%{top:-26px;opacity:0}15%{opacity:1}85%{opacity:1}100%{top:100%;opacity:0}}
+
+/* ============ TERMINAL ============ */
+.term{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:12px 13px;border-radius:12px;background:rgba(0,0,0,.36);border:1px solid rgba(255,255,255,.055);font-size:12.5px;line-height:1.7;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.16) transparent;-webkit-overflow-scrolling:touch;min-width:0}
+.term::-webkit-scrollbar{width:8px}
+.term::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:99px}
+.line{white-space:pre-wrap;word-break:break-word;animation:lineIn .22s ease-out}
+@keyframes lineIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+.line .p{color:#fde68a}
+.line .c{color:#fffdf5;font-weight:600}
+.line.err{color:var(--err)}
+.line .d{color:#fde68a;font-weight:600}
+.line .f{color:#cbd5e1}
+.line .hl{color:#fde68a;font-weight:700}
+.line .ok{color:#86efac}
+.line .warn{color:#fcd34d}
+.line .dim{color:var(--dim)}
+.line .code{color:#fef08a;background:rgba(245,158,11,.11);padding:1px 7px;border-radius:6px;border:1px solid rgba(245,158,11,.2)}
+.tip-line{margin-top:4px;padding:6px 10px;border-radius:8px;background:rgba(234,179,8,.09);border-left:3px solid rgba(234,179,8,.5);color:#fde68a;font-size:12px}
+.tip-line.danger{background:rgba(251,113,133,.09);border-left-color:rgba(251,113,133,.6);color:#fda4af}
+.tip-line.good{background:rgba(74,222,128,.09);border-left-color:rgba(74,222,128,.5);color:#fef3c7}
+mark{background:rgba(245,158,11,.26);color:#fef08a;font-weight:600;border-radius:4px;padding:0 3px;box-shadow:inset 0 -2px 0 rgba(245,158,11,.35)}
+del{color:rgba(251,113,133,.75);text-decoration:line-through}
+ins{color:#fef08a;background:rgba(245,158,11,.2);border-radius:4px;padding:0 3px;text-decoration:none;box-shadow:inset 0 -2px 0 rgba(245,158,11,.3)}
+.chips{display:flex;gap:7px;overflow-x:auto;min-width:0;max-width:100%;padding:10px 1px 2px;scrollbar-width:none;-ms-overflow-style:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{font:inherit;font-size:11.5px;white-space:nowrap;cursor:pointer;padding:6px 11px;border-radius:9px;color:#fde68a;background:rgba(234,179,8,.1);border:1px solid rgba(234,179,8,.26);transition:.18s;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.chip:hover{background:rgba(234,179,8,.22);color:#fef9c3;transform:translateY(-1px);box-shadow:0 6px 16px -12px rgba(234,179,8,.9)}
+.chip:active{transform:translateY(0) scale(.96)}
+
+/* ---- dry run ---- */
+.preview{display:flex;align-items:center;gap:8px;margin-top:9px;padding:8px 10px;border-radius:12px;background:rgba(0,0,0,.34);border:1px dashed rgba(255,255,255,.13);min-height:40px;transition:border-color .25s,background .25s;min-width:0}
+.preview.ok{border-style:solid;border-color:rgba(74,222,128,.4);background:rgba(74,222,128,.05)}
+.preview.warn{border-style:solid;border-color:rgba(245,158,11,.45);background:rgba(245,158,11,.05)}
+.preview.bad{border-style:solid;border-color:rgba(251,113,133,.45);background:rgba(251,113,133,.05)}
+.pv-label{font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);font-weight:700;flex:0 0 auto}
+.pv-body{flex:1;min-width:0;display:flex;align-items:center;gap:7px;flex-wrap:wrap;font-size:11.5px;color:var(--dim)}
+.pv-verdict{font-size:9px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;padding:2px 7px;border-radius:99px;white-space:nowrap;animation:pop .28s cubic-bezier(.34,1.56,.64,1)}
+@keyframes pop{from{opacity:0;transform:scale(.8) translateY(3px)}to{opacity:1;transform:none}}
+.pv-verdict.ok{color:#86efac;background:rgba(74,222,128,.16);border:1px solid rgba(74,222,128,.32)}
+.pv-verdict.warn{color:#fef08a;background:rgba(245,158,11,.16);border:1px solid rgba(245,158,11,.34)}
+.pv-verdict.bad{color:#fda4af;background:rgba(251,113,133,.16);border:1px solid rgba(251,113,133,.34)}
+.pv-msg{color:var(--dim);line-height:1.4;max-width:100%;max-height:2.9em;overflow:hidden}
+.pv-body code{color:#fef08a;background:rgba(245,158,11,.12);padding:1px 6px;border-radius:5px;border:1px solid rgba(245,158,11,.2)}
+.preview.bad .pv-msg{color:#fda4af}
+.input-row{display:flex;align-items:center;gap:8px;margin-top:9px;padding:9px 10px;border-radius:12px;background:rgba(0,0,0,.4);border:1px solid rgba(234,179,8,.28);transition:border-color .2s,box-shadow .2s;min-width:0}
+.input-row:focus-within{border-color:rgba(234,179,8,.75);box-shadow:0 0 0 3px rgba(234,179,8,.14)}
+.input-row.shake{animation:shake .4s}
+@keyframes shake{10%,90%{transform:translateX(-2px)}20%,80%{transform:translateX(4px)}30%,50%,70%{transform:translateX(-6px)}40%,60%{transform:translateX(6px)}}
+.ps1{font-size:12.5px;color:#fde68a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:0 1 auto}
+.ps1 .ps-user{color:#fde68a;opacity:.85}
+.input-row input{flex:1;min-width:40px;background:none;border:none;outline:none;color:#f1f5f9;font:inherit;font-size:13px;padding:0}
+.input-row input::placeholder{color:rgba(164,144,127,.5)}
+.send{font:inherit;font-size:14px;line-height:1;cursor:pointer;width:30px;height:30px;flex:0 0 auto;border-radius:9px;color:#1c1408;background:linear-gradient(150deg,#fef3c7,#eab308);border:none;display:grid;place-items:center;transition:.18s;box-shadow:0 4px 14px -4px rgba(234,179,8,.85)}
+.send:hover{transform:translateY(-1px);box-shadow:0 6px 18px -4px rgba(234,179,8,1)}
+.send:active{transform:scale(.93)}
+.confetti{position:fixed;top:-14px;width:8px;height:13px;border-radius:2px;z-index:999;pointer-events:none;animation:fall linear forwards}
+@keyframes fall{to{transform:translateY(108vh) rotate(var(--rot,360deg));opacity:.05}}
+
+/* ============ RESPONSIVE ============ */
+@media (min-width:901px){
+  html,body{height:100%;min-height:0;overflow:hidden}
+  .app{height:100%;min-height:0;overflow:hidden}
+  .term{flex:1 1 auto}
+}
+@media (max-width:900px){
+  .app{padding:12px 12px calc(16px + env(safe-area-inset-bottom));gap:10px}
+  /* minmax(0,1fr), not 1fr: a plain 1fr is minmax(auto,1fr) and its auto
+     minimum lets a wide child (the chip row) drag the column past the viewport */
+  main{grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto;flex:none}
+  .panel{min-height:0;min-width:0}
+  .panel-head,.crumbs,.term,.input-row,.preview,.stream,.chips{min-width:0}
+  .tree-scroll{max-height:24vh}
+  .term{min-height:140px;max-height:24vh}
+  .brand h1{font-size:15px}
+  .brand p{display:none}
+  .mission{padding:9px 11px}
+  .mission-text{font-size:12.5px;line-height:1.35}
+  .ps1 .ps-user{display:none}
+  .sub{display:none}
+  .stream-body{max-height:132px}
+  /* touch-sized controls: these are 19-27px tall with the desktop padding */
+  .hint-btn,.reset-btn{min-height:34px;display:inline-flex;align-items:center;padding:8px 12px}
+  .chip{min-height:34px;display:inline-flex;align-items:center;padding:8px 12px}
+}
+@media (max-width:560px){
+  .logo{width:34px;height:34px;font-size:12px}
+  .badge{font-size:9px;padding:4px 7px}
+  .mission{gap:8px;padding:8px 10px}
+  .hint-btn{padding:5px 9px;font-size:10.5px}
+  .label{font-size:13px}
+  .tree-inner{padding-right:48px}
+  .tree-scroll{max-height:22vh}
+  .term{max-height:23vh}
+  .crumbs{min-height:34px;padding:6px 8px}
+  .kb{display:none}
+  .preview{padding:7px 9px;min-height:36px}
+  .pv-verdict{font-size:8.5px}
+  .stream-body{max-height:118px}
+  .sl{font-size:10.5px}
+  .chip{font-size:11px}
+  /* 9.5px text on a 3px pad makes a 19px target — too small for a thumb */
+  .hint-btn{min-height:34px}
+  .pm-cell{height:30px}
+  .pm-grid{grid-template-columns:44px repeat(3,minmax(0,1fr))}
+}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}}
+/* any touch device, whatever the width: keep every control thumb-sized */
+@media (hover:none),(pointer:coarse){
+  .hint-btn,.reset-btn,.chip{min-height:34px;display:inline-flex;align-items:center;padding:8px 12px}
+  .crumb{padding-top:9px;padding-bottom:9px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <div class="logo">chmod</div>
+      <div>
+        <h1>Learn <code>chmod</code></h1>
+        <p>Decide who may read, write and run each file — and see it change.</p>
+      </div>
+    </div>
+    <div class="steps" id="steps"></div>
+    <button class="reset-btn" id="resetBtn" type="button" title="Rebuild the filesystem from scratch">↺ reset</button>
+  </header>
+
+  <div class="mission" id="mission">
+    <span class="badge" id="missionBadge">Mission 1 / 6</span>
+    <span class="mission-text" id="missionText">Loading…</span>
+    <button class="hint-btn" id="hintBtn" type="button">Hint</button>
+  </div>
+  <div class="hint" id="hintBar"></div>
+
+  <main>
+    <section class="panel">
+      <div class="panel-head">
+        <span class="title">Filesystem map</span>
+        <span class="counter zero" id="counter"><b id="countNum">0</b> changed</span>
+      </div>
+      <div class="crumbs" id="crumbs"></div>
+      <div class="tree-scroll" id="treeScroll">
+        <div class="tree" id="tree"></div>
+      </div>
+      <div class="stream" id="stream">
+        <div class="stream-top">
+          <span class="stream-label">Permissions</span>
+          <span class="stream-file" id="streamFile">no file chosen</span>
+          <span class="stream-stat" id="streamStat"></span>
+        </div>
+        <div class="permbar" id="permBar"><span class="perm-empty">Tap a file on the map to inspect who may read, write or run it.</span></div>
+        <div class="stream-body" id="streamBody"><span class="stream-none">Pick a file, then run <b>chmod</b> — or just click a cell in the matrix.</span></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <span class="dots"><i></i><i></i><i></i></span>
+        <span class="title">Terminal</span>
+      </div>
+      <div class="term" id="term" aria-live="polite"></div>
+      <div class="chips" id="chips"></div>
+      <div class="preview" id="preview">
+        <span class="pv-label">Dry run</span>
+        <span class="pv-body" id="pvBody"><span class="pv-msg">type chmod to see who would gain or lose a bit</span></span>
+      </div>
+      <form class="input-row" id="form" autocomplete="off">
+        <span class="ps1"><span class="ps-user">you@linux:</span><span id="psPath">~</span>$</span>
+        <input id="cmd" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="type chmod…">
+        <button class="send" type="submit" aria-label="Run command">↵</button>
+      </form>
+    </section>
+  </main>
+</div>
+
+<script>
+/* ==================================================================
+   1. FILESYSTEM MODEL
+   ================================================================== */
+let uid = 0;
+let clock = 1700000000000;
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const mk = (name, type = 'dir', extra = {}) => ({
+  id: ++uid, name, type,
+  children: type === 'dir' ? [] : null,
+  parent: null,
+  size: type === 'dir' ? 4096 : 1,
+  mtime: clock++,
+  content: type === 'file' ? [] : null,
+  born: false,
+  ...extra
+});
+
+let ROOT, HOME, data, docs, logs, scripts, config, etcDir, tmpDir;
+let deploySh, orders, roles, accessLog, appConf, guide, notes, todo, hosts, scratch, profile;
+
+function bytesOf(lines) {
+  if (!lines || !lines.length) return 0;
+  return lines.join('\n').length + 1;
+}
+function file(name, lines, extra) {
+  return mk(name, 'file', {content: lines.slice(), size: bytesOf(lines), mtime: clock++, mode: 0o644, ...extra});
+}
+
+function buildModel() {
+  uid = 0;
+  clock = 1700000000000;
+  ROOT = mk('/', 'dir', {mode: 0o755});
+  const homeDir = mk('home', 'dir', {mode: 0o755});
+  HOME = mk('you', 'dir', {mode: 0o755});
+  data = mk('data', 'dir', {mode: 0o755});
+  docs = mk('docs', 'dir', {mode: 0o755});
+  logs = mk('logs', 'dir', {mode: 0o750});
+  scripts = mk('scripts', 'dir', {mode: 0o755});
+  config = mk('config', 'dir', {mode: 0o755});
+  etcDir = mk('etc', 'dir', {mode: 0o755});
+  tmpDir = mk('tmp', 'dir', {mode: 0o777});
+
+  deploySh = file('deploy.sh', [
+    '#!/bin/sh',
+    'echo starting deploy',
+    'echo running tests',
+    'echo deploy complete'
+  ], {mode: 0o644});
+  orders = file('orders.csv', [
+    'order,region,units,total',
+    'A-1001,luzon,12,5400',
+    'A-1002,visayas,3,1500',
+    'A-1003,luzon,7,3200',
+    'A-1004,mindanao,21,9800',
+    'A-1005,luzon,1,450'
+  ]);
+  roles = file('roles.txt', ['admin', 'viewer', 'admin', 'editor', 'viewer', 'admin']);
+  accessLog = file('access.log', [
+    '09:12:01 INFO  boot sequence finished',
+    '09:12:04 INFO  loading configuration',
+    '09:12:07 WARN  cache directory is large',
+    '09:13:00 INFO  worker pool ready',
+    '09:14:19 ERROR upstream timeout on /api'
+  ], {mode: 0o640});
+  appConf = file('app.conf', [
+    'host=localhost',
+    'port=8080',
+    'workers=4',
+    'timeout=30',
+    'retries=3',
+    'log_level=info'
+  ], {mode: 0o664});
+  guide = file('guide.txt', [
+    'Permissions have three classes:',
+    'u the owner, g the group, o everyone else.',
+    'Each class gets r, w and x.',
+    '755 is a folder. 644 is a file.',
+    '700 means only you.'
+  ], {mode: 0o644});
+  notes = file('notes.txt', [
+    'Shopping list',
+    '- coffee',
+    '- call the dentist',
+    '- renew the domain',
+    '- backup the laptop'
+  ], {mode: 0o644});
+  todo = file('todo.md', ['- [ ] lock the notes down','- [x] draw the matrix'], {mode: 0o644});
+  profile = file('.profile', ['export PS1="$ "', 'export EDITOR=vi'], {mode: 0o600});
+  hosts = file('hosts', ['127.0.0.1 localhost', '::1 localhost ip6-localhost'], {mode: 0o644});
+  scratch = file('scratch.txt', ['TODO: lock me down', 'one two three'], {mode: 0o666});
+
+  ROOT.children = [homeDir, etcDir, tmpDir];
+  homeDir.children = [HOME];
+  HOME.children = [profile, config, data, docs, logs, scripts, notes, todo];
+  data.children = [orders, roles];
+  config.children = [appConf];
+  docs.children = [guide];
+  logs.children = [accessLog];
+  scripts.children = [deploySh];
+  etcDir.children = [hosts];
+  tmpDir.children = [scratch];
+
+  link(ROOT, null);
+  sortModel(ROOT);
+  return HOME;
+}
+function link(node, parent) {
+  node.parent = parent;
+  if (node.children) node.children.forEach(child => link(child, node));
+}
+function byName(left, right) {
+  if (left.type !== right.type) return left.type === 'dir' ? -1 : 1;
+  return left.name.localeCompare(right.name, undefined, {numeric: true, sensitivity: 'base'});
+}
+function sortModel(node) {
+  if (!node.children) return;
+  node.children.sort(byName);
+  node.children.forEach(sortModel);
+}
+
+/* ---- path helpers ---- */
+function absPath(node) {
+  if (node === ROOT) return '/';
+  const parts = [];
+  let current = node;
+  while (current && current !== ROOT) { parts.unshift(current.name); current = current.parent; }
+  return '/' + parts.join('/');
+}
+function prettyPath(node) {
+  const path = absPath(node);
+  if (path === '/home/you') return '~';
+  if (path.startsWith('/home/you/')) return '~' + path.slice(9);
+  return path;
+}
+function sizeLabel(node) {
+  if (node.type === 'dir') return '';
+  const bytes = node.size || 0;
+  if (bytes >= 1048576) return (bytes / 1048576).toFixed(1) + ' MB';
+  if (bytes >= 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return bytes + ' B';
+}
+function resolvePath(spec, base) {
+  let current, rest = spec;
+  if (spec === '~' || spec === '~/') { current = HOME; rest = ''; }
+  else if (spec.startsWith('~/')) { current = HOME; rest = spec.slice(1); }
+  else if (spec.startsWith('/')) { current = ROOT; rest = spec.slice(1); }
+  else current = base;
+  if (current.type !== 'dir') return {error: 'notdir', name: spec};
+  const segments = rest.split('/').filter(Boolean);
+  for (let i = 0; i < segments.length; i++) {
+    const segment = segments[i];
+    if (segment === '.') continue;
+    if (segment === '..') { current = current.parent || ROOT; continue; }
+    const next = current.children.find(child => child.name === segment);
+    if (!next) return {error: 'missing', name: segment};
+    if (next.type !== 'dir' && i < segments.length - 1) return {error: 'notdir', name: segment};
+    current = next;
+  }
+  return {node: current};
+}
+const esc = value => String(value).replace(/[&<>"']/g, char =>
+  ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+
+/* ==================================================================
+   2. DOM REFS
+   ================================================================== */
+const treeEl = document.getElementById('tree');
+const treeScroll = document.getElementById('treeScroll');
+const crumbs = document.getElementById('crumbs');
+const term = document.getElementById('term');
+const chips = document.getElementById('chips');
+const form = document.getElementById('form');
+const input = document.getElementById('cmd');
+const psPath = document.getElementById('psPath');
+const stepsEl = document.getElementById('steps');
+const missionEl = document.getElementById('mission');
+const missionBadge = document.getElementById('missionBadge');
+const missionText = document.getElementById('missionText');
+const hintBtn = document.getElementById('hintBtn');
+const hintBar = document.getElementById('hintBar');
+const resetBtn = document.getElementById('resetBtn');
+const counterEl = document.getElementById('counter');
+const countNum = document.getElementById('countNum');
+const streamEl = document.getElementById('stream');
+const streamFile = document.getElementById('streamFile');
+const streamStat = document.getElementById('streamStat');
+const streamBody = document.getElementById('streamBody');
+const permBar = document.getElementById('permBar');
+const previewEl = document.getElementById('preview');
+const pvBody = document.getElementById('pvBody');
+
+let treeInner, avatarEl;
+let cwd = null, prevDir = null, target = null, lastContext = null;
+const rowOf = new Map();
+const nodeOfRow = new Map();
+const wrapOf = new Map();
+
+/* ==================================================================
+   3. TREE RENDERING
+   ================================================================== */
+function paintRow(node) {
+  const row = rowOf.get(node);
+  if (!row) return;
+  row.querySelector('.label').textContent = node === ROOT ? '/' : node.name;
+  const kb = row.querySelector('.kb');
+  if (kb) kb.textContent = sizeLabel(node);
+}
+function buildRow(node) {
+  const wrap = document.createElement('div');
+  wrap.className = 'node';
+  const row = document.createElement('div');
+  row.className = 'row' + (node.type === 'file' ? ' file' : '');
+
+  const icon = document.createElement('span');
+  icon.className = 'icon ' + node.type;
+  const label = document.createElement('span');
+  label.className = 'label';
+  label.textContent = node === ROOT ? '/' : node.name;
+  row.append(icon, label);
+
+  if (node === HOME) {
+    const tag = document.createElement('span');
+    tag.className = 'tag';
+    tag.textContent = '~';
+    row.appendChild(tag);
+  }
+  if (node.born) {
+    const badge = document.createElement('span');
+    badge.className = 'badge-new';
+    badge.textContent = 'new';
+    row.appendChild(badge);
+  }
+  if (/\.bak$/.test(node.name)) {
+    const badge = document.createElement('span');
+    badge.className = 'badge-bak';
+    badge.textContent = 'backup';
+    row.appendChild(badge);
+  }
+  const modeChip = document.createElement('span');
+  modeChip.className = 'mode-chip' + (node.type === 'dir' ? ' dir' : '');
+  modeChip.textContent = node === ROOT ? '' : octal(modeOf(node));
+  if (node !== ROOT) row.appendChild(modeChip);
+  if (node.type === 'file') {
+    const size = document.createElement('span');
+    size.className = 'kb';
+    size.textContent = sizeLabel(node);
+    row.appendChild(size);
+  }
+
+  row.addEventListener('click', () => onNodeClick(node));
+  wrap.appendChild(row);
+  wrapOf.set(node, wrap);
+  rowOf.set(node, row);
+  nodeOfRow.set(row, node);
+  if (node.children && node.children.length) {
+    const kids = document.createElement('div');
+    kids.className = 'children';
+    childrenOf.set(node, kids);
+    node.children.forEach(child => kids.appendChild(buildRow(child)));
+    wrap.appendChild(kids);
+  }
+  return wrap;
+}
+const childrenOf = new Map();
+function buildTree() {
+  treeEl.innerHTML = '';
+  rowOf.clear();
+  nodeOfRow.clear();
+  wrapOf.clear();
+  childrenOf.clear();
+  treeInner = document.createElement('div');
+  treeInner.className = 'tree-inner';
+  treeInner.appendChild(buildRow(ROOT));
+  avatarEl = document.createElement('div');
+  avatarEl.className = 'avatar';
+  avatarEl.innerHTML = '<div class="body"><span class="eyes"><i></i><i></i></span></div>';
+  treeInner.appendChild(avatarEl);
+  treeEl.appendChild(treeInner);
+}
+function childrenContainer(node) {
+  let kids = childrenOf.get(node);
+  if (!kids) {
+    kids = document.createElement('div');
+    kids.className = 'children';
+    wrapOf.get(node).appendChild(kids);
+    childrenOf.set(node, kids);
+  }
+  return kids;
+}
+function insertChild(parent, child) {
+  child.parent = parent;
+  parent.children.push(child);
+  childrenContainer(parent).appendChild(buildRow(child));
+  sortSiblings(parent);
+  paintRow(child);
+  return child;
+}
+function sortSiblings(parent) {
+  const kids = childrenOf.get(parent);
+  if (!kids) return;
+  parent.children.slice().sort(byName).forEach(child => kids.appendChild(wrapOf.get(child)));
+}
+function removeNode(node) {
+  const wrap = wrapOf.get(node);
+  if (wrap) wrap.remove();
+  rowOf.delete(node);
+  wrapOf.delete(node);
+  childrenOf.delete(node);
+  const index = node.parent ? node.parent.children.indexOf(node) : -1;
+  if (index > -1) node.parent.children.splice(index, 1);
+  paintRow(node.parent);
+}
+
+function updateRowStates() {
+  rowOf.forEach((row, node) => {
+    row.classList.toggle('current', node === cwd);
+    row.classList.toggle('target', node === target);
+  });
+}
+function innerRect() { return treeInner.getBoundingClientRect(); }
+function relRect(el) {
+  const box = el.getBoundingClientRect();
+  const base = innerRect();
+  return {left: box.left - base.left, top: box.top - base.top, width: box.width, height: box.height};
+}
+function scrollToRow(node) {
+  const row = rowOf.get(node);
+  if (!row) return;
+  const box = relRect(row);
+  const target2 = box.top + box.height / 2 - treeScroll.clientHeight / 2;
+  treeScroll.scrollTo({top: Math.max(0, target2), behavior: 'smooth'});
+}
+function ping(x, y) {
+  const element = document.createElement('div');
+  element.className = 'ping';
+  element.style.transform = 'translate(' + x + 'px,' + y + 'px)';
+  element.innerHTML = '<i></i>';
+  treeInner.appendChild(element);
+  setTimeout(() => element.remove(), 760);
+}
+function floatMark(node, text, kind) {
+  const row = rowOf.get(node);
+  if (!row) return;
+  const mark = document.createElement('span');
+  mark.className = 'mark' + (kind ? ' ' + kind : '');
+  mark.textContent = text;
+  row.appendChild(mark);
+  setTimeout(() => mark.remove(), 1150);
+}
+function flashRow(node, className) {
+  const row = rowOf.get(node);
+  if (!row) return;
+  row.classList.remove('edited', 'born', 'reverted');
+  void row.offsetWidth;
+  row.classList.add(className);
+  setTimeout(() => row.classList.remove(className), 1000);
+}
+
+/* ---- avatar ---- */
+function avatarTarget(node) {
+  const row = rowOf.get(node);
+  const label = row.querySelector('.label');
+  const base = innerRect();
+  const box = label.getBoundingClientRect();
+  return {x: box.right - base.left + 9, y: box.top - base.top + box.height / 2 - 15};
+}
+function moveAvatar(animate, node) {
+  const t = avatarTarget(node || cwd);
+  if (!animate) avatarEl.style.transition = 'none';
+  avatarEl.style.transform = 'translate(' + t.x + 'px, ' + t.y + 'px)';
+  if (!animate) requestAnimationFrame(() => { avatarEl.style.transition = ''; });
+}
+function animateAvatarTo(node) {
+  moveAvatar(true, node);
+  avatarEl.classList.remove('hop');
+  void avatarEl.offsetWidth;
+  avatarEl.classList.add('hop');
+  const box = relRect(rowOf.get(node));
+  ping(box.left + 16, box.top + box.height / 2);
+  scrollToRow(node);
+}
+
+/* ==================================================================
+   4. THE CHMOD ENGINE
+   ================================================================== */
+const CLASSES = ['u', 'g', 'o'];
+const CLASS_LABEL = {u: 'user', g: 'group', o: 'other'};
+const BITS = ['r', 'w', 'x'];
+const BIT_VALUE = {r: 4, w: 2, x: 1};
+const BIT_LETTER = {4: 'r', 2: 'w', 1: 'x'};
+
+function modeOf(node) {
+  return typeof node.mode === 'number' ? node.mode : (node.type === 'dir' ? 0o755 : 0o644);
+}
+function setMode(node, mode) {
+  node.mode = mode & 0o777;
+  node.mtime = node.mtime;
+}
+/* -rw-r--r-- */
+function symbolic(mode, isDir) {
+  let out = isDir ? 'd' : '-';
+  ['u', 'g', 'o'].forEach(cls => {
+    const shift = cls === 'u' ? 6 : cls === 'g' ? 3 : 0;
+    const bits = (mode >> shift) & 7;
+    out += (bits & 4 ? 'r' : '-') + (bits & 2 ? 'w' : '-') + (bits & 1 ? 'x' : '-');
+  });
+  return out;
+}
+function octal(mode) {
+  return [6, 3, 0].map(shift => String((mode >> shift) & 7)).join('');
+}
+function hasBit(mode, cls, bit) {
+  const shift = cls === 'u' ? 6 : cls === 'g' ? 3 : 0;
+  return !!((mode >> shift) & BIT_VALUE[bit]);
+}
+
+/* u+x, g-w, a=rwx, go=, u=rw,go= and comma separated lists */
+function applySymbolic(mode, clause, isDir) {
+  const parts = clause.split(',').map(part => part.trim()).filter(Boolean);
+  if (!parts.length) return {error: "invalid mode '" + clause + "'"};
+  let next = mode;
+  for (const part of parts) {
+    const m = /^([ugoa]*)([+\-=])([rwxX]*)$/.exec(part);
+    if (!m) return {error: "Invalid file mode: " + clause};
+    let who = m[1];
+    if (!who) who = 'ugo';
+    else if (who.includes('a')) who = 'ugo';
+    const op = m[2];
+    let perms = m[3].replace(/X/g, 'x');
+    for (const cls of who) {
+      if (!CLASSES.includes(cls)) return {error: "Invalid file mode: " + clause};
+      const shift = cls === 'u' ? 6 : cls === 'g' ? 3 : 0;
+      let bits = 0;
+      for (const bit of perms) {
+        if (!BITS.includes(bit)) return {error: "Invalid file mode: " + clause};
+        /* capital X only sets x when the file can already run, or is a folder */
+        if (bit === 'x' && m[3].indexOf('X') > -1 && !isDir && !(next & 0o111)) continue;
+        bits |= BIT_VALUE[bit];
+      }
+      if (op === '+') next |= bits << shift;
+      else if (op === '-') next &= ~(bits << shift);
+      else next = (next & ~(7 << shift)) | (bits << shift);
+    }
+  }
+  return {mode: next & 0o777};
+}
+function parseMode(spec) {
+  const text = String(spec);
+  if (/^[0-7]{1,4}$/.test(text)) {
+    const value = parseInt(text, 8);
+    if (value > 0o777) return {error: 'Invalid file mode: ' + text};
+    return {mode: value};
+  }
+  /* run it against a throwaway mode so a bad clause is caught before anything changes */
+  const probe = applySymbolic(0o000, text, false);
+  if (probe.error) return {error: probe.error};
+  return {symbolic: text};
+}
+function newModeFor(mode, clause) {
+  if (clause.octal !== undefined) return clause.octal & 0o777;
+  const applied = applySymbolic(mode, clause.text, clause.isDir);
+  if (applied.error) return {error: applied.error};
+  return applied.mode;
+}
+function chmodTargets(node) {
+  return [node].concat(node.type === 'dir' ? collectFiles(node) : []);
+}
+function collectFiles(dir) {
+  const out = [];
+  (dir.children || []).forEach(child => {
+    if (child.type === 'dir') out.push.apply(out, collectFiles(child));
+    else out.push(child);
+  });
+  return out;
+}
+
+function parseChmod(args) {
+  const flags = {R: false, c: false, v: false, f: false};
+  const rest = [];
+  let i = 0;
+  while (i < args.length) {
+    const arg = args[i];
+    if (arg === '--') { i++; while (i < args.length) rest.push(args[i++]); break; }
+    if (arg === '--help') return {help: true};
+    if (arg === '--recursive') { flags.R = true; i++; continue; }
+    if (arg === '--changes' || arg === '--quiet') { flags.c = true; i++; continue; }
+    if (arg === '--verbose') { flags.v = true; i++; continue; }
+    if (arg.startsWith('-') && arg.length > 1) {
+      for (const f of arg.slice(1)) {
+        if (f === 'R') { flags.R = true; continue; }
+        if (f === 'c') { flags.c = true; continue; }
+        if (f === 'v') { flags.v = true; continue; }
+        if (f === 'f') continue;
+        return {error: "illegal option -- " + f, tip: 'chmod understands <code>-R</code> in this lab. Symbolic modes look like <code>u+x</code>, octal ones like <code>644</code>.'};
+      }
+      i++;
+      continue;
+    }
+    rest.push(arg);
+    i++;
+  }
+  if (!rest.length) return {error: 'missing operand', usage: true};
+  const parsed = parseMode(rest[0]);
+  if (parsed.error) return parsed;
+  const files = rest.slice(1);
+  if (!files.length) return {error: 'missing operand', usage: true};
+  return {flags, octal: parsed.mode, text: parsed.symbolic, files};
+}
+
+/* ==================================================================
+   5. TERMINAL
+   ================================================================== */
+function log(html, className) {
+  const line = document.createElement('div');
+  line.className = 'line' + (className ? ' ' + className : '');
+  line.innerHTML = html;
+  term.appendChild(line);
+  term.scrollTop = term.scrollHeight;
+}
+function focusInput() {
+  try { input.focus({preventScroll: true}); } catch (error) { input.focus(); }
+}
+function shakeInput() {
+  form.classList.remove('shake');
+  void form.offsetWidth;
+  form.classList.add('shake');
+}
+function tip(html, kind) {
+  log('<span class="tip-line' + (kind ? ' ' + kind : '') + '">' + html + '</span>', 'tip-line-wrap');
+}
+
+/* ==================================================================
+   6. THE STREAM VIEW
+   ================================================================== */
+let counterToken = 0;
+function updateCounter(n) {
+  const token = ++counterToken;
+  const from = Math.max(0, parseInt(countNum.textContent, 10) || 0);
+  countNum.textContent = String(n);
+  counterEl.classList.toggle('zero', n === 0);
+  counterEl.classList.remove('pop');
+  void counterEl.offsetWidth;
+  counterEl.classList.add('pop');
+  if (reduceMotion || from === n) return;
+  const t0 = performance.now(), dur = 440;
+  (function step(t) {
+    if (token !== counterToken) return;
+    const p = Math.max(0, Math.min(1, (t - t0) / dur));
+    if (p > 0) {
+      const e = 1 - Math.pow(1 - p, 3);
+      countNum.textContent = String(Math.max(0, Math.round(from + (n - from) * e)));
+    }
+    if (p < 1) requestAnimationFrame(step);
+    else countNum.textContent = String(n);
+  })(t0);
+}
+
+function renderPerms(node, changes, opts) {
+  streamBody.innerHTML = '';
+  streamEl.classList.toggle('active', !!node);
+  streamFile.textContent = node ? prettyPath(node) : 'no file chosen';
+  if (!node) {
+    streamStat.textContent = '';
+    permBar.innerHTML = '<span class="perm-empty">Tap a file on the map to inspect who may read, write or run it.</span>';
+    streamBody.innerHTML = '<span class="stream-none">Pick a file, then run <b>chmod</b> — or just click a cell in the matrix.</span>';
+    return;
+  }
+  const mode = modeOf(node);
+  permBar.innerHTML =
+    '<div class="pm-head"><span class="pm-file">' + esc(prettyPath(node)) + '</span>' +
+    '<span class="pm-mode">' + symbolic(mode, node.type === 'dir') + '</span>' +
+    '<span class="pm-octal">' + octal(mode) + '</span></div>' +
+    '<div class="pm-grid">' +
+    '<span class="pm-corner"></span><span class="pm-col">read</span><span class="pm-col">write</span><span class="pm-col">execute</span>' +
+    CLASSES.map(cls => '<span class="pm-who">' + CLASS_LABEL[cls] + '</span>' + BITS.map(bit =>
+      '<button class="pm-cell' + (hasBit(mode, cls, bit) ? ' on' : '') + (node.type === 'dir' ? ' dir' : '') +
+      '" type="button" data-cls="' + cls + '" data-bit="' + bit + '" aria-pressed="' + (hasBit(mode, cls, bit) ? 'true' : 'false') +
+      '" title="' + CLASS_LABEL[cls] + ' ' + bit + '">' + bit + '</button>'
+    ).join('')).join('') +
+    '</div>' +
+    '<div class="pm-hint">Click a cell to flip it — the lab runs the matching <b>chmod</b> command for you.</div>';
+
+  const options = opts || {};
+  if (!changes || !changes.length) {
+    streamStat.textContent = node.content ? node.content.length + ' lines · ' + sizeLabel(node) : sizeLabel(node);
+    const row = document.createElement('div');
+    row.className = 'mline lit';
+    row.innerHTML = '<span class="sl-n">' + esc(symbolic(mode, node.type === 'dir')) + '</span>' +
+      '<span class="sl-tx">' + esc(octal(mode)) + (node.type === 'dir' ? ' · folder' : ' · file') + '</span>';
+    streamBody.appendChild(row);
+    return;
+  }
+  streamStat.textContent = changes.length + ' file' + (changes.length === 1 ? '' : 's') + ' changed' +
+    (options.silent ? ' · quiet' : '') +
+    (options.recursive ? ' · recursive' : '') +
+    (options.usage ? ' · ' + esc(options.usage) : '');
+  changes.forEach((change, index) => {
+    const row = document.createElement('div');
+    row.className = 'mline changed';
+    row.style.animationDelay = Math.min(index * 40, 300) + 'ms';
+    row.innerHTML = '<span class="sl-n">' + esc(symbolic(change.before, change.node.type === 'dir')) + '</span>' +
+      '<span class="sl-tx"><span class="was">' + esc(octal(change.before)) + '</span> <span class="arrow">→</span> ' +
+      '<span class="now">' + esc(symbolic(change.after, change.node.type === 'dir')) + ' ' + esc(octal(change.after)) + '</span> ' +
+      '<span class="dim">' + esc(prettyPath(change.node)) + '</span></span>';
+    streamBody.appendChild(row);
+  });
+  if (options.tail) {
+    const note = document.createElement('div');
+    note.className = 'more-note';
+    note.textContent = options.tail;
+    streamBody.appendChild(note);
+  }
+  streamBody.scrollTop = streamBody.scrollHeight;
+}
+permBar.addEventListener('click', event => {
+  const cell = event.target.closest('.pm-cell');
+  if (!cell || !target) return;
+  const clause = cell.dataset.cls + (hasBit(modeOf(target), cell.dataset.cls, cell.dataset.bit) ? '-' : '+') + cell.dataset.bit;
+  cell.classList.add('flip');
+  execute('chmod ' + clause + ' ' + prettyPath(target));
+  focusInput();
+});
+function streamSweep() {
+  if (reduceMotion) return;
+  const bar = document.createElement('div');
+  bar.className = 'stream-bar';
+  streamBody.parentElement.style.position = 'relative';
+  streamBody.parentElement.appendChild(bar);
+  setTimeout(() => bar.remove(), 860);
+}
+
+/* ==================================================================
+   7. COMMANDS
+   ================================================================== */
+let history = [], historyIndex = -1;
+function tokenize(line) {
+  return line.match(/(?:[^\s"']+|"[^"]*"|'[^']*')+/g) || [];
+}
+function stripQuotes(token) {
+  if ((token[0] === '"' && token[token.length - 1] === '"') || (token[0] === "'" && token[token.length - 1] === "'")) return token.slice(1, -1);
+  return token;
+}
+function execute(raw) {
+  const line = raw.trim();
+  if (!line) return;
+  history.push(line);
+  historyIndex = -1;
+  log('<span class="p">you@linux:' + esc(prettyPath(cwd)) + '$</span> <span class="c">' + esc(line) + '</span>');
+  if (line === 'clear') { term.innerHTML = ''; return; }
+  if (line === 'help' || line === '--help') { showHelp(); return; }
+  const parts = tokenize(line);
+  const command = parts[0];
+  const args = parts.slice(1).map(stripQuotes);
+  if (command === 'chmod') doChmod(args);
+  else if (command === 'ls') doLs(args);
+  else if (command === 'pwd') doPwd();
+  else if (command === 'cat') doCat(args);
+  else if (command === 'cd') doCd(args);
+  else {
+    log('bash: ' + esc(command) + ': command not found', 'err');
+    log('<span class="dim">This playground is learning <b>chmod</b>. Type <b>help</b> for the command list.</span>');
+    shakeInput();
+  }
+}
+
+function doChmod(args) {
+  const parsed = parseChmod(args);
+  if (parsed.help) { showChmodHelp(); return; }
+  if (parsed.usage) {
+    log('chmod: missing operand', 'err');
+    log('<span class="dim">usage: <b>chmod</b> [-R] <span class="hl">MODE</span> FILE ...</span>');
+    tip('Give a mode and at least one file: <code>chmod u+x ~/scripts/deploy.sh</code>', 'danger');
+    shakeInput();
+    return;
+  }
+  if (parsed.error) {
+    log('chmod: ' + esc(parsed.error), 'err');
+    if (parsed.tip) tip(parsed.tip, 'danger');
+    shakeInput();
+    return;
+  }
+  const roots = [];
+  for (const spec of parsed.files) {
+    const found = resolvePath(spec, cwd);
+    if (found.error || !found.node) {
+      log('chmod: ' + esc(spec) + ': No such file or directory', 'err');
+      tip('Run <b>ls</b> to see the exact names here.', 'danger');
+      shakeInput();
+      return;
+    }
+    roots.push(found.node);
+  }
+
+  const changes = [];
+  let usage = '';
+  roots.forEach(root => {
+    const nodes = parsed.flags.R ? chmodTargets(root) : [root];
+    nodes.forEach(node => {
+      const before = modeOf(node);
+      const next = newModeFor(before, {octal: parsed.octal, text: parsed.text, isDir: node.type === 'dir'});
+      if (typeof next === 'object' && next && next.error) {
+        log('chmod: ' + esc(next.error), 'err');
+        tip('A mode is either octal like <code>644</code> or symbolic like <code>u+x</code>.', 'danger');
+        shakeInput();
+        return;
+      }
+      if (next === before) return;
+      setMode(node, next);
+      changes.push({node, before, after: next});
+    });
+  });
+
+  const touched = roots[0];
+  target = touched;
+  const tail = parsed.flags.R && changes.length > 1
+    ? '-R reached ' + changes.length + ' entries under ' + prettyPath(touched) + '.'
+    : '';
+  renderPerms(touched, changes, {silent: parsed.flags.c, recursive: parsed.flags.R, usage, tail});
+  if (changes.length) {
+    streamSweep();
+    updateCounter(changes.length);
+    changes.forEach(change => {
+      paintRow(change.node);
+      flashRow(change.node, 'edited');
+      floatMark(change.node, octal(change.after));
+      const box = relRect(rowOf.get(change.node));
+      ping(box.left + 16, box.top + box.height / 2);
+    });
+  } else {
+    updateCounter(0);
+  }
+
+  if (!parsed.flags.c) {
+    if (changes.length) {
+      log('<span class="ok">mode of ' + esc(prettyPath(touched)) + ' changed to ' + esc(octal(modeOf(touched))) + '</span>');
+    } else {
+      log('<span class="dim">no change — ' + esc(prettyPath(touched)) + ' is already ' + esc(octal(modeOf(touched))) + '</span>');
+    }
+  } else {
+    log('<span class="dim">-c: ' + (changes.length ? changes.length + ' changed' : 'nothing changed') + '</span>');
+  }
+  if (changes.length > 1) {
+    log('<span class="dim">' + changes.length + ' entries changed: ' +
+      changes.slice(0, 6).map(change => esc(prettyPath(change.node)) + ' ' + octal(change.before) + '→' + octal(change.after)).join(', ') +
+      (changes.length > 6 ? ', …' : '') + '</span>');
+  }
+  if (!changes.length && !parsed.flags.c) {
+    tip('Ask for less or more next time: <code>u+x</code> adds a bit, <code>u-x</code> takes it away, <code>u=rx</code> sets the class exactly.', '');
+  }
+
+  lastContext = {
+    command: 'chmod',
+    mode: touched ? modeOf(touched) : 0,
+    octalText: parsed.octal !== undefined ? octal(parsed.octal) : parsed.text,
+    symbolic: parsed.octal === undefined,
+    recursive: parsed.flags.R,
+    silent: parsed.flags.c,
+    fileCount: roots.length,
+    changedCount: changes.length,
+    node: touched,
+    files: parsed.files.slice(),
+    isDir: touched ? touched.type === 'dir' : false
+  };
+  recordEvidence(lastContext);
+  updateRowStates();
+  scrollToRow(touched);
+  moveAvatar(false, touched);
+  checkMission();
+  renderChips();
+}
+
+function showChmodHelp() {
+  log('<span class="ok">chmod — change who may read, write and run a file</span>');
+  log('  <span class="hl">chmod u+x FILE</span>          add execute for the owner');
+  log('  <span class="hl">chmod g-w FILE</span>          take write away from the group');
+  log('  <span class="hl">chmod a+r FILE</span>          let everyone read it');
+  log('  <span class="hl">chmod u=rw,go= FILE</span>     set a class exactly, comma separated');
+  log('  <span class="hl">chmod 644 FILE</span>          octal: owner rw, group r, others r');
+  log('  <span class="hl">chmod 700 DIR</span>           a private folder, only you');
+  log('  <span class="hl">chmod -R 755 DIR</span>        walk the whole folder');
+  log('  <span class="hl">chmod 640 A B</span>           the same mode on several files');
+  log('');
+  log('<span class="dim">Classes: <b>u</b> owner, <b>g</b> group, <b>o</b> others, <b>a</b> all three.</span>');
+  log('<span class="dim">Bits: <b>r</b>ead 4, <b>w</b>rite 2, e<b>x</b>ecute 1 — add them up for the octal form.</span>');
+}
+function showHelp() {
+  log('<span class="ok">Commands you can try:</span>');
+  log('  <span class="hl">chmod u+x ~/scripts/deploy.sh</span>   the star of this lab');
+  log('  <span class="hl">chmod --help</span>                    every mode and flag');
+  log('  <span class="hl">ls -l</span>                           see the mode in the listing');
+  log('  <span class="hl">ls / ls -a</span>                        look around a folder');
+  log('  <span class="hl">pwd</span>                              where am I?');
+  log('  <span class="hl">cat FILE</span>                         read a file');
+  log('  <span class="hl">cd PATH</span>                          move between folders');
+  log('  <span class="hl">clear</span>                            wipe the screen');
+}
+
+function doPwd() { log(esc(absPath(cwd))); }
+
+function doCd(args) {
+  if (args.length > 1) { log('bash: cd: too many arguments', 'err'); shakeInput(); return; }
+  const arg = args[0] === undefined ? '' : args[0];
+  let dest;
+  if (!arg) dest = HOME;
+  else if (arg === '-') {
+    if (!prevDir) { log('bash: cd: OLDPWD not set', 'err'); shakeInput(); return; }
+    dest = prevDir;
+  } else {
+    const result = resolvePath(arg, cwd);
+    if (result.error) {
+      log('bash: cd: ' + esc(arg) + ': ' + (result.error === 'missing' ? 'No such file or directory' : 'Not a directory'), 'err');
+      shakeInput();
+      return;
+    }
+    if (result.node.type !== 'dir') {
+      log('bash: cd: ' + esc(arg) + ': Not a directory', 'err');
+      tip('<b>' + esc(arg) + '</b> is a file — <b>cd</b> only walks into folders.');
+      shakeInput();
+      return;
+    }
+    dest = result.node;
+  }
+  if (dest === cwd) { log('<span class="ok">You are already in ' + esc(prettyPath(cwd)) + '.</span>'); return; }
+  prevDir = cwd;
+  cwd = dest;
+  target = null;
+  updateUI();
+  animateAvatarTo(cwd);
+  log('<span class="ok">Now in ' + esc(prettyPath(cwd)) + '</span>');
+}
+
+function parseLs(args) {
+  const flags = {a: false, l: false, t: false, r: false, one: false, h: false};
+  const paths = [];
+  let optionsEnded = false;
+  for (const arg of args) {
+    if (arg === '--help') return {help: true};
+    if (!optionsEnded && arg === '--') { optionsEnded = true; continue; }
+    if (!optionsEnded && arg.startsWith('--')) {
+      const names = {all: 'a', 'almost-all': 'a', long: 'l', 'time-sort': 't', reverse: 'r', oneline: 'one', 'human-readable': 'h'};
+      const key = arg.slice(2).split('=')[0];
+      if (!(key in names)) return {error: "unsupported option -- '" + arg.slice(2) + "'"};
+      flags[names[key]] = true;
+      continue;
+    }
+    if (!optionsEnded && arg.startsWith('-') && arg.length > 1) {
+      for (const flag of arg.slice(1)) {
+        if (flag === 'A') { flags.a = true; continue; }
+        if (flag === '1') { flags.one = true; continue; }
+        if (!(flag in flags)) return {error: "invalid option -- '" + flag + "'", tip: 'ls understands <code>-a</code>, <code>-A</code>, <code>-l</code>, <code>-h</code>, <code>-t</code>, <code>-r</code> and <code>-1</code>.'};
+        flags[flag] = true;
+      }
+      continue;
+    }
+    paths.push(arg);
+  }
+  if (paths.length > 1) return {error: 'this playground lists one path at a time'};
+  return {flags, path: paths[0] || '.'};
+}
+function lsMode(node) {
+  if (node.type === 'link') return 'lrwxrwxrwx';
+  return symbolic(modeOf(node), node.type === 'dir');
+}
+function lsSizeText(node, human) {
+  if (node.type === 'dir') return human ? '4.0K' : '4096';
+  const bytes = node.size || 0;
+  if (!human) return String(bytes);
+  if (bytes >= 1048576) return (bytes / 1048576).toFixed(1) + 'M';
+  if (bytes >= 1024) return (bytes / 1024).toFixed(1) + 'K';
+  return bytes + 'B';
+}
+function doLs(args) {
+  const parsed = parseLs(args);
+  if (parsed.help) { showLsHelp(); return; }
+  if (parsed.error) { log('ls: ' + esc(parsed.error), 'err'); if (parsed.tip) tip(parsed.tip, 'danger'); shakeInput(); return; }
+  const result = resolvePath(parsed.path, cwd);
+  if (result.error) {
+    log("ls: cannot access '" + esc(parsed.path) + "': " + (result.error === 'missing' ? 'No such file or directory' : 'Not a directory'), 'err');
+    shakeInput();
+    return;
+  }
+  const node = result.node;
+  let entries = node.type === 'dir' ? node.children.slice() : [node];
+  if (node.type === 'dir' && !parsed.flags.a) entries = entries.filter(entry => !entry.name.startsWith('.'));
+  entries.sort(byName);
+  if (parsed.flags.t) entries.sort((left, right) => right.mtime - left.mtime);
+  if (parsed.flags.r) entries.reverse();
+  if (!entries.length) { log('<span class="dim">(empty)</span>'); return; }
+  const paint = entry => {
+    const kind = entry.name.startsWith('.') ? 'code' : entry.type === 'dir' ? 'd' : 'f';
+    const suffix = entry.type === 'dir' ? '/' : '';
+    return '<span class="' + kind + '">' + esc(entry.name + suffix) + '</span>';
+  };
+  if (parsed.flags.l) {
+    entries.forEach(entry => {
+      const date = new Date(entry.mtime).toLocaleDateString('en-US', {month: 'short', day: '2-digit'});
+      log(lsMode(entry) + '  you  you  ' + lsSizeText(entry, parsed.flags.h).padStart(6, ' ') + '  ' + date + '  ' + paint(entry));
+    });
+  } else if (parsed.flags.one) {
+    entries.forEach(entry => log(paint(entry)));
+  } else {
+    log(entries.map(paint).join('   '));
+  }
+  log('<span class="dim">' + entries.length + (entries.length === 1 ? ' entry' : ' entries') + ' in ' + esc(prettyPath(node)) + '</span>');
+}
+function showLsHelp() {
+  log('<span class="ok">ls — list what is here</span>');
+  log('  <span class="hl">ls</span>   <span class="hl">ls -l</span> long   <span class="hl">ls -a</span> hidden   <span class="hl">ls -1</span> one per line');
+  log('  <span class="hl">ls -h</span> readable sizes   <span class="hl">ls -t</span> newest   <span class="hl">ls -r</span> reversed   <span class="hl">ls PATH</span>');
+}
+
+function doCat(args) {
+  const names = args.filter(arg => !arg.startsWith('-'));
+  if (!names.length) { log('cat: missing file operand', 'err'); shakeInput(); return; }
+  const files = [];
+  for (const spec of names) {
+    const result = resolvePath(spec, cwd);
+    if (result.error || result.node.type !== 'file') {
+      log("cat: '" + esc(spec) + "': " + (result.error === 'missing' ? 'No such file or directory' : result.error === 'notdir' ? 'Not a directory' : 'Is a directory'), 'err');
+      shakeInput();
+      return;
+    }
+    files.push(result.node);
+  }
+  files.forEach((node, index) => {
+    if (files.length > 1) log('<span class="dim">── ' + esc(node.name) + ' ──</span>');
+    node.content.forEach((text, lineIndex) => {
+      log((args.includes('-n') ? '<span class="code">' + String(lineIndex + 1).padStart(3, ' ') + '</span> ' : '') + esc(text));
+    });
+    if (index < files.length - 1) log('');
+  });
+  target = files[0];
+  renderPerms(files[0], null, {});
+  updateRowStates();
+  scrollToRow(files[0]);
+  moveAvatar(false, files[0]);
+}
+
+function onNodeClick(node) {
+  if (node === cwd) {
+    log('<span class="dim">You are already in ' + esc(prettyPath(cwd)) + '. Tap a file to read its permissions.</span>');
+    return;
+  }
+  target = target === node ? null : node;
+  renderPerms(target, null, {});
+  updateRowStates();
+  if (target) {
+    scrollToRow(target);
+    moveAvatar(false, target);
+  }
+}
+
+/* ==================================================================
+   8. DRY RUN
+   ================================================================== */
+function renderPreview() {
+  const raw = input.value.trim();
+  previewEl.className = 'preview';
+  if (!raw) {
+    pvBody.innerHTML = '<span class="pv-msg">' + (target
+      ? 'aimed at ' + esc(target.name) + ' — finish the chmod command to preview it'
+      : 'type chmod to see who would gain or lose a bit') + '</span>';
+    return;
+  }
+  const parts = tokenize(raw);
+  if (parts[0] !== 'chmod') {
+    const label = parts[0] === 'ls' ? 'ls lists a folder — try ls -l to see modes.'
+      : parts[0] === 'cat' ? 'cat prints a file — chmod changes who may reach it.'
+      : parts[0] === 'pwd' ? 'pwd prints where you are standing.'
+      : parts[0] === 'cd' ? 'cd walks you between folders.'
+      : 'only chmod is previewed here — this lab is about permissions.';
+    pvBody.innerHTML = '<span class="pv-msg">' + label + '</span>';
+    return;
+  }
+  const parsed = parseChmod(parts.slice(1).map(stripQuotes));
+  if (parsed.help) {
+    pvBody.innerHTML = '<span class="pv-msg">modes: <code>u+x</code> <code>g-w</code> <code>a=rw</code> <code>644</code> · flag: <code>-R</code></span>';
+    return;
+  }
+  if (parsed.usage) {
+    previewEl.className = 'preview bad';
+    pvBody.innerHTML = '<span class="pv-verdict bad">incomplete</span><span class="pv-msg">chmod needs a mode and a file</span>';
+    return;
+  }
+  if (parsed.error) {
+    previewEl.className = 'preview bad';
+    pvBody.innerHTML = '<span class="pv-verdict bad">blocked</span><span class="pv-msg">' + esc(parsed.error) + '</span>';
+    return;
+  }
+  const found = resolvePath(parsed.files[0], cwd);
+  if (found.error || !found.node) {
+    previewEl.className = 'preview bad';
+    pvBody.innerHTML = '<span class="pv-verdict bad">no such file</span><span class="pv-msg">' + esc(parsed.files[0]) + ' is not here</span>';
+    return;
+  }
+  const node = found.node;
+  const before = modeOf(node);
+  const next = newModeFor(before, {octal: parsed.octal, text: parsed.text, isDir: node.type === 'dir'});
+  if (typeof next === 'object' && next && next.error) {
+    previewEl.className = 'preview bad';
+    pvBody.innerHTML = '<span class="pv-verdict bad">blocked</span><span class="pv-msg">' + esc(next.error) + '</span>';
+    return;
+  }
+  const after = parsed.flags.R && node.type === 'dir' ? next : next;
+  previewEl.className = after === before ? 'preview warn' : 'preview ok';
+  pvBody.innerHTML = '<span class="pv-verdict ' + (after === before ? 'warn' : 'ok') + '">' + esc(symbolic(after, node.type === 'dir')) + '</span>' +
+    '<span class="pv-verdict ' + (after === before ? 'warn' : 'ok') + '">' + esc(octal(after)) + '</span>' +
+    (parsed.flags.R ? '<span class="pv-verdict warn">whole folder</span>' : '') +
+    '<span class="pv-msg">' + esc(prettyPath(node)) + ' is ' + esc(symbolic(before, node.type === 'dir')) + ' now</span>';
+}
+
+/* ==================================================================
+   9. MISSIONS
+   ================================================================== */
+const evidence = {symbolic: false, remove: false, octal: false, twoFiles: false, recursive: false, exact: false};
+function recordEvidence(ctx) {
+  if (ctx.symbolic) evidence.symbolic = true;
+  if (/[ugo][a-z]*-/.test(ctx.octalText || '')) evidence.remove = true;
+  if (/^[0-7]{3,4}$/.test(ctx.octalText || '')) evidence.octal = true;
+  if ((ctx.octalText || '').indexOf('=') > -1) evidence.exact = true;
+  if (ctx.fileCount > 1) evidence.twoFiles = true;
+  if (ctx.recursive) evidence.recursive = true;
+}
+const onFile = (ctx, name) => !!ctx && ctx.node && ctx.node.name === name;
+const octalOf = ctx => ctx && ctx.node ? octal(modeOf(ctx.node)) : '';
+const missions = [
+  {text: '<b>~/scripts/deploy.sh</b> is a script nobody can run. Give the <b>owner</b> permission to execute it.',
+   hint: 'A symbolic mode adds one bit at a time: <code>chmod u+x ~/scripts/deploy.sh</code>',
+   answer: 'chmod u+x ~/scripts/deploy.sh',
+   check: c => evidence.symbolic || (onFile(c, 'deploy.sh') && c.symbolic && hasBit(modeOf(c.node), 'u', 'x'))},
+
+  {text: '<b>~/config/app.conf</b> lets the whole group write to it. Take that away.',
+   hint: 'Swap <code>+</code> for <code>-</code> to remove a bit: <code>chmod g-w ~/config/app.conf</code>',
+   answer: 'chmod g-w ~/config/app.conf',
+   check: c => evidence.remove || (onFile(c, 'app.conf') && /-/.test(c.octalText) && !hasBit(modeOf(c.node), 'g', 'w'))},
+
+  {text: '<b>~/notes.txt</b> should belong to you alone — nobody else may even read it. Use the <b>octal</b> form.',
+   hint: 'Octal adds the bits up: 6 = rw- for you, 0 for group, 0 for others. <code>chmod 600 ~/notes.txt</code>',
+   answer: 'chmod 600 ~/notes.txt',
+   check: c => evidence.octal || (onFile(c, 'notes.txt') && !c.symbolic && octalOf(c) === '600')},
+
+  {text: 'Set <b>~/config/app.conf</b> exactly: the owner reads and writes, the group only reads, everyone else gets nothing.',
+   hint: 'The equals sign sets a class instead of nudging it, and commas chain the classes: <code>chmod u=rw,g=r,o= ~/config/app.conf</code>',
+   answer: 'chmod u=rw,g=r,o= ~/config/app.conf',
+   check: c => evidence.exact || (onFile(c, 'app.conf') && /=/.test(c.octalText) && octalOf(c) === '640')},
+
+  {text: 'One mode for a whole folder: make everything under <b>~/data</b> readable and runnable by all.',
+   hint: '<code>-R</code> walks the folder and everything in it: <code>chmod -R 755 ~/data</code>',
+   answer: 'chmod -R 755 ~/data',
+   check: c => evidence.recursive || (c && c.recursive && c.isDir && c.changedCount > 1)},
+
+  {text: 'Last one: give <b>~/logs/access.log</b> and <b>~/config/app.conf</b> the <b>same</b> mode in a single command.',
+   hint: 'chmod takes as many files as you like: <code>chmod 640 ~/logs/access.log ~/config/app.conf</code>',
+   answer: 'chmod 640 ~/logs/access.log ~/config/app.conf',
+   check: c => evidence.twoFiles || (c && c.fileCount === 2 && octalOf(c) === '640' && c.changedCount >= 1)}
+];
+const missionCount = missions.length;
+let missionIndex = 0, missionLocked = false;
+
+function renderMission() {
+  const mission = missions[Math.min(missionIndex, missionCount - 1)];
+  missionBadge.textContent = 'Mission ' + (missionIndex + 1) + ' / ' + missionCount;
+  missionText.innerHTML = mission.text;
+  hintBar.textContent = '';
+  hintBar.classList.remove('show');
+  renderChips();
+}
+function checkMission() {
+  if (missionLocked || missionIndex >= missionCount || !lastContext) return;
+  let passed = false;
+  try { passed = missions[missionIndex].check(lastContext); } catch (error) { passed = false; }
+  if (passed) completeMission();
+}
+function completeMission() {
+  missionLocked = true;
+  stepsEl.children[missionIndex].classList.add('done');
+  missionEl.classList.add('complete');
+  setTimeout(() => {
+    missionEl.classList.remove('complete');
+    missionIndex++;
+    missionLocked = false;
+    if (missionIndex >= missionCount) finishAll();
+    else { renderMission(); checkMission(); }
+  }, 950);
+}
+function finishAll() {
+  missionBadge.textContent = 'All done';
+  missionText.innerHTML = 'You can rewrite a whole file with one line of sed. Keep exploring!';
+  hintBtn.style.display = 'none';
+  hintBar.classList.remove('show');
+  confetti();
+  log('<span class="ok">All missions complete — nicely done!</span>');
+  log('<span class="dim">r is 4, w is 2 and x is 1 — add them up and that sum is the octal form you type.</span>');
+}
+function confetti() {
+  const colors = ['#eab308', '#f59e0b', '#4ade80', '#fde68a', '#f472b6', '#fda4af'];
+  for (let i = 0; i < 55; i++) {
+    const piece = document.createElement('i');
+    piece.className = 'confetti';
+    piece.style.left = Math.random() * 100 + '%';
+    piece.style.background = colors[i % colors.length];
+    piece.style.animationDelay = (Math.random() * 0.45) + 's';
+    piece.style.animationDuration = (1.7 + Math.random() * 1.3) + 's';
+    piece.style.setProperty('--rot', (Math.random() * 900 - 450) + 'deg');
+    document.body.appendChild(piece);
+    setTimeout(() => piece.remove(), 3600);
+  }
+}
+
+/* ==================================================================
+   10. CHIPS + EVENTS
+   ================================================================== */
+function renderChips() {
+  chips.innerHTML = '';
+  const mission = missions[Math.min(missionIndex, missionCount - 1)];
+  const list = [];
+  if (mission && mission.answer) list.push(mission.answer);
+  list.push('chmod u+x ~/scripts/deploy.sh', 'chmod 600 ~/notes.txt', 'ls -l ~/notes.txt');
+  const essentials = ['ls', 'pwd', 'help'];
+  const seen = new Set();
+  list.filter(command => {
+    if (seen.has(command)) return false;
+    seen.add(command);
+    return true;
+  }).slice(0, 4).concat(essentials).forEach(command => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'chip';
+    button.textContent = command;
+    button.addEventListener('click', () => { input.value = ''; execute(command); focusInput(); });
+    chips.appendChild(button);
+  });
+}
+function updateUI() {
+  psPath.textContent = prettyPath(cwd);
+  updateRowStates();
+  renderCrumbs();
+  renderChips();
+  renderPreview();
+}
+function renderCrumbs() {
+  crumbs.innerHTML = '';
+  const path = prettyPath(cwd);
+  let parts;
+  if (path === '/') parts = ['/'];
+  else if (path.startsWith('~')) parts = ['/', 'home', 'you', ...path.slice(1).split('/').filter(Boolean)];
+  else parts = ['/', ...path.split('/').filter(Boolean)];
+  parts.forEach((part, index) => {
+    if (index) {
+      const separator = document.createElement('span');
+      separator.className = 'sep';
+      separator.textContent = '›';
+      crumbs.appendChild(separator);
+    }
+    const crumb = document.createElement('span');
+    crumb.className = 'crumb';
+    crumb.style.animationDelay = (index * 45) + 'ms';
+    crumb.textContent = part === 'you' ? '~' : part;
+    crumbs.appendChild(crumb);
+  });
+}
+
+hintBtn.addEventListener('click', () => {
+  if (hintBar.classList.contains('show')) { hintBar.classList.remove('show'); renderChips(); return; }
+  const mission = missions[Math.min(missionIndex, missionCount - 1)];
+  hintBar.innerHTML = mission.hint;
+  hintBar.classList.add('show');
+  renderChips();
+});
+form.addEventListener('submit', event => {
+  event.preventDefault();
+  const value = input.value;
+  input.value = '';
+  renderPreview();
+  execute(value);
+  focusInput();
+});
+input.addEventListener('input', renderPreview);
+input.addEventListener('keydown', event => {
+  if (event.key === 'ArrowUp') {
+    event.preventDefault();
+    if (historyIndex < history.length - 1) {
+      historyIndex++;
+      input.value = history[history.length - 1 - historyIndex];
+      input.setSelectionRange(input.value.length, input.value.length);
+      renderPreview();
+    }
+  } else if (event.key === 'ArrowDown') {
+    event.preventDefault();
+    if (historyIndex > 0) {
+      historyIndex--;
+      input.value = history[history.length - 1 - historyIndex];
+    } else {
+      historyIndex = -1;
+      input.value = '';
+    }
+    renderPreview();
+  } else if (event.key === 'Tab') {
+    event.preventDefault();
+    completeToken();
+  }
+});
+function completeToken() {
+  const value = input.value;
+  const tokens = value.split(/\s+/);
+  const last = tokens[tokens.length - 1] || '';
+  if (!last) return;
+  if (value.replace(/"/g, '').replace(/'/g, '').indexOf('s/') > -1 && last.indexOf('/') > -1) return;
+  const slash = last.lastIndexOf('/');
+  const dirPart = slash > -1 ? last.slice(0, slash + 1) : '';
+  const fragment = slash > -1 ? last.slice(slash + 1) : last;
+  let candidates = [];
+  if (fragment.startsWith('-') && tokens.length > 1) {
+    candidates = ['u+x', 'g-w', 'a+r', 'u=rw', '640', '644', '755', '-R', '--recursive'];
+  } else {
+    const result = resolvePath(dirPart || '.', cwd);
+    if (result.error || result.node.type !== 'dir') return;
+    candidates = result.node.children.map(child => child.name + (child.type === 'dir' ? '/' : ''));
+  }
+  const hits = candidates.filter(candidate => candidate.startsWith(fragment));
+  if (!hits.length) return;
+  if (hits.length === 1) {
+    const suffix = hits[0].endsWith('/') ? '' : ' ';
+    input.value = value.slice(0, value.length - last.length) + dirPart + hits[0] + suffix;
+    input.setSelectionRange(input.value.length, input.value.length);
+  } else {
+    log('<span class="dim">' + esc(hits.join('  ')) + '</span>');
+  }
+  renderPreview();
+}
+
+/* ==================================================================
+   11. RESET + BOOT
+   ================================================================== */
+function resetLab() {
+  buildModel();
+  buildTree();
+  cwd = HOME;
+  prevDir = null;
+  target = null;
+  lastContext = null;
+  history = [];
+  historyIndex = -1;
+  missionIndex = 0;
+  missionLocked = false;
+  Object.keys(evidence).forEach(key => { evidence[key] = false; });
+  term.innerHTML = '';
+  stepsEl.innerHTML = '';
+  missions.forEach(() => stepsEl.appendChild(document.createElement('i')));
+  hintBtn.style.display = '';
+  input.value = '';
+  countNum.textContent = '0';
+  permBar.innerHTML = '<span class="perm-empty">Tap a file on the map to inspect who may read, write or run it.</span>';
+  counterToken++;
+  counterEl.classList.add('zero');
+  streamEl.className = 'stream';
+  requestAnimationFrame(() => {
+    moveAvatar(false);
+    updateUI();
+    renderMission();
+    renderPerms(null, null, {});
+    log('<span class="hl">Fresh filesystem.</span> Every mission is live again.');
+  });
+}
+resetBtn.addEventListener('click', () => {
+  resetLab();
+  resetBtn.classList.remove('spin');
+  void resetBtn.offsetWidth;
+  resetBtn.classList.add('spin');
+  setTimeout(() => resetBtn.classList.remove('spin'), 600);
+});
+window.addEventListener('resize', () => moveAvatar(false));
+
+HOME = buildModel();
+buildTree();
+stepsEl.innerHTML = '';
+missions.forEach(() => stepsEl.appendChild(document.createElement('i')));
+cwd = HOME;
+
+requestAnimationFrame(() => {
+  moveAvatar(false);
+  updateUI();
+  renderMission();
+  renderPerms(null, null, {});
+  log('<span class="hl">Welcome to the visual chmod terminal.</span>');
+  log('Every file carries nine permission bits: <b>read</b>, <b>write</b> and <b>execute</b> for the <b>owner</b>, the <b>group</b> and <b>everyone else</b>.');
+  log('The matrix under the map shows them — and you can click any cell to flip it.');
+  log('');
+  log('<span class="dim">Try this first:</span> <span class="code">chmod u+x ~/scripts/deploy.sh</span> then <span class="code">ls -l ~/scripts/deploy.sh</span>');
+});
+
+if (!('ontouchstart' in window) && window.innerWidth > 900) setTimeout(focusInput, 400);
+</script>
+</body>
+</html>

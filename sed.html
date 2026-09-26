@@ -1,0 +1,1836 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Learn `sed` — Visual Linux</title>
+<style>
+/* ============ TOKENS ============ */
+:root{
+  --bg:#100a07;
+  --txt:#f7ece2;
+  --dim:#a4907f;
+  --accent:#fb923c;
+  --accent2:#fdba74;
+  --mark:#fbbf24;
+  --green:#4ade80;
+  --err:#fb7185;
+  --line:rgba(255,255,255,.11);
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;min-height:100dvh;font-family:var(--mono);color:var(--txt);background:var(--bg);overflow-x:hidden;-webkit-font-smoothing:antialiased}
+body::before{content:'';position:fixed;inset:0;z-index:-2;background:radial-gradient(900px 620px at 10% -12%,rgba(251,146,60,.19),transparent 62%),radial-gradient(820px 600px at 100% 3%,rgba(251,191,36,.10),transparent 60%),radial-gradient(760px 700px at 46% 118%,rgba(248,113,113,.09),transparent 63%),#100a07}
+body::after{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;background-image:linear-gradient(rgba(255,255,255,.026) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.026) 1px,transparent 1px);background-size:46px 46px;-webkit-mask-image:radial-gradient(ellipse at 50% 0%,#000 14%,transparent 74%);mask-image:radial-gradient(ellipse at 50% 0%,#000 14%,transparent 74%)}
+
+/* ============ LAYOUT ============ */
+.app{max-width:1320px;margin:0 auto;min-height:100dvh;display:flex;flex-direction:column;padding:14px 16px 16px;gap:11px}
+.top{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:11px}
+.logo{width:38px;height:38px;flex:0 0 auto;border-radius:11px;display:grid;place-items:center;position:relative;font-size:13px;font-weight:800;letter-spacing:-.06em;color:#2b1403;background:linear-gradient(150deg,#fed7aa,#fb923c 45%,#ea580c);box-shadow:0 8px 22px -8px rgba(251,146,60,.9),inset 0 1px 0 rgba(255,255,255,.6);animation:logoPulse 3.2s ease-in-out infinite}
+@keyframes logoPulse{0%,100%{box-shadow:0 8px 22px -8px rgba(251,146,60,.9),inset 0 1px 0 rgba(255,255,255,.6)}50%{box-shadow:0 8px 32px -6px rgba(251,146,60,1),inset 0 1px 0 rgba(255,255,255,.6)}}
+.logo::after{content:'';position:absolute;left:4px;right:4px;top:7px;height:2px;border-radius:2px;background:rgba(43,20,3,.35);box-shadow:0 5px 0 rgba(43,20,3,.35),0 10px 0 rgba(43,20,3,.2)}
+.brand h1{margin:0;font-size:16px;letter-spacing:.01em;font-weight:700}
+.brand h1 code{color:#fed7aa;background:rgba(251,146,60,.16);padding:1px 7px;border-radius:6px;border:1px solid rgba(251,146,60,.32)}
+.brand p{margin:2px 0 0;font-size:11.5px;color:var(--dim)}
+.steps{display:flex;gap:7px;align-items:center}
+.steps i{width:9px;height:9px;border-radius:50%;display:block;background:rgba(255,255,255,.13);transition:all .45s cubic-bezier(.34,1.56,.64,1)}
+.steps i.done{background:var(--green);box-shadow:0 0 0 4px rgba(74,222,128,.15),0 0 14px rgba(74,222,128,.7);transform:scale(1.15)}
+.reset-btn{font:inherit;font-size:10.5px;letter-spacing:.04em;color:var(--dim);cursor:pointer;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);padding:5px 10px;border-radius:9px;white-space:nowrap;transition:.2s;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.reset-btn:hover{color:var(--txt);background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.26)}
+.reset-btn:active{transform:scale(.95)}
+.reset-btn.spin{animation:resetSpin .55s cubic-bezier(.34,1.3,.64,1)}
+@keyframes resetSpin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+
+/* ---- mission bar ---- */
+.mission{display:flex;align-items:center;gap:12px;padding:10px 13px;border-radius:14px;background:linear-gradient(90deg,rgba(251,146,60,.12),rgba(251,146,60,.02));border:1px solid rgba(251,146,60,.24);transition:background .35s,border-color .35s,transform .35s,box-shadow .35s}
+.mission.complete{background:linear-gradient(90deg,rgba(74,222,128,.24),rgba(74,222,128,.05));border-color:rgba(74,222,128,.55);transform:scale(1.012);box-shadow:0 0 30px -8px rgba(74,222,128,.5)}
+.badge{font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;padding:5px 9px;border-radius:999px;white-space:nowrap;color:#fed7aa;background:rgba(251,146,60,.16);border:1px solid rgba(251,146,60,.3);transition:all .3s}
+.mission.complete .badge{color:#86efac;background:rgba(74,222,128,.2);border-color:rgba(74,222,128,.45)}
+.mission-text{flex:1;font-size:13px;line-height:1.4;min-width:0}
+.mission-text b{color:#fed7aa}
+.mission.complete .mission-text b{color:#86efac}
+.hint-btn{font:inherit;font-size:11px;color:var(--dim);cursor:pointer;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);padding:6px 11px;border-radius:9px;white-space:nowrap;transition:.2s}
+.hint-btn:hover{color:var(--txt);background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.24)}
+.hint{max-height:0;overflow:hidden;opacity:0;font-size:12.5px;color:var(--dim);padding:0 14px;border-radius:12px;transition:max-height .3s ease,opacity .3s ease,padding .3s ease,background .3s}
+.hint.show{max-height:80px;opacity:1;padding:9px 14px;background:rgba(255,255,255,.035)}
+.hint code{color:#fde68a;background:rgba(251,191,36,.13);padding:1px 6px;border-radius:5px}
+
+/* ---- main grid ---- */
+main{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1.08fr) minmax(0,1fr);grid-template-rows:minmax(0,1fr);gap:13px}
+.panel{background:linear-gradient(180deg,rgba(255,255,255,.048),rgba(255,255,255,.014));border:1px solid rgba(255,255,255,.08);border-radius:17px;padding:12px;display:flex;flex-direction:column;min-height:0;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:0 22px 44px -24px rgba(0,0,0,.9),inset 0 1px 0 rgba(255,255,255,.055)}
+.panel-head{display:flex;align-items:center;gap:9px;padding:1px 4px 9px;min-width:0}
+.title{font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:var(--dim);font-weight:700}
+.sub{font-size:11px;color:rgba(164,144,127,.65);margin-left:auto}
+.dots{display:flex;gap:5px;margin-right:2px}
+.dots i{width:9px;height:9px;border-radius:50%;display:block}
+.dots i:nth-child(1){background:#fb7185}
+.dots i:nth-child(2){background:#fbbf24}
+.dots i:nth-child(3){background:#4ade80}
+
+/* ---- changed counter ---- */
+.counter{margin-left:auto;display:flex;align-items:center;gap:5px;font-size:10.5px;letter-spacing:.04em;color:#fde68a;padding:4px 10px;border-radius:99px;background:rgba(251,191,36,.11);border:1px solid rgba(251,191,36,.26);transition:background .3s,border-color .3s,color .3s}
+.counter b{font-size:12.5px;color:var(--mark);min-width:9px;text-align:center}
+.counter.zero{background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.1);color:var(--dim)}
+.counter.zero b{color:var(--dim)}
+.counter.pop{animation:counterPop .55s cubic-bezier(.34,1.56,.64,1)}
+@keyframes counterPop{0%{transform:scale(1)}40%{transform:scale(1.22);box-shadow:0 0 24px rgba(251,191,36,.55)}100%{transform:scale(1)}}
+
+/* ============ CRUMBS + TREE (cd.html design) ============ */
+.crumbs{display:flex;align-items:center;flex-wrap:wrap;gap:3px;padding:7px 9px;margin-bottom:8px;border-radius:11px;background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.055);min-height:37px;min-width:0}
+.crumb{font-size:12px;padding:3px 9px;border-radius:7px;background:rgba(251,146,60,.13);color:#fdba74;border:1px solid rgba(251,146,60,.22);animation:crumbIn .32s cubic-bezier(.34,1.56,.64,1) backwards}
+.crumb:last-child{color:#fde68a;background:rgba(251,191,36,.11);border-color:rgba(251,191,36,.26)}
+@keyframes crumbIn{from{opacity:0;transform:translateY(-5px) scale(.85)}to{opacity:1;transform:none}}
+.sep{color:rgba(164,144,127,.5);font-size:11px;padding:0 1px}
+.tree-scroll{flex:1;min-height:0;overflow:auto;padding:4px 2px 6px;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.16) transparent;-webkit-overflow-scrolling:touch;min-width:0}
+.tree-scroll::-webkit-scrollbar{width:8px;height:8px}
+.tree-scroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:99px}
+.tree-scroll::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.26)}
+.tree-inner{position:relative;display:inline-block;vertical-align:top;min-width:100%;padding:6px 58px 16px 2px}
+.node{position:relative}
+.children{margin-left:16px;padding-left:12px;border-left:2px solid var(--line)}
+.children>.node::before{content:'';position:absolute;left:-14px;top:17px;width:14px;height:2px;background:var(--line);border-radius:2px}
+.row{display:inline-flex;align-items:center;gap:8px;min-height:34px;padding:5px 11px 5px 9px;border-radius:10px;cursor:pointer;white-space:nowrap;position:relative;transition:background .22s,box-shadow .22s,transform .18s;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.row:hover{background:rgba(255,255,255,.055);transform:translateX(2px)}
+.row.current{background:linear-gradient(90deg,rgba(251,146,60,.22),rgba(251,146,60,.03));box-shadow:inset 0 0 0 1px rgba(251,146,60,.4)}
+.row.current .label{color:#fff;font-weight:700}
+.row.file{opacity:.55}
+.row.target{box-shadow:inset 0 0 0 1px rgba(251,146,60,.85);background:rgba(251,146,60,.16);opacity:1}
+.row.target .label{color:#fff}
+.row.edited{animation:rowEdited .8s cubic-bezier(.34,1.56,.64,1)}
+@keyframes rowEdited{0%{background:rgba(251,191,36,.4);box-shadow:0 0 0 2px rgba(251,191,36,.95),0 0 34px rgba(251,191,36,.7)}100%{background:transparent;box-shadow:inset 0 0 0 1px rgba(251,191,36,.3)}}
+.row.born{animation:rowBorn .55s cubic-bezier(.34,1.56,.64,1)}
+@keyframes rowBorn{0%{opacity:0;transform:translateX(-10px) scale(.9);background:rgba(74,222,128,.35)}100%{opacity:1;transform:none;background:transparent}}
+.row.reverted{animation:rowReverted .8s ease}
+@keyframes rowReverted{0%{background:rgba(167,139,250,.3);box-shadow:inset 0 0 0 1px rgba(167,139,250,.8)}100%{background:transparent;box-shadow:inset 0 0 0 1px rgba(255,255,255,0)}}
+.icon{width:18px;height:14px;flex:0 0 auto;position:relative;border-radius:3px;transition:box-shadow .3s;z-index:1}
+.icon.dir{background:linear-gradient(180deg,#fcd34d,#f59e0b);box-shadow:0 2px 7px rgba(251,191,36,.22)}
+.icon.dir::before{content:'';position:absolute;top:-4px;left:0;width:8px;height:6px;background:#fcd34d;border-radius:3px 3px 0 0}
+.icon.file{background:linear-gradient(180deg,#a8b6c9,#64748b);border-radius:2px 5px 2px 2px}
+.icon.link{width:16px;height:11px;background:linear-gradient(180deg,#c4b5fd,#8b5cf6);border-radius:2px 6px 2px 2px}
+.row.current .icon.dir{box-shadow:0 0 0 3px rgba(251,146,60,.28),0 2px 12px rgba(251,191,36,.75)}
+.label{font-size:13.5px;letter-spacing:.01em;position:relative;z-index:1}
+.tag{font-size:9.5px;padding:2px 6px;border-radius:99px;font-weight:700;background:rgba(74,222,128,.16);color:#86efac;border:1px solid rgba(74,222,128,.3);position:relative;z-index:1}
+.badge-new{font-size:8.5px;padding:2px 6px;border-radius:99px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#86efac;background:rgba(74,222,128,.14);border:1px solid rgba(74,222,128,.3);position:relative;z-index:1}
+.badge-bak{font-size:8.5px;padding:2px 6px;border-radius:99px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#c4b5fd;background:rgba(139,92,246,.14);border:1px solid rgba(139,92,246,.32);position:relative;z-index:1}
+.kb{font-size:9px;color:rgba(164,144,127,.5);position:relative;z-index:1;transition:color .3s}
+.row.edited .kb{color:var(--mark)}
+.ping{position:absolute;left:0;top:0;width:0;height:0;pointer-events:none;z-index:6}
+.ping i{position:absolute;left:-16px;top:-16px;width:32px;height:32px;border-radius:50%;border:2px solid rgba(251,191,36,.85);display:block;animation:pingA .7s ease-out forwards}
+@keyframes pingA{0%{transform:scale(.2);opacity:1}100%{transform:scale(1.9);opacity:0}}
+.mark{position:absolute;left:8px;bottom:calc(100% - 2px);z-index:9;padding:2px 7px;border-radius:999px;font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;white-space:nowrap;pointer-events:none;color:#fde68a;background:rgba(251,191,36,.22);border:1px solid rgba(251,191,36,.55);box-shadow:0 6px 18px -8px rgba(251,191,36,.9);animation:markRise 1.1s cubic-bezier(.22,.9,.3,1) forwards}
+.mark.back{color:#c4b5fd;background:rgba(139,92,246,.22);border-color:rgba(139,92,246,.5);box-shadow:0 6px 18px -8px rgba(139,92,246,.9)}
+@keyframes markRise{0%{opacity:0;transform:translateY(6px) scale(.8)}22%{opacity:1;transform:translateY(-4px) scale(1)}70%{opacity:1;transform:translateY(-15px)}100%{opacity:0;transform:translateY(-28px)}}
+
+/* ---- avatar ---- */
+.avatar{position:absolute;left:0;top:0;width:30px;height:30px;z-index:7;pointer-events:none;transition:transform .62s cubic-bezier(.34,1.3,.64,1);will-change:transform}
+.avatar .body{width:100%;height:100%;border-radius:50% 50% 46% 46%;background:radial-gradient(circle at 34% 28%,#fed7aa,#fb923c 52%,#c2410c);box-shadow:0 0 0 3px rgba(251,146,60,.18),0 9px 20px -4px rgba(194,65,12,.8);display:grid;place-items:center;animation:idle 2.8s ease-in-out infinite}
+@keyframes idle{0%,100%{transform:translateY(0)}50%{transform:translateY(-2.5px)}}
+.avatar.hop .body{animation:hop .58s cubic-bezier(.34,1.3,.64,1)}
+@keyframes hop{0%{transform:translateY(0) scale(1,1)}28%{transform:translateY(-11px) scale(.9,1.12)}58%{transform:translateY(0) scale(1.12,.88)}80%{transform:translateY(-3px) scale(.98,1.03)}100%{transform:translateY(0) scale(1,1)}}
+.eyes{display:flex;gap:5px}
+.eyes i{width:4px;height:6.5px;background:#3b1a05;border-radius:50%;display:block;animation:blink 4.6s infinite}
+@keyframes blink{0%,92%,100%{transform:scaleY(1)}95%{transform:scaleY(.1)}}
+
+/* ============ SED STREAM ============ */
+.stream{flex:0 0 auto;margin-top:8px;border-radius:12px;background:linear-gradient(180deg,rgba(251,146,60,.05),rgba(0,0,0,.3));border:1px dashed rgba(251,146,60,.28);transition:border-color .3s,box-shadow .3s,background .3s;min-width:0}
+.stream.active{border-color:rgba(251,146,60,.7);background:linear-gradient(180deg,rgba(251,146,60,.11),rgba(0,0,0,.3));box-shadow:0 0 28px -12px rgba(251,146,60,.9)}
+.stream.saved{border-style:solid;border-color:rgba(74,222,128,.7);background:linear-gradient(180deg,rgba(74,222,128,.1),rgba(0,0,0,.3));box-shadow:0 0 28px -12px rgba(74,222,128,.85)}
+.stream-top{display:flex;align-items:center;gap:8px;padding:7px 10px 0;min-width:0}
+.stream-label{font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:#fdba74;font-weight:700;flex:0 0 auto}
+.stream-file{font-size:10px;color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.stream-stat{margin-left:auto;font-size:9.5px;color:var(--dim);white-space:nowrap;flex:0 0 auto}
+.undo-btn{font:inherit;font-size:9.5px;letter-spacing:.04em;color:#c4b5fd;cursor:pointer;background:rgba(139,92,246,.12);border:1px solid rgba(139,92,246,.3);padding:3px 8px;border-radius:7px;white-space:nowrap;transition:.18s;flex:0 0 auto;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.undo-btn:hover{background:rgba(139,92,246,.26);color:#ddd6fe;transform:translateY(-1px)}
+.undo-btn[disabled]{opacity:.32;cursor:default;transform:none}
+.stream-body{max-height:172px;overflow-y:auto;padding:6px 6px 7px;scrollbar-width:thin;min-width:0}
+.stream-body::-webkit-scrollbar{width:7px}
+.stream-body::-webkit-scrollbar-thumb{background:rgba(255,255,255,.13);border-radius:99px}
+.sl{display:flex;align-items:baseline;gap:8px;padding:2px 6px 2px 4px;border-radius:7px;font-size:11px;line-height:1.5;animation:slIn .3s ease-out backwards}
+@keyframes slIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.sl .sl-n{color:rgba(164,144,127,.4);min-width:16px;text-align:right;flex:0 0 auto;user-select:none;font-size:10px}
+.sl .sl-tx{color:#c9b8a6;min-width:0;word-break:break-word;white-space:pre-wrap}
+.sl.changed{background:rgba(251,191,36,.07);box-shadow:inset 0 0 0 1px rgba(251,191,36,.22)}
+.sl .was{color:rgba(251,113,133,.8);text-decoration:line-through;text-decoration-color:rgba(251,113,133,.5)}
+.sl .arrow{color:var(--mark);font-size:10px;flex:0 0 auto}
+.sl .now{color:#fde68a;background:rgba(251,191,36,.2);border-radius:4px;padding:0 4px;box-shadow:inset 0 -2px 0 rgba(251,191,36,.3);animation:nowPop .5s cubic-bezier(.34,1.56,.64,1)}
+@keyframes nowPop{0%{background:rgba(251,191,36,.85);color:#2b1403;box-shadow:0 0 0 4px rgba(251,191,36,.3)}100%{background:rgba(251,191,36,.2);color:#fde68a;box-shadow:inset 0 -2px 0 rgba(251,191,36,.3)}}
+.sl.gone{background:rgba(251,113,133,.07);box-shadow:inset 0 0 0 1px rgba(251,113,133,.2)}
+.sl.gone .sl-tx{color:rgba(251,113,133,.6);text-decoration:line-through}
+.sl .del{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#fda4af;flex:0 0 auto}
+.stream-none{font-size:10.5px;color:var(--dim);padding:6px 8px 4px;display:block;line-height:1.5}
+.stream-bar{position:absolute;left:0;right:0;height:26px;pointer-events:none;z-index:2;background:linear-gradient(180deg,transparent,rgba(251,146,60,.26) 50%,transparent);border-top:1px solid rgba(251,146,60,.5);border-bottom:1px solid rgba(251,146,60,.5);animation:streamSweep .8s cubic-bezier(.45,.05,.55,.95) forwards}
+@keyframes streamSweep{0%{top:-26px;opacity:0}15%{opacity:1}85%{opacity:1}100%{top:100%;opacity:0}}
+
+/* ============ TERMINAL ============ */
+.term{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:12px 13px;border-radius:12px;background:rgba(0,0,0,.36);border:1px solid rgba(255,255,255,.055);font-size:12.5px;line-height:1.7;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.16) transparent;-webkit-overflow-scrolling:touch;min-width:0}
+.term::-webkit-scrollbar{width:8px}
+.term::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:99px}
+.line{white-space:pre-wrap;word-break:break-word;animation:lineIn .22s ease-out}
+@keyframes lineIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+.line .p{color:#fdba74}
+.line .c{color:#fffaf5;font-weight:600}
+.line.err{color:var(--err)}
+.line .d{color:#fdba74;font-weight:600}
+.line .f{color:#cbd5e1}
+.line .hl{color:#fdba74;font-weight:700}
+.line .ok{color:#86efac}
+.line .warn{color:#fcd34d}
+.line .dim{color:var(--dim)}
+.line .code{color:#fde68a;background:rgba(251,191,36,.11);padding:1px 7px;border-radius:6px;border:1px solid rgba(251,191,36,.2)}
+.tip-line{margin-top:4px;padding:6px 10px;border-radius:8px;background:rgba(251,146,60,.09);border-left:3px solid rgba(251,146,60,.5);color:#fdba74;font-size:12px}
+.tip-line.danger{background:rgba(251,113,133,.09);border-left-color:rgba(251,113,133,.6);color:#fda4af}
+.tip-line.good{background:rgba(74,222,128,.09);border-left-color:rgba(74,222,128,.5);color:#a7f3d0}
+mark{background:rgba(251,191,36,.26);color:#fde68a;font-weight:600;border-radius:4px;padding:0 3px;box-shadow:inset 0 -2px 0 rgba(251,191,36,.35)}
+del{color:rgba(251,113,133,.75);text-decoration:line-through}
+ins{color:#fde68a;background:rgba(251,191,36,.2);border-radius:4px;padding:0 3px;text-decoration:none;box-shadow:inset 0 -2px 0 rgba(251,191,36,.3)}
+.chips{display:flex;gap:7px;overflow-x:auto;min-width:0;max-width:100%;padding:10px 1px 2px;scrollbar-width:none;-ms-overflow-style:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{font:inherit;font-size:11.5px;white-space:nowrap;cursor:pointer;padding:6px 11px;border-radius:9px;color:#fdba74;background:rgba(251,146,60,.1);border:1px solid rgba(251,146,60,.26);transition:.18s;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.chip:hover{background:rgba(251,146,60,.22);color:#ffedd5;transform:translateY(-1px);box-shadow:0 6px 16px -12px rgba(251,146,60,.9)}
+.chip:active{transform:translateY(0) scale(.96)}
+
+/* ---- dry run ---- */
+.preview{display:flex;align-items:center;gap:8px;margin-top:9px;padding:8px 10px;border-radius:12px;background:rgba(0,0,0,.34);border:1px dashed rgba(255,255,255,.13);min-height:40px;transition:border-color .25s,background .25s;min-width:0}
+.preview.ok{border-style:solid;border-color:rgba(74,222,128,.4);background:rgba(74,222,128,.05)}
+.preview.warn{border-style:solid;border-color:rgba(251,191,36,.45);background:rgba(251,191,36,.05)}
+.preview.bad{border-style:solid;border-color:rgba(251,113,133,.45);background:rgba(251,113,133,.05)}
+.pv-label{font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);font-weight:700;flex:0 0 auto}
+.pv-body{flex:1;min-width:0;display:flex;align-items:center;gap:7px;flex-wrap:wrap;font-size:11.5px;color:var(--dim)}
+.pv-verdict{font-size:9px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;padding:2px 7px;border-radius:99px;white-space:nowrap;animation:pop .28s cubic-bezier(.34,1.56,.64,1)}
+@keyframes pop{from{opacity:0;transform:scale(.8) translateY(3px)}to{opacity:1;transform:none}}
+.pv-verdict.ok{color:#86efac;background:rgba(74,222,128,.16);border:1px solid rgba(74,222,128,.32)}
+.pv-verdict.warn{color:#fde68a;background:rgba(251,191,36,.16);border:1px solid rgba(251,191,36,.34)}
+.pv-verdict.bad{color:#fda4af;background:rgba(251,113,133,.16);border:1px solid rgba(251,113,133,.34)}
+.pv-msg{color:var(--dim);line-height:1.4;max-width:100%;max-height:2.9em;overflow:hidden}
+.pv-body code{color:#fde68a;background:rgba(251,191,36,.12);padding:1px 6px;border-radius:5px;border:1px solid rgba(251,191,36,.2)}
+.preview.bad .pv-msg{color:#fda4af}
+.input-row{display:flex;align-items:center;gap:8px;margin-top:9px;padding:9px 10px;border-radius:12px;background:rgba(0,0,0,.4);border:1px solid rgba(251,146,60,.28);transition:border-color .2s,box-shadow .2s;min-width:0}
+.input-row:focus-within{border-color:rgba(251,146,60,.75);box-shadow:0 0 0 3px rgba(251,146,60,.14)}
+.input-row.shake{animation:shake .4s}
+@keyframes shake{10%,90%{transform:translateX(-2px)}20%,80%{transform:translateX(4px)}30%,50%,70%{transform:translateX(-6px)}40%,60%{transform:translateX(6px)}}
+.ps1{font-size:12.5px;color:#fdba74;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:0 1 auto}
+.ps1 .ps-user{color:#fdba74;opacity:.85}
+.input-row input{flex:1;min-width:40px;background:none;border:none;outline:none;color:#f1f5f9;font:inherit;font-size:13px;padding:0}
+.input-row input::placeholder{color:rgba(164,144,127,.5)}
+.send{font:inherit;font-size:14px;line-height:1;cursor:pointer;width:30px;height:30px;flex:0 0 auto;border-radius:9px;color:#2b1403;background:linear-gradient(150deg,#fed7aa,#fb923c);border:none;display:grid;place-items:center;transition:.18s;box-shadow:0 4px 14px -4px rgba(251,146,60,.85)}
+.send:hover{transform:translateY(-1px);box-shadow:0 6px 18px -4px rgba(251,146,60,1)}
+.send:active{transform:scale(.93)}
+.confetti{position:fixed;top:-14px;width:8px;height:13px;border-radius:2px;z-index:999;pointer-events:none;animation:fall linear forwards}
+@keyframes fall{to{transform:translateY(108vh) rotate(var(--rot,360deg));opacity:.05}}
+
+/* ============ RESPONSIVE ============ */
+@media (min-width:901px){
+  html,body{height:100%;min-height:0;overflow:hidden}
+  .app{height:100%;min-height:0;overflow:hidden}
+  .term{flex:1 1 auto}
+}
+@media (max-width:900px){
+  .app{padding:12px 12px calc(16px + env(safe-area-inset-bottom));gap:10px}
+  /* minmax(0,1fr), not 1fr: a plain 1fr is minmax(auto,1fr) and its auto
+     minimum lets a wide child (the chip row) drag the column past the viewport */
+  main{grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto;flex:none}
+  .panel{min-height:0;min-width:0}
+  .panel-head,.crumbs,.term,.input-row,.preview,.stream,.chips{min-width:0}
+  .tree-scroll{max-height:24vh}
+  .term{min-height:140px;max-height:24vh}
+  .brand h1{font-size:15px}
+  .brand p{display:none}
+  .mission{padding:9px 11px}
+  .mission-text{font-size:12.5px;line-height:1.35}
+  .ps1 .ps-user{display:none}
+  .sub{display:none}
+  .stream-body{max-height:132px}
+  /* touch-sized controls: these are 19-27px tall with the desktop padding */
+  .undo-btn,.hint-btn,.reset-btn{min-height:34px;display:inline-flex;align-items:center;padding:8px 12px}
+  .chip{min-height:34px;display:inline-flex;align-items:center;padding:8px 12px}
+}
+@media (max-width:560px){
+  .logo{width:34px;height:34px;font-size:12px}
+  .badge{font-size:9px;padding:4px 7px}
+  .mission{gap:8px;padding:8px 10px}
+  .hint-btn{padding:5px 9px;font-size:10.5px}
+  .label{font-size:13px}
+  .tree-inner{padding-right:48px}
+  .tree-scroll{max-height:22vh}
+  .term{max-height:23vh}
+  .crumbs{min-height:34px;padding:6px 8px}
+  .kb{display:none}
+  .preview{padding:7px 9px;min-height:36px}
+  .pv-verdict{font-size:8.5px}
+  .stream-body{max-height:118px}
+  .sl{font-size:10.5px}
+  .chip{font-size:11px}
+  /* 9.5px text on a 3px pad makes a 19px target — too small for a thumb */
+  .undo-btn{font-size:11px;padding:8px 12px;min-height:34px;display:inline-flex;align-items:center}
+  .hint-btn{min-height:34px}
+}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}}
+/* any touch device, whatever the width: keep every control thumb-sized */
+@media (hover:none),(pointer:coarse){
+  .undo-btn,.hint-btn,.reset-btn,.chip{min-height:34px;display:inline-flex;align-items:center;padding:8px 12px}
+  .crumb{padding-top:9px;padding-bottom:9px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <div class="logo">sed</div>
+      <div>
+        <h1>Learn <code>sed</code></h1>
+        <p>Find and replace across a whole file — one line at a time.</p>
+      </div>
+    </div>
+    <div class="steps" id="steps"></div>
+    <button class="reset-btn" id="resetBtn" type="button" title="Rebuild the filesystem from scratch">↺ reset</button>
+  </header>
+
+  <div class="mission" id="mission">
+    <span class="badge" id="missionBadge">Mission 1 / 6</span>
+    <span class="mission-text" id="missionText">Loading…</span>
+    <button class="hint-btn" id="hintBtn" type="button">Hint</button>
+  </div>
+  <div class="hint" id="hintBar"></div>
+
+  <main>
+    <section class="panel">
+      <div class="panel-head">
+        <span class="title">Filesystem map</span>
+        <span class="counter zero" id="counter"><b id="countNum">0</b> changed</span>
+      </div>
+      <div class="crumbs" id="crumbs"></div>
+      <div class="tree-scroll" id="treeScroll">
+        <div class="tree" id="tree"></div>
+      </div>
+      <div class="stream" id="stream">
+        <div class="stream-top">
+          <span class="stream-label">Sed stream</span>
+          <span class="stream-file" id="streamFile">no file chosen</span>
+          <span class="stream-stat" id="streamStat"></span>
+          <button class="undo-btn" id="undoBtn" type="button" disabled>undo</button>
+        </div>
+        <div class="stream-body" id="streamBody"><span class="stream-none">Tap a file on the map, then run an <b>sed</b> command. Each line is rewritten as it streams past.</span></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <span class="dots"><i></i><i></i><i></i></span>
+        <span class="title">Terminal</span>
+      </div>
+      <div class="term" id="term" aria-live="polite"></div>
+      <div class="chips" id="chips"></div>
+      <div class="preview" id="preview">
+        <span class="pv-label">Dry run</span>
+        <span class="pv-body" id="pvBody"><span class="pv-msg">type a sed command to see what it would change</span></span>
+      </div>
+      <form class="input-row" id="form" autocomplete="off">
+        <span class="ps1"><span class="ps-user">you@linux:</span><span id="psPath">~</span>$</span>
+        <input id="cmd" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="type sed…">
+        <button class="send" type="submit" aria-label="Run command">↵</button>
+      </form>
+    </section>
+  </main>
+</div>
+
+<script>
+/* ==================================================================
+   1. FILESYSTEM MODEL
+   ================================================================== */
+let uid = 0;
+let clock = 1700000000000;
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const mk = (name, type = 'dir', extra = {}) => ({
+  id: ++uid, name, type,
+  children: type === 'dir' ? [] : null,
+  parent: null,
+  size: type === 'dir' ? 4096 : 1,
+  mtime: clock++,
+  content: type === 'file' ? [] : null,
+  born: false,
+  ...extra
+});
+
+let ROOT, HOME, config, docs, logs, logsOld, scripts, etcDir, tmpDir;
+let appConf, notes, readme, guide, accessLog, legacyLog, deploySh, profile, hostname, hosts, scratch, todo;
+
+function bytesOf(lines) {
+  if (!lines || !lines.length) return 0;
+  return lines.join('\n').length + 1;
+}
+function file(name, lines, extra) {
+  return mk(name, 'file', {content: lines.slice(), size: bytesOf(lines), mtime: clock++, ...extra});
+}
+
+function buildModel() {
+  uid = 0;
+  clock = 1700000000000;
+  ROOT = mk('/');
+  const homeDir = mk('home');
+  HOME = mk('you');
+  config = mk('config');
+  docs = mk('docs');
+  logs = mk('logs');
+  logsOld = mk('old');
+  scripts = mk('scripts');
+  etcDir = mk('etc');
+  tmpDir = mk('tmp');
+
+  appConf = file('app.conf', [
+    '# app configuration',
+    '# edit with care',
+    'host=localhost',
+    'port=8080',
+    'url=http://localhost:8080/api',
+    'debug=true',
+    '# retry settings',
+    'retries=3',
+    'timeout=30'
+  ]);
+  notes = file('notes.txt', [
+    'Shopping list',
+    '- coffee',
+    '- call the dentist',
+    '- renew the domain',
+    '- backup the laptop'
+  ]);
+  readme = file('readme.md', [
+    '# Docs',
+    'The setup guide lives in guide.txt.',
+    'Report bugs to the team.'
+  ]);
+  guide = file('guide.txt', [
+    '1. install the package',
+    '2. run the setup script',
+    '3. open the dashboard',
+    '4. done'
+  ]);
+  accessLog = file('access.log', [
+    '10.0.0.4 - alice GET /index.html 200',
+    '10.0.0.5 - bob GET /api/users 200',
+    '10.0.0.4 - alice GET /admin 403',
+    'ERROR timeout on /api/users',
+    '10.0.0.6 - carol GET /index.html 200',
+    'ERROR disk full on /var'
+  ]);
+  legacyLog = file('legacy.log', [
+    'WARN old importer still running',
+    'GET /legacy/report 200',
+    'ERROR legacy job failed'
+  ]);
+  deploySh = file('deploy.sh', [
+    '#!/bin/sh',
+    'echo starting deploy',
+    'echo running tests',
+    'echo deploy complete'
+  ]);
+  profile = file('.profile', ['export PS1="$ "','export EDITOR=vi']);
+  todo = file('todo.md', ['- [ ] ship the sed lab','- [x] draw the stream']);
+  hostname = file('hostname', ['web-01']);
+  hosts = file('hosts', ['127.0.0.1 localhost','::1 localhost ip6-localhost']);
+  scratch = file('scratch.txt', ['TODO: try sed on this']);
+
+  ROOT.children = [homeDir, etcDir, tmpDir];
+  homeDir.children = [HOME];
+  HOME.children = [profile, config, docs, logs, scripts, notes, todo];
+  config.children = [appConf];
+  docs.children = [guide, readme];
+  logs.children = [accessLog, logsOld];
+  logsOld.children = [legacyLog];
+  scripts.children = [deploySh];
+  etcDir.children = [hostname, hosts];
+  tmpDir.children = [scratch];
+
+  link(ROOT, null);
+  sortModel(ROOT);
+  return HOME;
+}
+function link(node, parent) {
+  node.parent = parent;
+  if (node.children) node.children.forEach(child => link(child, node));
+}
+function byName(left, right) {
+  if (left.type !== right.type) return left.type === 'dir' ? -1 : 1;
+  return left.name.localeCompare(right.name, undefined, {numeric: true, sensitivity: 'base'});
+}
+function sortModel(node) {
+  if (!node.children) return;
+  node.children.sort(byName);
+  node.children.forEach(sortModel);
+}
+
+/* ---- path helpers ---- */
+function absPath(node) {
+  if (node === ROOT) return '/';
+  const parts = [];
+  let current = node;
+  while (current && current !== ROOT) { parts.unshift(current.name); current = current.parent; }
+  return '/' + parts.join('/');
+}
+function prettyPath(node) {
+  const path = absPath(node);
+  if (path === '/home/you') return '~';
+  if (path.startsWith('/home/you/')) return '~' + path.slice(9);
+  return path;
+}
+function sizeLabel(node) {
+  if (node.type === 'dir') return '';
+  const bytes = node.size || 0;
+  if (bytes >= 1048576) return (bytes / 1048576).toFixed(1) + ' MB';
+  if (bytes >= 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return bytes + ' B';
+}
+function resolvePath(spec, base) {
+  let current, rest = spec;
+  if (spec === '~' || spec === '~/') { current = HOME; rest = ''; }
+  else if (spec.startsWith('~/')) { current = HOME; rest = spec.slice(1); }
+  else if (spec.startsWith('/')) { current = ROOT; rest = spec.slice(1); }
+  else current = base;
+  if (current.type !== 'dir') return {error: 'notdir', name: spec};
+  const segments = rest.split('/').filter(Boolean);
+  for (let i = 0; i < segments.length; i++) {
+    const segment = segments[i];
+    if (segment === '.') continue;
+    if (segment === '..') { current = current.parent || ROOT; continue; }
+    const next = current.children.find(child => child.name === segment);
+    if (!next) return {error: 'missing', name: segment};
+    if (next.type !== 'dir' && i < segments.length - 1) return {error: 'notdir', name: segment};
+    current = next;
+  }
+  return {node: current};
+}
+const esc = value => String(value).replace(/[&<>"']/g, char =>
+  ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+
+/* ==================================================================
+   2. DOM REFS
+   ================================================================== */
+const treeEl = document.getElementById('tree');
+const treeScroll = document.getElementById('treeScroll');
+const crumbs = document.getElementById('crumbs');
+const term = document.getElementById('term');
+const chips = document.getElementById('chips');
+const form = document.getElementById('form');
+const input = document.getElementById('cmd');
+const psPath = document.getElementById('psPath');
+const stepsEl = document.getElementById('steps');
+const missionEl = document.getElementById('mission');
+const missionBadge = document.getElementById('missionBadge');
+const missionText = document.getElementById('missionText');
+const hintBtn = document.getElementById('hintBtn');
+const hintBar = document.getElementById('hintBar');
+const resetBtn = document.getElementById('resetBtn');
+const counterEl = document.getElementById('counter');
+const countNum = document.getElementById('countNum');
+const streamEl = document.getElementById('stream');
+const streamFile = document.getElementById('streamFile');
+const streamStat = document.getElementById('streamStat');
+const streamBody = document.getElementById('streamBody');
+const undoBtn = document.getElementById('undoBtn');
+const previewEl = document.getElementById('preview');
+const pvBody = document.getElementById('pvBody');
+
+let treeInner, avatarEl;
+let cwd = null, prevDir = null, target = null, lastContext = null;
+const rowOf = new Map();
+const nodeOfRow = new Map();
+const wrapOf = new Map();
+const undoStack = [];
+
+/* ==================================================================
+   3. TREE RENDERING
+   ================================================================== */
+function paintRow(node) {
+  const row = rowOf.get(node);
+  if (!row) return;
+  row.querySelector('.label').textContent = node === ROOT ? '/' : node.name;
+  const kb = row.querySelector('.kb');
+  if (kb) kb.textContent = sizeLabel(node);
+}
+function buildRow(node) {
+  const wrap = document.createElement('div');
+  wrap.className = 'node';
+  const row = document.createElement('div');
+  row.className = 'row' + (node.type === 'file' ? ' file' : '');
+
+  const icon = document.createElement('span');
+  icon.className = 'icon ' + node.type;
+  const label = document.createElement('span');
+  label.className = 'label';
+  label.textContent = node === ROOT ? '/' : node.name;
+  row.append(icon, label);
+
+  if (node === HOME) {
+    const tag = document.createElement('span');
+    tag.className = 'tag';
+    tag.textContent = '~';
+    row.appendChild(tag);
+  }
+  if (node.born) {
+    const badge = document.createElement('span');
+    badge.className = 'badge-new';
+    badge.textContent = 'new';
+    row.appendChild(badge);
+  }
+  if (/\.bak$/.test(node.name)) {
+    const badge = document.createElement('span');
+    badge.className = 'badge-bak';
+    badge.textContent = 'backup';
+    row.appendChild(badge);
+  }
+  if (node.type === 'file') {
+    const size = document.createElement('span');
+    size.className = 'kb';
+    size.textContent = sizeLabel(node);
+    row.appendChild(size);
+  }
+
+  row.addEventListener('click', () => onNodeClick(node));
+  wrap.appendChild(row);
+  wrapOf.set(node, wrap);
+  rowOf.set(node, row);
+  nodeOfRow.set(row, node);
+  if (node.children && node.children.length) {
+    const kids = document.createElement('div');
+    kids.className = 'children';
+    childrenOf.set(node, kids);
+    node.children.forEach(child => kids.appendChild(buildRow(child)));
+    wrap.appendChild(kids);
+  }
+  return wrap;
+}
+const childrenOf = new Map();
+function buildTree() {
+  treeEl.innerHTML = '';
+  rowOf.clear();
+  nodeOfRow.clear();
+  wrapOf.clear();
+  childrenOf.clear();
+  treeInner = document.createElement('div');
+  treeInner.className = 'tree-inner';
+  treeInner.appendChild(buildRow(ROOT));
+  avatarEl = document.createElement('div');
+  avatarEl.className = 'avatar';
+  avatarEl.innerHTML = '<div class="body"><span class="eyes"><i></i><i></i></span></div>';
+  treeInner.appendChild(avatarEl);
+  treeEl.appendChild(treeInner);
+}
+function childrenContainer(node) {
+  let kids = childrenOf.get(node);
+  if (!kids) {
+    kids = document.createElement('div');
+    kids.className = 'children';
+    wrapOf.get(node).appendChild(kids);
+    childrenOf.set(node, kids);
+  }
+  return kids;
+}
+function insertChild(parent, child) {
+  child.parent = parent;
+  parent.children.push(child);
+  childrenContainer(parent).appendChild(buildRow(child));
+  sortSiblings(parent);
+  paintRow(child);
+  return child;
+}
+function sortSiblings(parent) {
+  const kids = childrenOf.get(parent);
+  if (!kids) return;
+  parent.children.slice().sort(byName).forEach(child => kids.appendChild(wrapOf.get(child)));
+}
+function removeNode(node) {
+  const wrap = wrapOf.get(node);
+  if (wrap) wrap.remove();
+  rowOf.delete(node);
+  wrapOf.delete(node);
+  childrenOf.delete(node);
+  const index = node.parent ? node.parent.children.indexOf(node) : -1;
+  if (index > -1) node.parent.children.splice(index, 1);
+  paintRow(node.parent);
+}
+
+function updateRowStates() {
+  rowOf.forEach((row, node) => {
+    row.classList.toggle('current', node === cwd);
+    row.classList.toggle('target', node === target);
+  });
+}
+function innerRect() { return treeInner.getBoundingClientRect(); }
+function relRect(el) {
+  const box = el.getBoundingClientRect();
+  const base = innerRect();
+  return {left: box.left - base.left, top: box.top - base.top, width: box.width, height: box.height};
+}
+function scrollToRow(node) {
+  const row = rowOf.get(node);
+  if (!row) return;
+  const box = relRect(row);
+  const target2 = box.top + box.height / 2 - treeScroll.clientHeight / 2;
+  treeScroll.scrollTo({top: Math.max(0, target2), behavior: 'smooth'});
+}
+function ping(x, y) {
+  const element = document.createElement('div');
+  element.className = 'ping';
+  element.style.transform = 'translate(' + x + 'px,' + y + 'px)';
+  element.innerHTML = '<i></i>';
+  treeInner.appendChild(element);
+  setTimeout(() => element.remove(), 760);
+}
+function floatMark(node, text, kind) {
+  const row = rowOf.get(node);
+  if (!row) return;
+  const mark = document.createElement('span');
+  mark.className = 'mark' + (kind ? ' ' + kind : '');
+  mark.textContent = text;
+  row.appendChild(mark);
+  setTimeout(() => mark.remove(), 1150);
+}
+function flashRow(node, className) {
+  const row = rowOf.get(node);
+  if (!row) return;
+  row.classList.remove('edited', 'born', 'reverted');
+  void row.offsetWidth;
+  row.classList.add(className);
+  setTimeout(() => row.classList.remove(className), 1000);
+}
+
+/* ---- avatar ---- */
+function avatarTarget(node) {
+  const row = rowOf.get(node);
+  const label = row.querySelector('.label');
+  const base = innerRect();
+  const box = label.getBoundingClientRect();
+  return {x: box.right - base.left + 9, y: box.top - base.top + box.height / 2 - 15};
+}
+function moveAvatar(animate, node) {
+  const t = avatarTarget(node || cwd);
+  if (!animate) avatarEl.style.transition = 'none';
+  avatarEl.style.transform = 'translate(' + t.x + 'px, ' + t.y + 'px)';
+  if (!animate) requestAnimationFrame(() => { avatarEl.style.transition = ''; });
+}
+function animateAvatarTo(node) {
+  moveAvatar(true, node);
+  avatarEl.classList.remove('hop');
+  void avatarEl.offsetWidth;
+  avatarEl.classList.add('hop');
+  const box = relRect(rowOf.get(node));
+  ping(box.left + 16, box.top + box.height / 2);
+  scrollToRow(node);
+}
+
+/* ==================================================================
+   4. THE SED ENGINE
+   ================================================================== */
+/* sed writes groups as \( \) and GNU quantifiers as \+ \? \| — JavaScript needs them bare */
+function toJsPattern(pattern) {
+  let out = '';
+  for (let i = 0; i < pattern.length; i++) {
+    const ch = pattern[i];
+    if (ch === '\\' && i + 1 < pattern.length) {
+      const next = pattern[i + 1];
+      if ('(){}|+?'.includes(next)) { out += next; i++; continue; }
+      out += ch + next;
+      i++;
+      continue;
+    }
+    out += ch;
+  }
+  return out;
+}
+function makeRe(pattern, ignoreCase) {
+  try { return new RegExp(toJsPattern(pattern), ignoreCase ? 'i' : ''); }
+  catch (error) { return null; }
+}
+/* expand a sed replacement against one match: & is the whole match, \1 a group */
+function toRepText(rep, match, groups) {
+  let out = '';
+  for (let i = 0; i < rep.length; i++) {
+    const ch = rep[i];
+    if (ch === '\\' && i + 1 < rep.length) {
+      const next = rep[i + 1];
+      if (/[0-9]/.test(next)) { const g = groups[+next]; out += g === undefined ? '' : g; i++; continue; }
+      if (next === '&') { out += match; i++; continue; }
+      if (next === '\\') { out += '\\'; i++; continue; }
+      out += next; i++; continue;
+    }
+    if (ch === '&') { out += match; continue; }
+    out += ch;
+  }
+  return out;
+}
+function readUntil(text, from, delim) {
+  let out = '';
+  let i = from;
+  while (i < text.length) {
+    if (text[i] === '\\') { out += text[i] + (text[i + 1] || ''); i += 2; continue; }
+    if (text[i] === delim) return {value: out, end: i, closed: true};
+    out += text[i++];
+  }
+  return {value: out, end: i, closed: false};
+}
+
+/* parse a sed script: "s/a/b/g; /^#/d; 3s/x/y/" */
+function parseScript(text) {
+  const cmds = [];
+  let i = 0;
+  while (i < text.length) {
+    while (i < text.length && /\s/.test(text[i])) i++;
+    if (i >= text.length) break;
+
+    let addr = null;
+    const rest = text.slice(i);
+    let m;
+    if ((m = /^(\d+)\s*,\s*(\d+)/.exec(rest))) { addr = {from: +m[1], to: +m[2]}; i += m[0].length; }
+    else if ((m = /^(\d+)\s*,\s*\$/.exec(rest))) { addr = {from: +m[1], to: Infinity}; i += m[0].length; }
+    else if ((m = /^(\d+)/.exec(rest))) { addr = {line: +m[1]}; i += m[0].length; }
+    else if (text[i] === '$') { addr = {to: Infinity}; i += 1; }
+    while (i < text.length && /\s/.test(text[i])) i++;
+
+    const ch = text[i];
+    if (ch === 's') {
+      i++;
+      const delim = text[i];
+      if (!delim) return {error: "missing delimiter after 's'"};
+      i++;
+      const pat = readUntil(text, i, delim);
+      if (!pat.closed) return {error: "unterminated `s' command"};
+      if (!pat.value) return {error: 'first RE may not be empty'};
+      const rep = readUntil(text, pat.end + 1, delim);
+      if (!rep.closed) return {error: "unterminated `s' command"};
+      i = rep.end + 1;
+      const rest = text.slice(i);
+      if (rest[0] && /[a-zA-Z]/.test(rest[0]) && !'ig'.includes(rest[0])) {
+        return {error: "bad flag in substitute command: '" + rest[0] + "'"};
+      }
+      const flagText = (/^[0-9ig]+/.exec(rest) || [''])[0];
+      const digits = flagText.match(/\d+/g);
+      if (digits && digits.some(d => d.length > 1 || +d === 0)) {
+        return {error: 'invalid occurrence number: ' + digits.join('')};
+      }
+      cmds.push({kind: 's', addr, pat: pat.value, rep: rep.value, flags: flagText});
+      i += flagText.length;
+    } else if (ch === '/') {
+      const pat = readUntil(text, i + 1, '/');
+      if (!pat.closed) return {error: "unterminated `/' address"};
+      let j = pat.end + 1;
+      while (j < text.length && /\s/.test(text[j])) j++;
+      const letter = text[j];
+      if (!letter || !'dpq'.includes(letter)) return {error: "unknown command after /" + pat.value + '/: ' + (letter || '(nothing)')};
+      cmds.push({kind: letter, addr: {re: pat.value}});
+      i = j + 1;
+    } else if (ch === 'd' || ch === 'p' || ch === 'q') {
+      cmds.push({kind: ch, addr});
+      i++;
+    } else {
+      return {error: "unknown command: '" + (ch || '?') + "'"};
+    }
+    while (i < text.length && text[i] !== ';') i++;
+    if (text[i] === ';') i++;
+  }
+  return {cmds};
+}
+
+function addrMatches(addr, lineNo, lineCount, lineText) {
+  if (!addr) return true;
+  if (addr.re !== undefined) {
+    const re = makeRe(addr.re, false);
+    return re ? re.test(lineText) : false;
+  }
+  if (addr.line !== undefined) return lineNo === addr.line;
+  if (addr.from !== undefined) return lineNo >= addr.from && lineNo <= addr.to;
+  if (addr.to !== undefined) return lineNo <= addr.to;
+  return true;
+}
+/* run a parsed script over a file's lines */
+function runScript(lines, cmds, flags) {
+  const out = [];
+  const changes = [];
+  const removed = [];
+  let subs = 0, printed = 0, quit = false, failed = null;
+  lines.forEach((original, index) => {
+    if (quit) return;
+    const lineNo = index + 1;
+    let current = original;
+    let dropped = false;
+    for (const cmd of cmds) {
+      if (!addrMatches(cmd.addr, lineNo, lines.length, current)) continue;
+      if (cmd.kind === 's') {
+        const re = makeRe(cmd.pat, /i/.test(cmd.flags));
+        if (!re) { failed = 'invalid regular expression'; break; }
+        const limit = /(\d+)/.exec(cmd.flags);
+        const all = !limit && /g/.test(cmd.flags);
+        const want = limit ? Math.max(1, +limit[1]) : 1;
+        const rx = new RegExp(re.source, /g/.test(re.flags) ? re.flags : re.flags + 'g');
+        let hits = 0, last = 0, next = '', hit;
+        while ((hit = rx.exec(current)) !== null) {
+          hits++;
+          next += current.slice(last, hit.index);
+          next += (all || hits === want) ? toRepText(cmd.rep, hit[0], hit) : hit[0];
+          last = rx.lastIndex;
+          if (hit[0] === '') rx.lastIndex++;
+          if (!all && hits >= want) break;
+        }
+        if (hits) {
+          next += current.slice(last);
+          if (next !== current) {
+            subs += all ? hits : Math.min(hits, want);
+            changes.push({line: lineNo, before: current, after: next});
+            current = next;
+          }
+        }
+      } else if (cmd.kind === 'd') {
+        dropped = true;
+        removed.push({line: lineNo, text: original});
+        break;
+      } else if (cmd.kind === 'p') {
+        out.push({line: lineNo, text: current, explicit: true});
+        printed++;
+      } else if (cmd.kind === 'q') {
+        quit = true;
+      }
+    }
+    if (dropped) return;
+    if (!flags.n) out.push({line: lineNo, text: current});
+  });
+  return {out, changes, removed, subs, printed, quit, failed};
+}
+
+function parseSed(args) {
+  const flags = {i: false, n: false, backup: ''};
+  const scripts = [];
+  const files = [];
+  let i = 0;
+  let sawScript = false;
+  while (i < args.length) {
+    const arg = args[i];
+    if (arg === '--') { i++; break; }
+    if (arg === '--help') return {help: true};
+    if (arg.startsWith('--')) {
+      const key = arg.slice(2);
+      if (key === 'in-place') { flags.i = true; i++; continue; }
+      if (key.startsWith('in-place=')) { flags.i = true; flags.backup = key.slice(9) || ''; i++; continue; }
+      if (key === 'quiet' || key === 'silent') { flags.n = true; i++; continue; }
+      if (key === 'expression' || key === 'e') { i++; continue; }
+      return {error: "unrecognized option '" + arg + "'"};
+    }
+    if (arg === '-e' || arg === '--expression') {
+      if (args[i + 1] === undefined) {
+        return {error: 'option requires an argument -- \'' + arg + '\''};
+      }
+      scripts.push(args[i + 1]);
+      sawScript = true;
+      i += 2;
+      continue;
+    }
+    if (arg.startsWith('-') && arg.length > 1 && !/^-\d/.test(arg)) {
+      for (let k = 1; k < arg.length; k++) {
+        const f = arg[k];
+        if (f === 'i') {
+          flags.i = true;
+          const suffix = arg.slice(k + 1);
+          if (suffix) { flags.backup = suffix; k = arg.length; }
+        } else if (f === 'n') flags.n = true;
+        else if (f === 'E' || f === 'r' || f === 's') k = arg.length;
+        else if (f === 'e') {
+          if (args[i + 1] === undefined) return {error: 'option requires an argument -- \'-e\''};
+          scripts.push(args[i + 1]);
+          sawScript = true;
+          i++;
+          break;
+        }
+        else return {error: "invalid option -- '" + f + "'", tip: 'sed understands <code>-i</code>, <code>-i.bak</code>, <code>-n</code> and <code>-e</code> in this lab.'};
+      }
+      i++;
+      continue;
+    }
+    if (!sawScript) { scripts.push(arg); sawScript = true; i++; continue; }
+    files.push(arg);
+    i++;
+  }
+  if (!scripts.length) return {error: 'no script specified', tip: "Give sed something to do: <code>sed 's/old/new/g' FILE</code>"};
+  if (!files.length) return {error: 'no input file specified', tip: 'Name the file to stream: <code>sed \'s/a/b/\' notes.txt</code>'};
+  return {flags, scripts, files};
+}
+
+/* ==================================================================
+   5. TERMINAL
+   ================================================================== */
+function log(html, className) {
+  const line = document.createElement('div');
+  line.className = 'line' + (className ? ' ' + className : '');
+  line.innerHTML = html;
+  term.appendChild(line);
+  term.scrollTop = term.scrollHeight;
+}
+function focusInput() {
+  try { input.focus({preventScroll: true}); } catch (error) { input.focus(); }
+}
+function shakeInput() {
+  form.classList.remove('shake');
+  void form.offsetWidth;
+  form.classList.add('shake');
+}
+function tip(html, kind) {
+  log('<span class="tip-line' + (kind ? ' ' + kind : '') + '">' + html + '</span>', 'tip-line-wrap');
+}
+
+/* ==================================================================
+   6. THE STREAM VIEW
+   ================================================================== */
+let counterToken = 0;
+function updateCounter(n) {
+  const token = ++counterToken;
+  const from = Math.max(0, parseInt(countNum.textContent, 10) || 0);
+  countNum.textContent = String(n);
+  counterEl.classList.toggle('zero', n === 0);
+  counterEl.classList.remove('pop');
+  void counterEl.offsetWidth;
+  counterEl.classList.add('pop');
+  if (reduceMotion || from === n) return;
+  const t0 = performance.now(), dur = 440;
+  (function step(t) {
+    if (token !== counterToken) return;
+    const p = Math.max(0, Math.min(1, (t - t0) / dur));
+    if (p > 0) {
+      const e = 1 - Math.pow(1 - p, 3);
+      countNum.textContent = String(Math.max(0, Math.round(from + (n - from) * e)));
+    }
+    if (p < 1) requestAnimationFrame(step);
+    else countNum.textContent = String(n);
+  })(t0);
+}
+
+function renderStream(node, result, saved) {
+  streamBody.innerHTML = '';
+  streamEl.classList.toggle('active', !!node && !saved);
+  streamEl.classList.toggle('saved', !!saved);
+  streamFile.textContent = node ? prettyPath(node) : 'no file chosen';
+  if (!node) {
+    streamStat.textContent = '';
+    streamBody.innerHTML = '<span class="stream-none">Tap a file on the map, then run an <b>sed</b> command. Each line is rewritten as it streams past.</span>';
+    updateUndoButton();
+    return;
+  }
+  const changes = result ? result.changes : [];
+  const removed = result ? result.removed : [];
+  const changeAt = new Map(changes.map(c => [c.line, c]));
+  const removeAt = new Map(removed.map(r => [r.line, r]));
+  const lines = (result ? result.out.map(o => o.text) : node.content);
+  const kept = new Set((result ? result.out : []).map(o => o.line));
+
+  if (!result) {
+    streamStat.textContent = node.content.length + ' lines · ' + sizeLabel(node);
+    node.content.forEach((text, index) => {
+      const row = document.createElement('div');
+      row.className = 'sl';
+      row.style.animationDelay = Math.min(index * 26, 220) + 'ms';
+      row.innerHTML = '<span class="sl-n">' + (index + 1) + '</span><span class="sl-tx">' + esc(text) + '</span>';
+      streamBody.appendChild(row);
+    });
+    updateUndoButton();
+    return;
+  }
+
+  const changedCount = changes.length;
+  const droppedCount = removed.length;
+  streamStat.textContent = changedCount + ' line' + (changedCount === 1 ? '' : 's') + ' changed' +
+    (droppedCount ? ' · ' + droppedCount + ' deleted' : '') +
+    (result.subs ? ' · ' + result.subs + ' substitution' + (result.subs === 1 ? '' : 's') : '') +
+    (saved ? ' · saved' : '');
+
+  let order = [];
+  const seen = new Set();
+  const add = line => { if (!seen.has(line)) { seen.add(line); order.push(line); } };
+  changes.forEach(c => add(c.line));
+  removed.forEach(r => add(r.line));
+  (result.out || []).forEach(o => add(o.line));
+  node.content.forEach((text, index) => { if (kept.has(index + 1) && !seen.has(index + 1)) add(index + 1); });
+
+  order.forEach((lineNo, index) => {
+    const change = changeAt.get(lineNo);
+    const drop = removeAt.get(lineNo);
+    if (drop) {
+      const row = document.createElement('div');
+      row.className = 'sl gone';
+      row.style.animationDelay = Math.min(index * 40, 320) + 'ms';
+      row.innerHTML = '<span class="sl-n">' + lineNo + '</span><span class="del">deleted</span><span class="sl-tx">' + esc(drop.text) + '</span>';
+      streamBody.appendChild(row);
+      return;
+    }
+    if (change) {
+      const row = document.createElement('div');
+      row.className = 'sl changed';
+      row.style.animationDelay = Math.min(index * 40, 320) + 'ms';
+      row.innerHTML = '<span class="sl-n">' + lineNo + '</span>' +
+        '<span class="sl-tx"><span class="was">' + esc(change.before) + '</span> <span class="arrow">→</span> <span class="now">' + esc(change.after) + '</span></span>';
+      streamBody.appendChild(row);
+      return;
+    }
+    const entry = (result.out || []).find(o => o.line === lineNo);
+    const row = document.createElement('div');
+    row.className = 'sl';
+    row.style.animationDelay = Math.min(index * 40, 320) + 'ms';
+    row.innerHTML = '<span class="sl-n">' + lineNo + '</span><span class="sl-tx">' + esc(entry ? entry.text : '') + '</span>';
+    streamBody.appendChild(row);
+  });
+
+  if (!order.length) {
+    streamBody.innerHTML = '<span class="stream-none">' + (result.quit ? 'sed quit early — nothing else was read.' : 'No lines came out. Try without <b>-n</b>, or add a <b>p</b> command.') + '</span>';
+  }
+  streamBody.scrollTop = streamBody.scrollHeight;
+  updateUndoButton();
+}
+function updateUndoButton() {
+  undoBtn.disabled = !undoStack.length;
+  undoBtn.textContent = undoStack.length ? 'undo (' + undoStack.length + ')' : 'undo';
+}
+function streamSweep() {
+  if (reduceMotion) return;
+  const bar = document.createElement('div');
+  bar.className = 'stream-bar';
+  streamBody.parentElement.style.position = 'relative';
+  streamBody.parentElement.appendChild(bar);
+  setTimeout(() => bar.remove(), 860);
+}
+
+/* ==================================================================
+   7. COMMANDS
+   ================================================================== */
+let history = [], historyIndex = -1;
+function tokenize(line) {
+  return line.match(/(?:[^\s"']+|"[^"]*"|'[^']*')+/g) || [];
+}
+function stripQuotes(token) {
+  if ((token[0] === '"' && token[token.length - 1] === '"') || (token[0] === "'" && token[token.length - 1] === "'")) return token.slice(1, -1);
+  return token;
+}
+function execute(raw) {
+  const line = raw.trim();
+  if (!line) return;
+  history.push(line);
+  historyIndex = -1;
+  log('<span class="p">you@linux:' + esc(prettyPath(cwd)) + '$</span> <span class="c">' + esc(line) + '</span>');
+  if (line === 'clear') { term.innerHTML = ''; return; }
+  if (line === 'help' || line === '--help') { showHelp(); return; }
+  const parts = tokenize(line);
+  const command = parts[0];
+  const args = parts.slice(1).map(stripQuotes);
+  if (command === 'sed') doSed(args);
+  else if (command === 'undo') doUndo();
+  else if (command === 'ls') doLs(args);
+  else if (command === 'pwd') doPwd();
+  else if (command === 'cat') doCat(args);
+  else if (command === 'cd') doCd(args);
+  else {
+    log('bash: ' + esc(command) + ': command not found', 'err');
+    log('<span class="dim">This playground is learning <b>sed</b>. Type <b>help</b> for the command list.</span>');
+    shakeInput();
+  }
+}
+
+function doSed(args) {
+  const parsed = parseSed(args);
+  if (parsed.help) { showSedHelp(); return; }
+  if (parsed.error) {
+    log('sed: ' + esc(parsed.error), 'err');
+    if (parsed.tip) tip(parsed.tip, 'danger');
+    shakeInput();
+    return;
+  }
+  let cmds = [];
+  for (const script of parsed.scripts) {
+    const compiled = parseScript(script);
+    if (compiled.error) {
+      log('sed: -e expression #' + (cmds.length + 1) + ', script #' + (cmds.length + 1) + ': ' + esc(compiled.error), 'err');
+      tip('A sed command looks like <code>s/old/new/g</code> or <code>/pattern/d</code>. Check your slashes.', 'danger');
+      shakeInput();
+      return;
+    }
+    cmds = cmds.concat(compiled.cmds);
+  }
+  if (!cmds.length) {
+    log('sed: no commands in the script', 'err');
+    shakeInput();
+    return;
+  }
+  for (const test of cmds) {
+    if (test.kind === 's' && !makeRe(test.pat, false)) {
+      log("sed: -e expression #1, script #1: invalid command: '" + test.pat + "'", 'err');
+      tip('That pattern is not a valid regular expression. Dot, brackets and stars all work.', 'danger');
+      shakeInput();
+      return;
+    }
+  }
+
+  const results = [];
+  for (const spec of parsed.files) {
+    const found = resolvePath(spec, cwd);
+    if (found.error || !found.node || found.node.type !== 'file') {
+      const why = found.error === 'missing' || !found.node ? 'No such file or directory' : 'Is a directory';
+      log("sed: can't read " + esc(spec) + ': ' + why, 'err');
+      tip(why === 'No such file or directory' ? 'Run <b>ls</b> to see the exact names here.' : 'sed streams <b>files</b>. Point it at a file, not a folder.', 'danger');
+      shakeInput();
+      return;
+    }
+    const node = found.node;
+    const result = runScript(node.content, cmds, parsed.flags);
+    if (result.failed) {
+      log('sed: ' + esc(result.failed), 'err');
+      tip('Double-check the pattern in your <code>s</code> command.', 'danger');
+      shakeInput();
+      return;
+    }
+    results.push({node, result, spec});
+  }
+
+  const saved = [];
+  if (parsed.flags.i) {
+    results.forEach(entry => {
+      const next = entry.result.out.map(o => o.text);
+      if (next.join('\n') === entry.node.content.join('\n') && !entry.result.changes.length && !entry.result.removed.length) return;
+      const before = entry.node.content.slice();
+      let backupNode = null;
+      if (parsed.flags.backup) {
+        backupNode = file(entry.node.name + '.' + parsed.flags.backup.replace(/^\./, ''), before, {born: true});
+        insertChild(entry.node.parent, backupNode);
+        flashRow(backupNode, 'born');
+        floatMark(backupNode, 'backup', 'back');
+      }
+      undoStack.push({node: entry.node, before, backup: backupNode});
+      entry.node.content = next;
+      entry.node.size = bytesOf(next);
+      entry.node.mtime = clock++;
+      paintRow(entry.node);
+      flashRow(entry.node, 'edited');
+      floatMark(entry.node, 'edited');
+      const box = relRect(rowOf.get(entry.node));
+      ping(box.left + 16, box.top + box.height / 2);
+      saved.push({node: entry.node, backupNode});
+    });
+  }
+
+  const first = results[0];
+  target = first.node;
+  renderStream(first.node, first.result, saved.length > 0);
+  streamSweep();
+  updateCounter(results.reduce((total, entry) => total + entry.result.changes.length + entry.result.removed.length, 0));
+
+  /* print what sed would output */
+  const silent = parsed.flags.n;
+  results.forEach(entry => {
+    entry.result.out.forEach(line => {
+      if (silent && !line.explicit) return;
+      log(esc(line.text));
+    });
+  });
+  if (silent && !results.some(entry => entry.result.printed)) {
+    log('<span class="dim">(-n suppressed the automatic printing — add a <b>p</b> command to see lines.)</span>');
+  }
+  const totals = results.reduce((acc, entry) => ({
+    changes: acc.changes + entry.result.changes.length,
+    removed: acc.removed + entry.result.removed.length,
+    subs: acc.subs + entry.result.subs
+  }), {changes: 0, removed: 0, subs: 0});
+
+  if (saved.length) {
+    log('<span class="ok">edited ' + saved.length + ' file' + (saved.length === 1 ? '' : 's') + ' in place</span>');
+    saved.forEach(entry => log('<span class="dim">  ' + esc(prettyPath(entry.node)) + ' is now ' + entry.node.size + ' bytes</span>'));
+    if (undoStack.length) tip('Not sure that was right? <b>undo</b> puts the original text back.', 'good');
+  } else if (totals.changes === 0 && totals.removed === 0 && !results.some(entry => entry.result.printed)) {
+    log('<span class="dim">nothing changed — the pattern did not appear in ' + esc(prettyPath(first.node)) + '</span>');
+    tip('sed is quiet when it finds nothing. Check the spelling, or try <code>-i</code> once you are sure.', '');
+  } else {
+    log('<span class="dim">' + totals.changes + ' line' + (totals.changes === 1 ? '' : 's') + ' rewritten' +
+      (totals.removed ? ', ' + totals.removed + ' deleted' : '') +
+      ' — add <b>-i</b> to save it to the file.</span>');
+  }
+
+  lastContext = {
+    command: 'sed',
+    inPlace: saved.length > 0,
+    quiet: silent,
+    backup: !!parsed.flags.backup,
+    commands: cmds.map(c => ({kind: c.kind, pat: c.pat, rep: c.rep, flags: c.flags})),
+    files: parsed.files.slice(),
+    node: first.node,
+    changes: totals.changes,
+    removed: totals.removed,
+    subs: totals.subs
+  };
+  recordEvidence(lastContext);
+  updateRowStates();
+  scrollToRow(first.node);
+  moveAvatar(false, first.node);
+  checkMission();
+  renderChips();
+}
+
+function doUndo() {
+  const entry = undoStack.pop();
+  if (!entry) {
+    log('<span class="dim">nothing to undo</span>');
+    return;
+  }
+  entry.node.content = entry.before.slice();
+  entry.node.size = bytesOf(entry.node.content);
+  entry.node.mtime = clock++;
+  paintRow(entry.node);
+  flashRow(entry.node, 'reverted');
+  floatMark(entry.node, 'restored', 'back');
+  if (entry.backup) {
+    removeNode(entry.backup);
+    log('<span class="dim">removed the backup ' + esc(prettyPath(entry.backup) || entry.backup.name) + '</span>');
+  }
+  log('<span class="ok">undid the edit to ' + esc(prettyPath(entry.node)) + '</span>');
+  renderStream(entry.node, null, false);
+  updateCounter(0);
+  updateUndoButton();
+  updateRowStates();
+}
+
+function showSedHelp() {
+  log('<span class="ok">sed — a stream editor: it reads a file line by line and rewrites each line</span>');
+  log('  <span class="hl">sed \'s/old/new/\' FILE</span>    change the first match on each line');
+  log('  <span class="hl">sed \'s/old/new/g\' FILE</span>   change <b>every</b> match on each line');
+  log('  <span class="hl">sed \'s/old/new/2\' FILE</span>   change only the 2nd match');
+  log('  <span class="hl">sed \'s/old/new/i\' FILE</span>   ignore upper/lower case');
+  log('  <span class="hl">sed -i ...</span>              edit the file itself, not just the output');
+  log('  <span class="hl">sed -i.bak ...</span>          edit it and keep a <b>.bak</b> copy beside it');
+  log('  <span class="hl">sed \'/re/d\' FILE</span>        delete every matching line');
+  log('  <span class="hl">sed -n \'/re/p\' FILE</span>     print only matching lines');
+  log('  <span class="hl">sed \'/re/q\' FILE</span>        stop at the first matching line');
+  log('  <span class="hl">sed \'3s/a/b/\' FILE</span>      only line 3   (also \'$s/a/b/\', \'1,4s/a/b/\')');
+  log('  <span class="hl">sed -e \'s/a/b/\' -e \'/x/d\'</span> chain several commands with ; or -e');
+  log('  <span class="hl">undo</span>                     put back the last in-place edit');
+  log('');
+  log('<span class="dim">In the replacement, <b>&</b> means "whatever matched" and <b>\\1</b> is a captured group.</span>');
+  log('<span class="dim">Patterns are regular expressions: <b>^</b> start, <b>$</b> end, <b>.</b> any, <b>[abc]</b>, <b>*</b>.</span>');
+}
+function showHelp() {
+  log('<span class="ok">Commands you can try:</span>');
+  log('  <span class="hl">sed \'s/old/new/g\' FILE</span>   the star of this lab');
+  log('  <span class="hl">sed --help</span>              every command and flag');
+  log('  <span class="hl">undo</span>                     reverse the last in-place edit');
+  log('  <span class="hl">ls / ls -l / ls -a</span>         look around a folder');
+  log('  <span class="hl">pwd</span>                        where am I?');
+  log('  <span class="hl">cat FILE</span>                   read a file before you change it');
+  log('  <span class="hl">cd PATH</span>                    move between folders');
+  log('  <span class="hl">clear</span>                      wipe the screen');
+}
+
+function doPwd() { log(esc(absPath(cwd))); }
+
+function doCd(args) {
+  if (args.length > 1) { log('bash: cd: too many arguments', 'err'); shakeInput(); return; }
+  const arg = args[0] === undefined ? '' : args[0];
+  let dest;
+  if (!arg) dest = HOME;
+  else if (arg === '-') {
+    if (!prevDir) { log('bash: cd: OLDPWD not set', 'err'); shakeInput(); return; }
+    dest = prevDir;
+  } else {
+    const result = resolvePath(arg, cwd);
+    if (result.error) {
+      log('bash: cd: ' + esc(arg) + ': ' + (result.error === 'missing' ? 'No such file or directory' : 'Not a directory'), 'err');
+      shakeInput();
+      return;
+    }
+    if (result.node.type !== 'dir') {
+      log('bash: cd: ' + esc(arg) + ': Not a directory', 'err');
+      tip('<b>' + esc(arg) + '</b> is a file — <b>cd</b> only walks into folders.');
+      shakeInput();
+      return;
+    }
+    dest = result.node;
+  }
+  if (dest === cwd) { log('<span class="ok">You are already in ' + esc(prettyPath(cwd)) + '.</span>'); return; }
+  prevDir = cwd;
+  cwd = dest;
+  target = null;
+  updateUI();
+  animateAvatarTo(cwd);
+  log('<span class="ok">Now in ' + esc(prettyPath(cwd)) + '</span>');
+}
+
+function parseLs(args) {
+  const flags = {a: false, l: false, t: false, r: false, one: false, h: false};
+  const paths = [];
+  let optionsEnded = false;
+  for (const arg of args) {
+    if (arg === '--help') return {help: true};
+    if (!optionsEnded && arg === '--') { optionsEnded = true; continue; }
+    if (!optionsEnded && arg.startsWith('--')) {
+      const names = {all: 'a', 'almost-all': 'a', long: 'l', 'time-sort': 't', reverse: 'r', oneline: 'one', 'human-readable': 'h'};
+      const key = arg.slice(2).split('=')[0];
+      if (!(key in names)) return {error: "unsupported option -- '" + arg.slice(2) + "'"};
+      flags[names[key]] = true;
+      continue;
+    }
+    if (!optionsEnded && arg.startsWith('-') && arg.length > 1) {
+      for (const flag of arg.slice(1)) {
+        if (flag === 'A') { flags.a = true; continue; }
+        if (flag === '1') { flags.one = true; continue; }
+        if (!(flag in flags)) return {error: "invalid option -- '" + flag + "'", tip: 'ls understands <code>-a</code>, <code>-A</code>, <code>-l</code>, <code>-h</code>, <code>-t</code>, <code>-r</code> and <code>-1</code>.'};
+        flags[flag] = true;
+      }
+      continue;
+    }
+    paths.push(arg);
+  }
+  if (paths.length > 1) return {error: 'this playground lists one path at a time'};
+  return {flags, path: paths[0] || '.'};
+}
+function lsMode(node) {
+  if (node.type === 'dir') return 'drwxr-xr-x';
+  if (node.type === 'link') return 'lrwxrwxrwx';
+  return node.name.startsWith('.') ? '-rw-------' : '-rw-r--r--';
+}
+function lsSizeText(node, human) {
+  if (node.type === 'dir') return human ? '4.0K' : '4096';
+  const bytes = node.size || 0;
+  if (!human) return String(bytes);
+  if (bytes >= 1048576) return (bytes / 1048576).toFixed(1) + 'M';
+  if (bytes >= 1024) return (bytes / 1024).toFixed(1) + 'K';
+  return bytes + 'B';
+}
+function doLs(args) {
+  const parsed = parseLs(args);
+  if (parsed.help) { showLsHelp(); return; }
+  if (parsed.error) { log('ls: ' + esc(parsed.error), 'err'); if (parsed.tip) tip(parsed.tip, 'danger'); shakeInput(); return; }
+  const result = resolvePath(parsed.path, cwd);
+  if (result.error) {
+    log("ls: cannot access '" + esc(parsed.path) + "': " + (result.error === 'missing' ? 'No such file or directory' : 'Not a directory'), 'err');
+    shakeInput();
+    return;
+  }
+  const node = result.node;
+  let entries = node.type === 'dir' ? node.children.slice() : [node];
+  if (node.type === 'dir' && !parsed.flags.a) entries = entries.filter(entry => !entry.name.startsWith('.'));
+  entries.sort(byName);
+  if (parsed.flags.t) entries.sort((left, right) => right.mtime - left.mtime);
+  if (parsed.flags.r) entries.reverse();
+  if (!entries.length) { log('<span class="dim">(empty)</span>'); return; }
+  const paint = entry => {
+    const kind = entry.name.startsWith('.') ? 'code' : entry.type === 'dir' ? 'd' : 'f';
+    const suffix = entry.type === 'dir' ? '/' : '';
+    return '<span class="' + kind + '">' + esc(entry.name + suffix) + '</span>';
+  };
+  if (parsed.flags.l) {
+    entries.forEach(entry => {
+      const date = new Date(entry.mtime).toLocaleDateString('en-US', {month: 'short', day: '2-digit'});
+      log(lsMode(entry) + '  you  you  ' + lsSizeText(entry, parsed.flags.h).padStart(6, ' ') + '  ' + date + '  ' + paint(entry));
+    });
+  } else if (parsed.flags.one) {
+    entries.forEach(entry => log(paint(entry)));
+  } else {
+    log(entries.map(paint).join('   '));
+  }
+  log('<span class="dim">' + entries.length + (entries.length === 1 ? ' entry' : ' entries') + ' in ' + esc(prettyPath(node)) + '</span>');
+}
+function showLsHelp() {
+  log('<span class="ok">ls — list what is here</span>');
+  log('  <span class="hl">ls</span>   <span class="hl">ls -l</span> long   <span class="hl">ls -a</span> hidden   <span class="hl">ls -1</span> one per line');
+  log('  <span class="hl">ls -h</span> readable sizes   <span class="hl">ls -t</span> newest   <span class="hl">ls -r</span> reversed   <span class="hl">ls PATH</span>');
+}
+
+function doCat(args) {
+  const names = args.filter(arg => !arg.startsWith('-'));
+  if (!names.length) { log('cat: missing file operand', 'err'); shakeInput(); return; }
+  const files = [];
+  for (const spec of names) {
+    const result = resolvePath(spec, cwd);
+    if (result.error || result.node.type !== 'file') {
+      log("cat: '" + esc(spec) + "': " + (result.error === 'missing' ? 'No such file or directory' : result.error === 'notdir' ? 'Not a directory' : 'Is a directory'), 'err');
+      shakeInput();
+      return;
+    }
+    files.push(result.node);
+  }
+  files.forEach((node, index) => {
+    if (files.length > 1) log('<span class="dim">── ' + esc(node.name) + ' ──</span>');
+    node.content.forEach((text, lineIndex) => {
+      log((args.includes('-n') ? '<span class="code">' + String(lineIndex + 1).padStart(3, ' ') + '</span> ' : '') + esc(text));
+    });
+    if (index < files.length - 1) log('');
+  });
+  target = files[0];
+  renderStream(files[0], null, false);
+  updateRowStates();
+  scrollToRow(files[0]);
+  moveAvatar(false, files[0]);
+}
+
+function onNodeClick(node) {
+  if (node.type === 'file') {
+    if (target === node) {
+      target = null;
+    } else {
+      target = node;
+      input.value = "sed 's/old/new/g' " + (node.parent === cwd ? node.name : prettyPath(node)) + ' ';
+    }
+    renderStream(target, null, false);
+    updateRowStates();
+    if (target) scrollToRow(target);
+    return;
+  }
+  if (target && node.type === 'dir') {
+    const spec = node.parent === cwd ? node.name : prettyPath(node);
+    execute("sed 's/old/new/g' " + spec + '/');
+    return;
+  }
+  if (node === cwd) {
+    log('<span class="dim">You are already here. Tap a file to load it into the stream.</span>');
+    return;
+  }
+  target = null;
+  renderStream(null, null, false);
+  updateRowStates();
+  execute('cd ' + (node.parent === cwd ? node.name : prettyPath(node)));
+}
+
+/* ==================================================================
+   8. DRY RUN
+   ================================================================== */
+function renderPreview() {
+  const raw = input.value.trim();
+  previewEl.className = 'preview';
+  if (!raw) {
+    pvBody.innerHTML = '<span class="pv-msg">' + (target
+      ? 'aimed at ' + esc(target.name) + ' — finish the sed command to preview it'
+      : 'type a sed command to see what it would change') + '</span>';
+    return;
+  }
+  const parts = tokenize(raw);
+  if (parts[0] !== 'sed') {
+    const label = parts[0] === 'ls' ? 'ls lists a folder — try it in the terminal.'
+      : parts[0] === 'cat' ? 'cat prints a file — handy before you rewrite it.'
+      : parts[0] === 'pwd' ? 'pwd prints where you are standing.'
+      : parts[0] === 'undo' ? 'undo puts back the last in-place edit.'
+      : parts[0] === 'cd' ? 'cd walks you between folders.'
+      : 'only sed is previewed here — this lab is about rewriting text.';
+    pvBody.innerHTML = '<span class="pv-msg">' + label + '</span>';
+    return;
+  }
+  const parsed = parseSed(parts.slice(1).map(stripQuotes));
+  if (parsed.help) {
+    pvBody.innerHTML = '<span class="pv-msg">sed flags: <code>-i</code> edit in place · <code>-i.bak</code> keep a backup · <code>-n</code> quiet · <code>-e</code> chain</span>';
+    return;
+  }
+  if (parsed.error) {
+    previewEl.className = 'preview bad';
+    pvBody.innerHTML = '<span class="pv-verdict bad">blocked</span><span class="pv-msg">' + esc(parsed.error) + '</span>';
+    return;
+  }
+  let cmds = [];
+  for (const script of parsed.scripts) {
+    const compiled = parseScript(script);
+    if (compiled.error) {
+      previewEl.className = 'preview bad';
+      pvBody.innerHTML = '<span class="pv-verdict bad">bad script</span><span class="pv-msg">' + esc(compiled.error) + '</span>';
+      return;
+    }
+    cmds = cmds.concat(compiled.cmds);
+  }
+  const node = resolvePath(parsed.files[0], cwd);
+  if (node.error || node.node.type !== 'file') {
+    previewEl.className = 'preview bad';
+    pvBody.innerHTML = '<span class="pv-verdict bad">no such file</span><span class="pv-msg">' + esc(parsed.files[0]) + ' is not a readable file here</span>';
+    return;
+  }
+  const result = runScript(node.node.content, cmds, parsed.flags);
+  const touched = result.changes.length + result.removed.length;
+  const items = '<span class="pv-verdict ' + (touched ? 'ok' : 'warn') + '">' +
+    (touched ? touched + (touched === 1 ? ' line' : ' lines') + ' change' : 'no change') + '</span>' +
+    (parsed.flags.i ? '<span class="pv-verdict ' + (parsed.flags.backup ? 'ok' : 'warn') + '">will edit the file' + (parsed.flags.backup ? ' + keep a .bak' : '') + '</span>' : '');
+  previewEl.className = touched ? (parsed.flags.i ? 'preview ok' : 'preview warn') : 'preview';
+  pvBody.innerHTML = items + '<span class="pv-msg">' + esc(prettyPath(node.node)) + ' · ' + node.node.content.length + ' lines in, ' + result.out.length + ' out</span>';
+}
+
+/* ==================================================================
+   9. MISSIONS
+   ================================================================== */
+const evidence = {sub: false, global: false, inplace: false, delete: false, quiet: false, backup: false};
+function recordEvidence(ctx) {
+  const subs = ctx.commands.filter(c => c.kind === 's');
+  if (subs.length) evidence.sub = true;
+  if (subs.some(c => /g/.test(c.flags || ''))) evidence.global = true;
+  if (ctx.inPlace) evidence.inplace = true;
+  if (ctx.commands.some(c => c.kind === 'd')) evidence.delete = true;
+  if (ctx.quiet && ctx.commands.some(c => c.kind === 'p')) evidence.quiet = true;
+  if (ctx.backup) evidence.backup = true;
+}
+const missions = [
+  {text: 'In <b>~/config/app.conf</b>, change <b>8080</b> to <b>9090</b>.',
+   hint: "The heart of sed is <code>s/old/new/</code>: <code>sed 's/8080/9090/' ~/config/app.conf</code>",
+   answer: "sed 's/8080/9090/' ~/config/app.conf",
+   check: c => evidence.sub || (c && c.commands.some(x => x.kind === 's' && x.rep === '9090') && c.changes > 0)},
+
+  {text: 'In <b>~/notes.txt</b>, change <b>every</b> dash to a star — not just the first per line.',
+   hint: "Without <code>g</code> sed stops after the first match on a line. Add it: <code>sed 's/- /* /g' ~/notes.txt</code>",
+   answer: "sed 's/- /* /g' ~/notes.txt",
+   check: c => evidence.global || (c && c.commands.some(x => x.kind === 's' && /g/.test(x.flags || '')) && c.changes > 0)},
+
+  {text: 'Now make it <b>real</b>: change <b>localhost</b> to <b>0.0.0.0</b> in the file itself.',
+   hint: 'Without <code>-i</code> sed only prints the result. Add it and the file on the map changes: <code>sed -i \'s/localhost/0.0.0.0/g\' ~/config/app.conf</code>',
+   answer: "sed -i 's/localhost/0.0.0.0/g' ~/config/app.conf",
+   check: c => evidence.inplace || (c && c.inPlace && c.commands.some(x => x.kind === 's' && String(x.rep).indexOf('0.0.0.0') === 0))},
+
+  {text: 'Delete every <b>comment</b> line from that config — they all start with <b>#</b>.',
+   hint: "A different command: <code>sed '/^#/d' ~/config/app.conf</code>. <code>^</code> means \"start of line\".",
+   answer: "sed '/^#/d' ~/config/app.conf",
+   check: c => evidence.delete || (c && c.commands.some(x => x.kind === 'd') && c.removed > 0)},
+
+  {text: 'Print <b>only</b> the <b>ERROR</b> lines of <b>~/logs/access.log</b>.',
+   hint: "Two parts: <code>-n</code> stops the automatic printing, and <code>p</code> prints what you ask for: <code>sed -n '/ERROR/p' ~/logs/access.log</code>",
+   answer: "sed -n '/ERROR/p' ~/logs/access.log",
+   check: c => evidence.quiet || (c && c.quiet && c.commands.some(x => x.kind === 'p') && c.changes >= 0 && true)},
+
+  {text: 'Safest edit yet: change <b>GET</b> to <b>POST</b> in the log, but <b>keep a backup</b>.',
+   hint: 'A suffix after <code>-i</code> names the backup: <code>sed -i.bak \'s/GET/POST/g\' ~/logs/access.log</code>. A new file appears on the map.',
+   answer: "sed -i.bak 's/GET/POST/g' ~/logs/access.log",
+   check: c => evidence.backup || (c && c.backup && c.inPlace && c.changes > 0)}
+];
+const missionCount = missions.length;
+let missionIndex = 0, missionLocked = false;
+
+function renderMission() {
+  const mission = missions[Math.min(missionIndex, missionCount - 1)];
+  missionBadge.textContent = 'Mission ' + (missionIndex + 1) + ' / ' + missionCount;
+  missionText.innerHTML = mission.text;
+  hintBar.textContent = '';
+  hintBar.classList.remove('show');
+  renderChips();
+}
+function checkMission() {
+  if (missionLocked || missionIndex >= missionCount || !lastContext) return;
+  let passed = false;
+  try { passed = missions[missionIndex].check(lastContext); } catch (error) { passed = false; }
+  if (passed) completeMission();
+}
+function completeMission() {
+  missionLocked = true;
+  stepsEl.children[missionIndex].classList.add('done');
+  missionEl.classList.add('complete');
+  setTimeout(() => {
+    missionEl.classList.remove('complete');
+    missionIndex++;
+    missionLocked = false;
+    if (missionIndex >= missionCount) finishAll();
+    else { renderMission(); checkMission(); }
+  }, 950);
+}
+function finishAll() {
+  missionBadge.textContent = 'All done';
+  missionText.innerHTML = 'You can rewrite a whole file with one line of sed. Keep exploring!';
+  hintBtn.style.display = 'none';
+  hintBar.classList.remove('show');
+  confetti();
+  log('<span class="ok">All missions complete — nicely done!</span>');
+  log('<span class="dim">sed reads a line, rewrites it, prints it. With -i it also saves. With undo you can take it back.</span>');
+}
+function confetti() {
+  const colors = ['#fb923c', '#fbbf24', '#4ade80', '#fdba74', '#f472b6', '#fb7185'];
+  for (let i = 0; i < 55; i++) {
+    const piece = document.createElement('i');
+    piece.className = 'confetti';
+    piece.style.left = Math.random() * 100 + '%';
+    piece.style.background = colors[i % colors.length];
+    piece.style.animationDelay = (Math.random() * 0.45) + 's';
+    piece.style.animationDuration = (1.7 + Math.random() * 1.3) + 's';
+    piece.style.setProperty('--rot', (Math.random() * 900 - 450) + 'deg');
+    document.body.appendChild(piece);
+    setTimeout(() => piece.remove(), 3600);
+  }
+}
+
+/* ==================================================================
+   10. CHIPS + EVENTS
+   ================================================================== */
+function renderChips() {
+  chips.innerHTML = '';
+  const mission = missions[Math.min(missionIndex, missionCount - 1)];
+  const list = [];
+  if (mission && mission.answer) list.push(mission.answer);
+  list.push("sed 's/8080/9090/g' ~/config/app.conf", "sed '/^#/d' ~/config/app.conf", 'cat ~/config/app.conf');
+  const essentials = ['ls', 'pwd', 'help'];
+  const seen = new Set();
+  list.filter(command => {
+    if (seen.has(command)) return false;
+    seen.add(command);
+    return true;
+  }).slice(0, 4).concat(essentials).forEach(command => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'chip';
+    button.textContent = command;
+    button.addEventListener('click', () => { input.value = ''; execute(command); focusInput(); });
+    chips.appendChild(button);
+  });
+}
+function updateUI() {
+  psPath.textContent = prettyPath(cwd);
+  updateRowStates();
+  renderCrumbs();
+  renderChips();
+  renderPreview();
+}
+function renderCrumbs() {
+  crumbs.innerHTML = '';
+  const path = prettyPath(cwd);
+  let parts;
+  if (path === '/') parts = ['/'];
+  else if (path.startsWith('~')) parts = ['/', 'home', 'you', ...path.slice(1).split('/').filter(Boolean)];
+  else parts = ['/', ...path.split('/').filter(Boolean)];
+  parts.forEach((part, index) => {
+    if (index) {
+      const separator = document.createElement('span');
+      separator.className = 'sep';
+      separator.textContent = '›';
+      crumbs.appendChild(separator);
+    }
+    const crumb = document.createElement('span');
+    crumb.className = 'crumb';
+    crumb.style.animationDelay = (index * 45) + 'ms';
+    crumb.textContent = part === 'you' ? '~' : part;
+    crumbs.appendChild(crumb);
+  });
+}
+
+hintBtn.addEventListener('click', () => {
+  if (hintBar.classList.contains('show')) { hintBar.classList.remove('show'); renderChips(); return; }
+  const mission = missions[Math.min(missionIndex, missionCount - 1)];
+  hintBar.innerHTML = mission.hint;
+  hintBar.classList.add('show');
+  renderChips();
+});
+undoBtn.addEventListener('click', () => { doUndo(); focusInput(); });
+form.addEventListener('submit', event => {
+  event.preventDefault();
+  const value = input.value;
+  input.value = '';
+  renderPreview();
+  execute(value);
+  focusInput();
+});
+input.addEventListener('input', renderPreview);
+input.addEventListener('keydown', event => {
+  if (event.key === 'ArrowUp') {
+    event.preventDefault();
+    if (historyIndex < history.length - 1) {
+      historyIndex++;
+      input.value = history[history.length - 1 - historyIndex];
+      input.setSelectionRange(input.value.length, input.value.length);
+      renderPreview();
+    }
+  } else if (event.key === 'ArrowDown') {
+    event.preventDefault();
+    if (historyIndex > 0) {
+      historyIndex--;
+      input.value = history[history.length - 1 - historyIndex];
+    } else {
+      historyIndex = -1;
+      input.value = '';
+    }
+    renderPreview();
+  } else if (event.key === 'Tab') {
+    event.preventDefault();
+    completeToken();
+  }
+});
+function completeToken() {
+  const value = input.value;
+  const tokens = value.split(/\s+/);
+  const last = tokens[tokens.length - 1] || '';
+  if (!last) return;
+  if (value.replace(/"/g, '').replace(/'/g, '').indexOf('s/') > -1 && last.indexOf('/') > -1) return;
+  const slash = last.lastIndexOf('/');
+  const dirPart = slash > -1 ? last.slice(0, slash + 1) : '';
+  const fragment = slash > -1 ? last.slice(slash + 1) : last;
+  let candidates = [];
+  if (fragment.startsWith('-') && tokens.length > 1) {
+    candidates = ['-i', '-i.bak', '-n', '-e', '--in-place', '--quiet'];
+  } else {
+    const result = resolvePath(dirPart || '.', cwd);
+    if (result.error || result.node.type !== 'dir') return;
+    candidates = result.node.children.map(child => child.name + (child.type === 'dir' ? '/' : ''));
+  }
+  const hits = candidates.filter(candidate => candidate.startsWith(fragment));
+  if (!hits.length) return;
+  if (hits.length === 1) {
+    const suffix = hits[0].endsWith('/') ? '' : ' ';
+    input.value = value.slice(0, value.length - last.length) + dirPart + hits[0] + suffix;
+    input.setSelectionRange(input.value.length, input.value.length);
+  } else {
+    log('<span class="dim">' + esc(hits.join('  ')) + '</span>');
+  }
+  renderPreview();
+}
+
+/* ==================================================================
+   11. RESET + BOOT
+   ================================================================== */
+function resetLab() {
+  buildModel();
+  buildTree();
+  cwd = HOME;
+  prevDir = null;
+  target = null;
+  lastContext = null;
+  undoStack.length = 0;
+  history = [];
+  historyIndex = -1;
+  missionIndex = 0;
+  missionLocked = false;
+  Object.keys(evidence).forEach(key => { evidence[key] = false; });
+  term.innerHTML = '';
+  stepsEl.innerHTML = '';
+  missions.forEach(() => stepsEl.appendChild(document.createElement('i')));
+  hintBtn.style.display = '';
+  input.value = '';
+  countNum.textContent = '0';
+  counterToken++;
+  counterEl.classList.add('zero');
+  streamEl.className = 'stream';
+  requestAnimationFrame(() => {
+    moveAvatar(false);
+    updateUI();
+    renderMission();
+    renderStream(null, null, false);
+    log('<span class="hl">Fresh filesystem.</span> Every mission is live again.');
+  });
+}
+resetBtn.addEventListener('click', () => {
+  resetLab();
+  resetBtn.classList.remove('spin');
+  void resetBtn.offsetWidth;
+  resetBtn.classList.add('spin');
+  setTimeout(() => resetBtn.classList.remove('spin'), 600);
+});
+window.addEventListener('resize', () => moveAvatar(false));
+
+HOME = buildModel();
+buildTree();
+stepsEl.innerHTML = '';
+missions.forEach(() => stepsEl.appendChild(document.createElement('i')));
+cwd = HOME;
+
+requestAnimationFrame(() => {
+  moveAvatar(false);
+  updateUI();
+  renderMission();
+  renderStream(null, null, false);
+  log('<span class="hl">Welcome to the visual sed terminal.</span>');
+  log('<b>sed</b> is a stream editor: it reads a file <b>one line at a time</b> and rewrites each line as it goes.');
+  log('Without <b>-i</b> it only prints the result. Watch the stream panel show every line before and after.');
+  log('');
+  log('<span class="dim">Try this first:</span> <span class="code">sed \'s/8080/9090/\' ~/config/app.conf</span>');
+});
+
+if (!('ontouchstart' in window) && window.innerWidth > 900) setTimeout(focusInput, 400);
+</script>
+</body>
+</html>

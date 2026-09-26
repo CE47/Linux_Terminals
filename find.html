@@ -1,0 +1,1682 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Learn `find` — Visual Linux</title>
+<style>
+/* ============ TOKENS ============ */
+:root{
+  --bg:#060d16;
+  --txt:#e4eefb;
+  --dim:#8a9bb4;
+  --accent:#38bdf8;
+  --accent2:#7dd3fc;
+  --hit:#fbbf24;
+  --green:#4ade80;
+  --err:#fb7185;
+  --line:rgba(255,255,255,.11);
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;min-height:100dvh;font-family:var(--mono);color:var(--txt);background:var(--bg);overflow-x:hidden;-webkit-font-smoothing:antialiased}
+body::before{content:'';position:fixed;inset:0;z-index:-2;background:radial-gradient(900px 620px at 10% -12%,rgba(56,189,248,.20),transparent 62%),radial-gradient(820px 600px at 100% 3%,rgba(251,191,36,.09),transparent 60%),radial-gradient(760px 700px at 46% 118%,rgba(125,211,252,.10),transparent 63%),#060d16}
+body::after{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;background-image:linear-gradient(rgba(255,255,255,.026) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.026) 1px,transparent 1px);background-size:46px 46px;-webkit-mask-image:radial-gradient(ellipse at 50% 0%,#000 14%,transparent 74%);mask-image:radial-gradient(ellipse at 50% 0%,#000 14%,transparent 74%)}
+
+/* ============ LAYOUT ============ */
+.app{max-width:1320px;margin:0 auto;min-height:100dvh;display:flex;flex-direction:column;padding:14px 16px 16px;gap:11px}
+.top{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:11px}
+.logo{width:38px;height:38px;flex:0 0 auto;border-radius:11px;display:grid;place-items:center;position:relative;font-size:19px;font-weight:700;color:#04121f;background:linear-gradient(150deg,#bae6fd,#38bdf8 45%,#0284c7);box-shadow:0 8px 22px -8px rgba(56,189,248,.9),inset 0 1px 0 rgba(255,255,255,.6);animation:logoPulse 3.2s ease-in-out infinite}
+@keyframes logoPulse{0%,100%{box-shadow:0 8px 22px -8px rgba(56,189,248,.9),inset 0 1px 0 rgba(255,255,255,.6)}50%{box-shadow:0 8px 32px -6px rgba(56,189,248,1),inset 0 1px 0 rgba(255,255,255,.6)}}
+.logo::after{content:'';position:absolute;right:-3px;bottom:-3px;width:12px;height:12px;border-radius:50%;background:#fbbf24;border:2px solid #060d16;animation:beacon 2.4s ease-in-out infinite}
+@keyframes beacon{0%,100%{transform:scale(.8);opacity:.6}50%{transform:scale(1.15);opacity:1;box-shadow:0 0 12px rgba(251,191,36,.9)}}
+.brand h1{margin:0;font-size:16px;letter-spacing:.01em;font-weight:700}
+.brand h1 code{color:#bae6fd;background:rgba(56,189,248,.16);padding:1px 7px;border-radius:6px;border:1px solid rgba(56,189,248,.3)}
+.brand p{margin:2px 0 0;font-size:11.5px;color:var(--dim)}
+.steps{display:flex;gap:7px;align-items:center}
+.steps i{width:9px;height:9px;border-radius:50%;display:block;background:rgba(255,255,255,.13);transition:all .45s cubic-bezier(.34,1.56,.64,1)}
+.steps i.done{background:var(--green);box-shadow:0 0 0 4px rgba(74,222,128,.15),0 0 14px rgba(74,222,128,.7);transform:scale(1.15)}
+.reset-btn{font:inherit;font-size:10.5px;letter-spacing:.04em;color:var(--dim);cursor:pointer;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);padding:5px 10px;border-radius:9px;white-space:nowrap;transition:.2s;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.reset-btn:hover{color:var(--txt);background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.26)}
+.reset-btn:active{transform:scale(.95)}
+.reset-btn.spin{animation:resetSpin .55s cubic-bezier(.34,1.3,.64,1)}
+@keyframes resetSpin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+
+/* ---- mission bar ---- */
+.mission{display:flex;align-items:center;gap:12px;padding:10px 13px;border-radius:14px;background:linear-gradient(90deg,rgba(56,189,248,.12),rgba(56,189,248,.02));border:1px solid rgba(56,189,248,.24);transition:background .35s,border-color .35s,transform .35s,box-shadow .35s}
+.mission.complete{background:linear-gradient(90deg,rgba(74,222,128,.24),rgba(74,222,128,.05));border-color:rgba(74,222,128,.55);transform:scale(1.012);box-shadow:0 0 30px -8px rgba(74,222,128,.5)}
+.badge{font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;padding:5px 9px;border-radius:999px;white-space:nowrap;color:#bae6fd;background:rgba(56,189,248,.16);border:1px solid rgba(56,189,248,.3);transition:all .3s}
+.mission.complete .badge{color:#86efac;background:rgba(74,222,128,.2);border-color:rgba(74,222,128,.45)}
+.mission-text{flex:1;font-size:13px;line-height:1.4;min-width:0}
+.mission-text b{color:#bae6fd}
+.mission.complete .mission-text b{color:#86efac}
+.hint-btn{font:inherit;font-size:11px;color:var(--dim);cursor:pointer;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);padding:6px 11px;border-radius:9px;white-space:nowrap;transition:.2s}
+.hint-btn:hover{color:var(--txt);background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.24)}
+.hint{max-height:0;overflow:hidden;opacity:0;font-size:12.5px;color:var(--dim);padding:0 14px;border-radius:12px;transition:max-height .3s ease,opacity .3s ease,padding .3s ease,background .3s}
+.hint.show{max-height:80px;opacity:1;padding:9px 14px;background:rgba(255,255,255,.035)}
+.hint code{color:#fde68a;background:rgba(251,191,36,.13);padding:1px 6px;border-radius:5px}
+
+/* ---- main grid ---- */
+main{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1.08fr) minmax(0,1fr);grid-template-rows:minmax(0,1fr);gap:13px}
+.panel{background:linear-gradient(180deg,rgba(255,255,255,.048),rgba(255,255,255,.014));border:1px solid rgba(255,255,255,.08);border-radius:17px;padding:12px;display:flex;flex-direction:column;min-height:0;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:0 22px 44px -24px rgba(0,0,0,.9),inset 0 1px 0 rgba(255,255,255,.055)}
+.panel-head{display:flex;align-items:center;gap:9px;padding:1px 4px 9px}
+.title{font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:var(--dim);font-weight:700}
+.sub{font-size:11px;color:rgba(138,155,180,.65);margin-left:auto}
+.dots{display:flex;gap:5px;margin-right:2px}
+.dots i{width:9px;height:9px;border-radius:50%;display:block}
+.dots i:nth-child(1){background:#fb7185}
+.dots i:nth-child(2){background:#fbbf24}
+.dots i:nth-child(3){background:#4ade80}
+
+/* ---- found counter ---- */
+.counter{margin-left:auto;display:flex;align-items:center;gap:5px;font-size:10.5px;letter-spacing:.04em;color:#fde68a;padding:4px 10px;border-radius:99px;background:rgba(251,191,36,.11);border:1px solid rgba(251,191,36,.26);transition:background .3s,border-color .3s,color .3s}
+.counter b{font-size:12.5px;color:var(--hit);min-width:9px;text-align:center}
+.counter.zero{background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.1);color:var(--dim)}
+.counter.zero b{color:var(--dim)}
+.counter.pop{animation:counterPop .55s cubic-bezier(.34,1.56,.64,1)}
+@keyframes counterPop{0%{transform:scale(1)}40%{transform:scale(1.22);box-shadow:0 0 24px rgba(251,191,36,.55)}100%{transform:scale(1)}}
+
+/* ============ SCAN CARD ============ */
+.crumbs{display:flex;align-items:center;flex-wrap:wrap;gap:3px;padding:7px 9px;margin-bottom:8px;border-radius:11px;background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.055);min-height:37px}
+.crumb{font-size:12px;padding:3px 9px;border-radius:7px;background:rgba(56,189,248,.13);color:#7dd3fc;border:1px solid rgba(56,189,248,.22);animation:crumbIn .32s cubic-bezier(.34,1.56,.64,1) backwards}
+.crumb:last-child{color:#fde68a;background:rgba(251,191,36,.11);border-color:rgba(251,191,36,.26)}
+@keyframes crumbIn{from{opacity:0;transform:translateY(-5px) scale(.85)}to{opacity:1;transform:none}}
+.sep{color:rgba(138,155,180,.5);font-size:11px;padding:0 1px}
+
+.scan-card{position:relative;display:flex;flex-direction:column;gap:8px;padding:10px 11px 9px;margin-bottom:8px;border-radius:13px;background:linear-gradient(120deg,rgba(56,189,248,.11),rgba(251,191,36,.05) 52%,rgba(56,189,248,.08));border:1px solid rgba(56,189,248,.24);overflow:hidden;transition:background .35s,border-color .35s,box-shadow .35s}
+.scan-card::before{content:'';position:absolute;inset:0;pointer-events:none;background:linear-gradient(105deg,transparent 0%,rgba(255,255,255,.08) 45%,transparent 70%);transform:translateX(-110%);animation:laneShimmer 5.5s ease-in-out infinite}
+@keyframes laneShimmer{0%,55%{transform:translateX(-110%)}78%,100%{transform:translateX(110%)}}
+.scan-card.busy{border-color:rgba(56,189,248,.72);box-shadow:0 0 34px -14px rgba(56,189,248,.95)}
+.scan-card.hit{border-color:rgba(251,191,36,.6);box-shadow:0 0 34px -14px rgba(251,191,36,.9)}
+.scan-card.empty{border-color:rgba(255,255,255,.14)}
+.scan-top{display:flex;align-items:center;justify-content:space-between;gap:8px;position:relative;z-index:1;min-width:0}
+.scan-label{font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:#7dd3fc;font-weight:700;flex:0 0 auto}
+.scan-status{font-size:9.5px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;max-width:62%;transition:color .3s}
+.scan-status.scanning{color:#7dd3fc}
+.scan-status.found{color:#fde68a}
+.scan-status.none{color:var(--dim)}
+.scan-terms{display:flex;align-items:center;gap:5px;flex-wrap:wrap;position:relative;z-index:1;min-height:26px}
+.term-chip{font-size:10.5px;padding:3px 8px;border-radius:7px;color:#bae6fd;background:rgba(56,189,248,.12);border:1px solid rgba(56,189,248,.26);white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis;animation:termIn .3s cubic-bezier(.34,1.56,.64,1) backwards}
+@keyframes termIn{from{opacity:0;transform:translateY(4px) scale(.9)}to{opacity:1;transform:none}}
+.term-chip.start{color:#fde68a;background:rgba(251,191,36,.12);border-color:rgba(251,191,36,.28);flex:0 1 auto;min-width:0}
+.term-chip.hit{color:#fde68a;background:rgba(251,191,36,.14);border-color:rgba(251,191,36,.34)}
+.term-chip.neg{color:#fda4af;background:rgba(251,113,133,.1);border-color:rgba(251,113,133,.26)}
+.term-op{font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);padding:0 1px}
+.term-op.or{color:var(--hit)}
+.scan-words{position:relative;z-index:1;padding-top:7px;border-top:1px solid rgba(255,255,255,.07);color:#cbd5e1;font-size:10.5px;line-height:1.5;min-height:2.6em;max-height:2.6em;overflow:hidden}
+.scan-words b{color:#fde68a}
+.scan-words em{font-style:normal;color:#7dd3fc}
+
+/* ============ TREE (cd.html design) ============ */
+.tree-scroll{flex:1;min-height:0;overflow:auto;padding:4px 2px 6px;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.16) transparent;-webkit-overflow-scrolling:touch}
+.tree-scroll::-webkit-scrollbar{width:8px;height:8px}
+.tree-scroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:99px}
+.tree-scroll::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.26)}
+.tree-inner{position:relative;display:inline-block;vertical-align:top;min-width:100%;padding:6px 58px 16px 2px}
+.node{position:relative}
+.children{margin-left:16px;padding-left:12px;border-left:2px solid var(--line)}
+.children>.node::before{content:'';position:absolute;left:-14px;top:17px;width:14px;height:2px;background:var(--line);border-radius:2px}
+.row{display:inline-flex;align-items:center;gap:8px;min-height:34px;padding:5px 11px 5px 9px;border-radius:10px;cursor:pointer;white-space:nowrap;position:relative;transition:background .22s,box-shadow .22s,transform .18s,opacity .35s;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.row:hover{background:rgba(255,255,255,.055);transform:translateX(2px)}
+.row.current{background:linear-gradient(90deg,rgba(56,189,248,.22),rgba(56,189,248,.03));box-shadow:inset 0 0 0 1px rgba(56,189,248,.4)}
+.row.current .label{color:#fff;font-weight:700}
+.row.file{opacity:.55}
+.row.dimmed{opacity:.22}
+.row.found{background:linear-gradient(90deg,rgba(251,191,36,.2),rgba(251,191,36,.03));box-shadow:inset 0 0 0 1px rgba(251,191,36,.55);opacity:1;animation:rowFound .55s cubic-bezier(.34,1.56,.64,1) backwards}
+@keyframes rowFound{0%{transform:translateX(-6px) scale(.97);box-shadow:0 0 0 2px rgba(251,191,36,.95),0 0 30px rgba(251,191,36,.7)}100%{transform:none}}
+.row.found .label{color:#fff;font-weight:600}
+.row.found .icon.dir{box-shadow:0 0 0 3px rgba(251,191,36,.28),0 2px 14px rgba(251,191,36,.7)}
+.row.spot{box-shadow:inset 0 0 0 1px rgba(56,189,248,.8);background:rgba(56,189,248,.16);opacity:1}
+.icon{width:18px;height:14px;flex:0 0 auto;position:relative;border-radius:3px;transition:box-shadow .3s;z-index:1}
+.icon.dir{background:linear-gradient(180deg,#fcd34d,#f59e0b);box-shadow:0 2px 7px rgba(251,191,36,.22)}
+.icon.dir::before{content:'';position:absolute;top:-4px;left:0;width:8px;height:6px;background:#fcd34d;border-radius:3px 3px 0 0}
+.icon.file{background:linear-gradient(180deg,#a8b6c9,#64748b);border-radius:2px 5px 2px 2px}
+.icon.link{width:16px;height:11px;background:linear-gradient(180deg,#c4b5fd,#8b5cf6);border-radius:2px 6px 2px 2px}
+.icon.link::after{content:'';position:absolute;right:-3px;top:-3px;width:6px;height:6px;border-radius:50%;border:1.5px solid #c4b5fd;background:#060d16}
+.row.current .icon.dir{box-shadow:0 0 0 3px rgba(56,189,248,.28),0 2px 12px rgba(251,191,36,.75)}
+.label{font-size:13.5px;letter-spacing:.01em;position:relative;z-index:1}
+.arrow{color:rgba(138,155,180,.55);font-size:12px}
+.target{color:rgba(138,155,180,.75);font-size:11.5px}
+.tag{font-size:9.5px;padding:2px 6px;border-radius:99px;font-weight:700;background:rgba(74,222,128,.16);color:#86efac;border:1px solid rgba(74,222,128,.3);position:relative;z-index:1}
+.kb{font-size:9px;color:rgba(138,155,180,.5);position:relative;z-index:1}
+.row.found .kb{color:rgba(251,191,36,.75)}
+
+/* scanner sweep over the tree */
+.scan-bar{position:absolute;left:0;right:0;height:34px;top:-34px;pointer-events:none;z-index:5;background:linear-gradient(180deg,transparent 0%,rgba(56,189,248,.10) 26%,rgba(56,189,248,.34) 50%,rgba(56,189,248,.10) 74%,transparent 100%);border-top:1px solid rgba(56,189,248,.7);border-bottom:1px solid rgba(56,189,248,.7);animation:scanDown .68s cubic-bezier(.45,.05,.55,.95) forwards}
+@keyframes scanDown{0%{top:-34px;opacity:0}12%{opacity:1}88%{opacity:1}100%{top:100%;opacity:0}}
+.radar{position:absolute;left:0;right:0;top:0;height:100%;pointer-events:none;z-index:4;background:radial-gradient(ellipse 120% 42% at 50% 0%,rgba(56,189,248,.16),transparent 70%);opacity:0}
+.radar.on{animation:radarFade .9s ease-out}
+@keyframes radarFade{0%{opacity:0}25%{opacity:1}100%{opacity:0}}
+.ping{position:absolute;left:0;top:0;width:0;height:0;pointer-events:none;z-index:6}
+.ping i{position:absolute;left:-16px;top:-16px;width:32px;height:32px;border-radius:50%;border:2px solid rgba(251,191,36,.85);display:block;animation:pingA .7s ease-out forwards}
+@keyframes pingA{0%{transform:scale(.2);opacity:1}100%{transform:scale(1.9);opacity:0}}
+.mark{position:absolute;left:8px;bottom:calc(100% - 2px);z-index:9;padding:2px 7px;border-radius:999px;font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;white-space:nowrap;pointer-events:none;color:#fde68a;background:rgba(251,191,36,.22);border:1px solid rgba(251,191,36,.55);box-shadow:0 6px 18px -8px rgba(251,191,36,.9);animation:markRise 1.1s cubic-bezier(.22,.9,.3,1) forwards}
+@keyframes markRise{0%{opacity:0;transform:translateY(6px) scale(.8)}22%{opacity:1;transform:translateY(-4px) scale(1)}70%{opacity:1;transform:translateY(-15px)}100%{opacity:0;transform:translateY(-28px)}}
+
+/* ---- avatar ---- */
+.avatar{position:absolute;left:0;top:0;width:30px;height:30px;z-index:7;pointer-events:none;transition:transform .62s cubic-bezier(.34,1.3,.64,1);will-change:transform}
+.avatar .body{width:100%;height:100%;border-radius:50% 50% 46% 46%;background:radial-gradient(circle at 34% 28%,#bae6fd,#38bdf8 52%,#0369a1);box-shadow:0 0 0 3px rgba(56,189,248,.16),0 9px 20px -4px rgba(2,132,199,.75);display:grid;place-items:center;animation:idle 2.8s ease-in-out infinite}
+@keyframes idle{0%,100%{transform:translateY(0)}50%{transform:translateY(-2.5px)}}
+.avatar.hop .body{animation:hop .58s cubic-bezier(.34,1.3,.64,1)}
+@keyframes hop{0%{transform:translateY(0) scale(1,1)}28%{transform:translateY(-11px) scale(.9,1.12)}58%{transform:translateY(0) scale(1.12,.88)}80%{transform:translateY(-3px) scale(.98,1.03)}100%{transform:translateY(0) scale(1,1)}}
+.avatar.scan .body{animation:scanHop .5s ease}
+@keyframes scanHop{0%,100%{transform:translateY(0) rotate(0)}30%{transform:translateY(-7px) rotate(-8deg)}70%{transform:translateY(-3px) rotate(8deg)}}
+.eyes{display:flex;gap:5px}
+.eyes i{width:4px;height:6.5px;background:#082f49;border-radius:50%;display:block;animation:blink 4.6s infinite}
+@keyframes blink{0%,92%,100%{transform:scaleY(1)}95%{transform:scaleY(.1)}}
+
+/* ============ RESULTS STRIP ============ */
+.results{flex:0 0 auto;margin-top:8px;padding:7px 10px 8px;border-radius:12px;background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.07)}
+.results-top{display:flex;align-items:center;gap:7px;margin-bottom:6px}
+.results-label{font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);font-weight:700}
+.results-hint{font-size:9.5px;color:rgba(138,155,180,.7);margin-left:auto}
+.results-list{display:flex;gap:6px;overflow-x:auto;min-width:0;max-width:100%;scrollbar-width:none;padding-bottom:1px}
+.results-list::-webkit-scrollbar{display:none}
+.hit-pill{display:inline-flex;align-items:center;gap:6px;flex:0 1 auto;min-width:0;max-width:min(210px,100%);padding:3px 9px;border-radius:999px;font:inherit;font-size:10.5px;cursor:pointer;color:#fde68a;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.26);transition:.18s;animation:pillIn .4s cubic-bezier(.34,1.56,.64,1) backwards;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+@keyframes pillIn{from{opacity:0;transform:translateY(8px) scale(.85)}to{opacity:1;transform:none}}
+.hit-pill:hover{background:rgba(251,191,36,.24);transform:translateY(-1px);box-shadow:0 6px 16px -10px rgba(251,191,36,.9)}
+.hit-pill .p{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.results-none{font-size:10.5px;color:var(--dim)}
+
+/* ============ TERMINAL ============ */
+.term{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:12px 13px;border-radius:12px;background:rgba(0,0,0,.36);border:1px solid rgba(255,255,255,.055);font-size:12.5px;line-height:1.7;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.16) transparent;-webkit-overflow-scrolling:touch}
+.term::-webkit-scrollbar{width:8px}
+.term::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:99px}
+.term::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.26)}
+.line{white-space:pre-wrap;word-break:break-word;animation:lineIn .22s ease-out}
+@keyframes lineIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+.line .p{color:#7dd3fc}
+.line .c{color:#f8fafc;font-weight:600}
+.line.err{color:var(--err)}
+.line .d{color:#7dd3fc;font-weight:600}
+.line .f{color:#cbd5e1}
+.line .hl{color:#7dd3fc;font-weight:700}
+.line .ok{color:#86efac}
+.line .dim{color:var(--dim)}
+.line .code{color:#fde68a;background:rgba(251,191,36,.11);padding:1px 7px;border-radius:6px;border:1px solid rgba(251,191,36,.2)}
+.tip-line{margin-top:4px;padding:6px 10px;border-radius:8px;background:rgba(56,189,248,.08);border-left:3px solid rgba(56,189,248,.5);color:#bae6fd;font-size:12px}
+.tip-line.danger{background:rgba(251,113,133,.09);border-left-color:rgba(251,113,133,.6);color:#fda4af}
+.tip-line.warn{background:rgba(251,191,36,.08);border-left-color:rgba(251,191,36,.5);color:#fcd34d}
+mark{background:rgba(251,191,36,.26);color:#fde68a;font-weight:600;border-radius:4px;padding:0 3px;box-shadow:inset 0 -2px 0 rgba(251,191,36,.35);animation:markPop .6s ease-out}
+@keyframes markPop{0%{background:rgba(251,191,36,.95);color:#1c1206;box-shadow:0 0 0 5px rgba(251,191,36,.3)}100%{background:rgba(251,191,36,.26);color:#fde68a;box-shadow:0 0 0 0 rgba(251,191,36,0)}}
+.chips{display:flex;gap:7px;overflow-x:auto;min-width:0;max-width:100%;padding:10px 1px 2px;scrollbar-width:none;-ms-overflow-style:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{font:inherit;font-size:11.5px;white-space:nowrap;cursor:pointer;padding:6px 11px;border-radius:9px;color:#7dd3fc;background:rgba(56,189,248,.1);border:1px solid rgba(56,189,248,.25);transition:.18s;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.chip:hover{background:rgba(56,189,248,.22);color:#e0f2fe;transform:translateY(-1px);box-shadow:0 6px 16px -12px rgba(56,189,248,.9)}
+.chip:active{transform:translateY(0) scale(.96)}
+.input-row{display:flex;align-items:center;gap:8px;margin-top:9px;padding:9px 10px;border-radius:12px;background:rgba(0,0,0,.4);border:1px solid rgba(56,189,248,.26);transition:border-color .2s,box-shadow .2s}
+.input-row:focus-within{border-color:rgba(56,189,248,.75);box-shadow:0 0 0 3px rgba(56,189,248,.13)}
+.input-row.shake{animation:shake .4s}
+@keyframes shake{10%,90%{transform:translateX(-2px)}20%,80%{transform:translateX(4px)}30%,50%,70%{transform:translateX(-6px)}40%,60%{transform:translateX(6px)}}
+.ps1{font-size:12.5px;color:#7dd3fc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:0 1 auto}
+.ps1 .ps-user{color:#7dd3fc;opacity:.85}
+.input-row input{flex:1;min-width:40px;background:none;border:none;outline:none;color:#f1f5f9;font:inherit;font-size:13px;padding:0}
+.input-row input::placeholder{color:rgba(138,155,180,.5)}
+.send{font:inherit;font-size:14px;line-height:1;cursor:pointer;width:30px;height:30px;flex:0 0 auto;border-radius:9px;color:#04121f;background:linear-gradient(150deg,#bae6fd,#38bdf8);border:none;display:grid;place-items:center;transition:.18s;box-shadow:0 4px 14px -4px rgba(56,189,248,.85)}
+.send:hover{transform:translateY(-1px);box-shadow:0 6px 18px -4px rgba(56,189,248,1)}
+.send:active{transform:scale(.93)}
+.confetti{position:fixed;top:-14px;width:8px;height:13px;border-radius:2px;z-index:999;pointer-events:none;animation:fall linear forwards}
+@keyframes fall{to{transform:translateY(108vh) rotate(var(--rot,360deg));opacity:.05}}
+
+/* ============ RESPONSIVE ============ */
+@media (min-width:901px){
+  html,body{height:100%;min-height:0;overflow:hidden}
+  .app{height:100%;min-height:0;overflow:hidden}
+  .term{flex:1 1 auto}
+}
+@media (max-width:900px){
+  .app{padding:12px 12px calc(16px + env(safe-area-inset-bottom));gap:10px}
+  /* minmax(0,1fr) — plain 1fr means minmax(auto,1fr), whose auto minimum lets a
+     wide child (the chip row) drag the whole column past the viewport */
+  main{grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto;flex:none}
+  .panel{min-height:0;min-width:0}
+  .panel-head,.crumbs,.scan-card,.results,.chips,.term,.input-row{min-width:0}
+  .tree-scroll{max-height:28vh}
+  .term{min-height:140px;max-height:24vh}
+  .brand h1{font-size:15px}
+  .brand p{display:none}
+  .mission{padding:9px 11px}
+  .mission-text{font-size:12.5px;line-height:1.35}
+  .ps1 .ps-user{display:none}
+  .sub{display:none}
+  .scan-words{font-size:9.5px;line-height:1.5;min-height:4.4em;max-height:4.4em}
+  .term-chip{font-size:10px;padding:2px 7px}
+}
+@media (max-width:560px){
+  .logo{width:34px;height:34px;font-size:17px}
+  .badge{font-size:9px;padding:4px 7px}
+  .mission{gap:8px;padding:8px 10px}
+  .hint-btn{padding:5px 9px;font-size:10.5px}
+  .label{font-size:13px}
+  .tree-inner{padding-right:48px}
+  .tree-scroll{max-height:26vh}
+  .term{max-height:23vh}
+  .crumbs{min-height:34px;padding:6px 8px}
+  .kb{display:none}
+  .results{padding:6px 9px 7px;margin-top:7px}
+  .hit-pill{max-width:150px;font-size:10px}
+}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <div class="logo">⌕</div>
+      <div>
+        <h1>Learn <code>find</code></h1>
+        <p>Search the whole tree by name, type and size — no experience needed.</p>
+      </div>
+    </div>
+    <div class="steps" id="steps"></div>
+    <button class="reset-btn" id="resetBtn" type="button" title="Rebuild the filesystem from scratch">↺ reset</button>
+  </header>
+
+  <div class="mission" id="mission">
+    <span class="badge" id="missionBadge">Mission 1 / 6</span>
+    <span class="mission-text" id="missionText">Loading…</span>
+    <button class="hint-btn" id="hintBtn" type="button">Hint</button>
+  </div>
+  <div class="hint" id="hintBar"></div>
+
+  <main>
+    <section class="panel">
+      <div class="panel-head">
+        <span class="title">Filesystem map</span>
+        <span class="counter zero" id="counter"><b id="countNum">0</b> found</span>
+      </div>
+      <div class="crumbs" id="crumbs"></div>
+      <div class="scan-card" id="scanCard" aria-live="polite">
+        <div class="scan-top"><span class="scan-label">Search plan</span><span class="scan-status" id="scanStatus">waiting for a search</span></div>
+        <div class="scan-terms" id="scanTerms"></div>
+        <div class="scan-words" id="scanWords">find walks the tree and applies your tests to every single thing it meets.</div>
+      </div>
+      <div class="tree-scroll" id="treeScroll">
+        <div class="tree" id="tree"></div>
+      </div>
+      <div class="results">
+        <div class="results-top">
+          <span class="results-label">Matches</span>
+          <span class="results-hint" id="resultsHint">tap a match to jump to it</span>
+        </div>
+        <div class="results-list" id="resultsList"><span class="results-none">Nothing searched yet.</span></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <span class="dots"><i></i><i></i><i></i></span>
+        <span class="title">Terminal</span>
+      </div>
+      <div class="term" id="term" aria-live="polite"></div>
+      <div class="chips" id="chips"></div>
+      <form class="input-row" id="form" autocomplete="off">
+        <span class="ps1"><span class="ps-user">you@linux:</span><span id="psPath">~</span>$</span>
+        <input id="cmd" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="type find…">
+        <button class="send" type="submit" aria-label="Run command">↵</button>
+      </form>
+    </section>
+  </main>
+</div>
+
+<script>
+/* ==================================================================
+   1. FILESYSTEM MODEL  (static — find only looks, never changes)
+   ================================================================== */
+let uid = 0;
+let clock = 1700000000000;
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const mk = (name, type = 'dir', extra = {}) => ({
+  id: ++uid, name, type,
+  children: type === 'dir' ? [] : null,
+  parent: null,
+  size: type === 'dir' ? 4096 : 1,
+  mtime: clock++,
+  content: type === 'file' ? [] : null,
+  target: null,
+  ...extra
+});
+
+let ROOT, HOME, documents, downloads, logs, logsOld, music, photos, projects, projLib, emptyDir, config, varLog, etc;
+let bashrc, settings, budget, notes, report, installer, manual, accessLog, errorLog, debugLog, lofi, playlist, beach, vacation, appJs, utilJs, todo, archive, syslog, hostname, hosts;
+
+function buildModel() {
+  uid = 0;
+  clock = 1700000000000;
+  ROOT = mk('/');
+  const homeDir = mk('home');
+  HOME = mk('you');
+  documents = mk('documents');
+  downloads = mk('downloads');
+  logs = mk('logs');
+  logsOld = mk('old');
+  music = mk('music');
+  photos = mk('photos');
+  projects = mk('projects');
+  projLib = mk('lib');
+  emptyDir = mk('empty');
+  config = mk('.config');
+  etc = mk('etc');
+  varLog = mk('log');
+  const varDir = mk('var');
+
+  bashrc = mk('.bashrc', 'file', {size:642, content:['# shell setup','export PS1="\\u@\\h:\\w\\$ "','alias ll="ls -alF"']});
+  settings = mk('settings.json', 'file', {size:1180, content:['{','  "theme": "dark",','  " autosave": true','}']});
+  budget = mk('budget.csv', 'file', {size:764, content:['item,cost','rent,1200','food,480']});
+  notes = mk('notes.txt', 'file', {size:1240, content:['Shopping list','- coffee','- call the dentist','- renew the domain']});
+  report = mk('report.md', 'file', {size:2380, content:['# Quarterly report','Revenue is up 12%.','Two hires start in March.']});
+  installer = mk('installer.exe', 'file', {size:5242880, content:['binary placeholder']});
+  manual = mk('manual.pdf', 'file', {size:1843200, content:['# Manual','pages 1-40']});
+  accessLog = mk('access.log', 'file', {size:18400, content:['10.0.0.4 - alice GET /index.html 200','10.0.0.5 - bob GET /api/users 200','10.0.0.4 - alice GET /admin 403']});
+  errorLog = mk('error.log', 'file', {size:9200, content:['ERROR disk full on /var','ERROR timeout on payment','WARN slow query 2.4s']});
+  debugLog = mk('debug.log', 'file', {size:440, content:['boot ok','mount ok']});
+  lofi = mk('lofi.mp3', 'file', {size:5240000, content:['audio placeholder']});
+  playlist = mk('playlist.txt', 'file', {size:640, content:['1. morning fog','2. night drive','3. slow compile']});
+  beach = mk('beach.png', 'file', {size:248000, content:['beach photo placeholder']});
+  vacation = mk('vacation.zip', 'file', {size:812000, content:['zip placeholder']});
+  appJs = mk('app.js', 'file', {size:2320, content:['const total = 42;','console.log(total);']});
+  utilJs = mk('util.js', 'file', {size:980, content:['export const noop = () => {};']});
+  todo = mk('TODO.md', 'file', {size:420, content:['- [x] ship find lab','- [ ] write docs']});
+  archive = mk('archive.tar.gz', 'file', {size:4300000, content:['tarball placeholder']});
+  syslog = mk('syslog.log', 'file', {size:26400, content:['system boot','service started']});
+  hostname = mk('hostname', 'file', {size:60, content:['web-01']});
+  hosts = mk('hosts', 'file', {size:220, content:['127.0.0.1 localhost','::1 localhost ip6-localhost']});
+  const latest = mk('latest.png', 'link', {target: 'beach.png'});
+  const shortcut = mk('shortcut', 'link', {target: 'documents'});
+
+  ROOT.children = [homeDir, etc, varDir];
+  homeDir.children = [HOME];
+  HOME.children = [bashrc, config, documents, downloads, emptyDir, logs, music, photos, projects, latest, shortcut, archive, notes, todo];
+  config.children = [settings];
+  documents.children = [budget, notes, report];
+  downloads.children = [installer, manual];
+  logs.children = [accessLog, errorLog, logsOld];
+  logsOld.children = [debugLog];
+  music.children = [lofi, playlist];
+  photos.children = [beach, latest, vacation];
+  projects.children = [appJs, projLib];
+  projLib.children = [utilJs];
+  etc.children = [hostname, hosts];
+  varDir.children = [varLog];
+  varLog.children = [syslog];
+
+  link(ROOT, null);
+  sortModel(ROOT);
+  return HOME;
+}
+function link(node, parent) {
+  node.parent = parent;
+  if (node.children) node.children.forEach(child => link(child, node));
+}
+function byName(left, right) {
+  const rank = {dir: 0, file: 1, link: 2};
+  if (rank[left.type] !== rank[right.type]) return rank[left.type] - rank[right.type];
+  return left.name.localeCompare(right.name, undefined, {numeric: true, sensitivity: 'base'});
+}
+function sortModel(node) {
+  if (!node.children) return;
+  node.children.sort(byName);
+  node.children.forEach(sortModel);
+}
+
+/* ---- path helpers ---- */
+function absPath(node) {
+  if (node === ROOT) return '/';
+  const parts = [];
+  let current = node;
+  while (current && current !== ROOT) { parts.unshift(current.name); current = current.parent; }
+  return '/' + parts.join('/');
+}
+function prettyPath(node) {
+  const path = absPath(node);
+  if (path === '/home/you') return '~';
+  if (path.startsWith('/home/you/')) return '~' + path.slice(9);
+  return path;
+}
+function sizeLabel(node) {
+  if (node.type === 'dir') return '';
+  const bytes = node.size || 0;
+  if (bytes >= 1048576) return (bytes / 1048576).toFixed(1) + ' MB';
+  if (bytes >= 1024) return Math.round(bytes / 1024) + ' KB';
+  return bytes + ' B';
+}
+function typeWord(node) {
+  if (node.type === 'dir') return 'folder';
+  if (node.type === 'link') return 'link';
+  return 'file';
+}
+function resolvePath(spec, base) {
+  let current, rest = spec;
+  if (spec === '~' || spec === '~/') { current = HOME; rest = ''; }
+  else if (spec === '~' || spec.startsWith('~/')) { current = HOME; rest = spec.slice(1); }
+  else if (spec.startsWith('/')) { current = ROOT; rest = spec.slice(1); }
+  else current = base;
+  if (current.type !== 'dir') return {error: 'notdir', name: spec};
+  const segments = rest.split('/').filter(Boolean);
+  for (let i = 0; i < segments.length; i++) {
+    const segment = segments[i];
+    if (segment === '.') continue;
+    if (segment === '..') { current = current.parent || ROOT; continue; }
+    const next = current.children.find(child => child.name === segment);
+    if (!next) return {error: 'missing', name: segment};
+    if (next.type !== 'dir' && i < segments.length - 1) return {error: 'notdir', name: segment};
+    current = next;
+  }
+  return {node: current};
+}
+function globToRegExp(pattern, ignoreCase) {
+  const escaped = pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&');
+  return new RegExp('^' + escaped.replace(/\*/g, '.*').replace(/\?/g, '.') + '$', ignoreCase ? 'i' : '');
+}
+const esc = value => String(value).replace(/[&<>"']/g, char =>
+  ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+
+/* ==================================================================
+   2. DOM REFS
+   ================================================================== */
+const treeEl = document.getElementById('tree');
+const treeScroll = document.getElementById('treeScroll');
+const crumbs = document.getElementById('crumbs');
+const term = document.getElementById('term');
+const chips = document.getElementById('chips');
+const form = document.getElementById('form');
+const input = document.getElementById('cmd');
+const psPath = document.getElementById('psPath');
+const stepsEl = document.getElementById('steps');
+const missionEl = document.getElementById('mission');
+const missionBadge = document.getElementById('missionBadge');
+const missionText = document.getElementById('missionText');
+const hintBtn = document.getElementById('hintBtn');
+const hintBar = document.getElementById('hintBar');
+const resetBtn = document.getElementById('resetBtn');
+const counterEl = document.getElementById('counter');
+const countNum = document.getElementById('countNum');
+const scanCard = document.getElementById('scanCard');
+const scanStatus = document.getElementById('scanStatus');
+const scanTerms = document.getElementById('scanTerms');
+const scanWords = document.getElementById('scanWords');
+const resultsList = document.getElementById('resultsList');
+const resultsHint = document.getElementById('resultsHint');
+
+let treeInner, avatarEl;
+let cwd = null, prevDir = null, lastContext = null;
+const rowOf = new Map();
+const nodeOfRow = new Map();
+
+/* ==================================================================
+   3. TREE RENDERING
+   ================================================================== */
+function buildRow(node) {
+  const wrap = document.createElement('div');
+  wrap.className = 'node';
+  const row = document.createElement('div');
+  row.className = 'row' + (node.type === 'file' ? ' file' : '');
+
+  const icon = document.createElement('span');
+  icon.className = 'icon ' + node.type;
+  const label = document.createElement('span');
+  label.className = 'label';
+  label.textContent = node === ROOT ? '/' : node.name;
+  row.append(icon, label);
+
+  if (node === HOME) {
+    const tag = document.createElement('span');
+    tag.className = 'tag';
+    tag.textContent = '~';
+    row.appendChild(tag);
+  }
+  if (node.type === 'link') {
+    const arrow = document.createElement('span');
+    arrow.className = 'arrow';
+    arrow.textContent = '→';
+    const target = document.createElement('span');
+    target.className = 'target';
+    target.textContent = node.target;
+    row.append(arrow, target);
+  }
+  if (node.type === 'file') {
+    const size = document.createElement('span');
+    size.className = 'kb';
+    size.textContent = sizeLabel(node);
+    row.appendChild(size);
+  }
+
+  row.addEventListener('click', () => onNodeClick(node));
+  wrap.appendChild(row);
+  rowOf.set(node, row);
+  nodeOfRow.set(row, node);
+
+  if (node.children && node.children.length) {
+    const kids = document.createElement('div');
+    kids.className = 'children';
+    node.children.forEach(child => kids.appendChild(buildRow(child)));
+    wrap.appendChild(kids);
+  }
+  return wrap;
+}
+
+function buildTree() {
+  treeEl.innerHTML = '';
+  rowOf.clear();
+  nodeOfRow.clear();
+  treeInner = document.createElement('div');
+  treeInner.className = 'tree-inner';
+  const radar = document.createElement('div');
+  radar.className = 'radar';
+  radar.id = 'radar';
+  treeInner.appendChild(buildRow(ROOT));
+  treeInner.appendChild(radar);
+  avatarEl = document.createElement('div');
+  avatarEl.className = 'avatar';
+  avatarEl.innerHTML = '<div class="body"><span class="eyes"><i></i><i></i></span></div>';
+  treeInner.appendChild(avatarEl);
+  treeEl.appendChild(treeInner);
+}
+
+function updateRowStates() {
+  rowOf.forEach((row, node) => row.classList.toggle('current', node === cwd));
+}
+function innerRect() { return treeInner.getBoundingClientRect(); }
+function relRect(el) {
+  const box = el.getBoundingClientRect();
+  const base = innerRect();
+  return {left: box.left - base.left, top: box.top - base.top, width: box.width, height: box.height};
+}
+function scrollToRow(node, smooth) {
+  const row = rowOf.get(node);
+  if (!row) return;
+  const box = relRect(row);
+  const target = box.top + box.height / 2 - treeScroll.clientHeight / 2;
+  treeScroll.scrollTo({top: Math.max(0, target), behavior: smooth === false ? 'auto' : 'smooth'});
+}
+function ping(x, y) {
+  const element = document.createElement('div');
+  element.className = 'ping';
+  element.style.transform = 'translate(' + x + 'px,' + y + 'px)';
+  element.innerHTML = '<i></i>';
+  treeInner.appendChild(element);
+  setTimeout(() => element.remove(), 760);
+}
+function floatMark(node, text) {
+  const row = rowOf.get(node);
+  if (!row) return;
+  const mark = document.createElement('span');
+  mark.className = 'mark';
+  mark.textContent = text;
+  row.appendChild(mark);
+  setTimeout(() => mark.remove(), 1150);
+}
+
+/* ---- avatar ---- */
+function avatarTarget(node) {
+  const row = rowOf.get(node);
+  const label = row.querySelector('.label');
+  const base = innerRect();
+  const box = label.getBoundingClientRect();
+  return {x: box.right - base.left + 9, y: box.top - base.top + box.height / 2 - 15};
+}
+function moveAvatar(animate, node) {
+  const target = avatarTarget(node || cwd);
+  if (!animate) avatarEl.style.transition = 'none';
+  avatarEl.style.transform = 'translate(' + target.x + 'px, ' + target.y + 'px)';
+  if (!animate) requestAnimationFrame(() => { avatarEl.style.transition = ''; });
+}
+function animateAvatarTo(node) {
+  moveAvatar(true, node);
+  avatarEl.classList.remove('hop');
+  void avatarEl.offsetWidth;
+  avatarEl.classList.add('hop');
+  const box = relRect(rowOf.get(node));
+  ping(box.left + 16, box.top + box.height / 2);
+  scrollToRow(node);
+}
+function avatarScanPulse() {
+  avatarEl.classList.remove('scan');
+  void avatarEl.offsetWidth;
+  avatarEl.classList.add('scan');
+}
+
+/* ==================================================================
+   4. UI SYNC
+   ================================================================== */
+function renderCrumbs() {
+  crumbs.innerHTML = '';
+  const path = prettyPath(cwd);
+  let parts;
+  if (path === '/') parts = ['/'];
+  else if (path.startsWith('~')) parts = ['/', 'home', 'you', ...path.slice(1).split('/').filter(Boolean)];
+  else parts = ['/', ...path.split('/').filter(Boolean)];
+  parts.forEach((part, index) => {
+    if (index) {
+      const separator = document.createElement('span');
+      separator.className = 'sep';
+      separator.textContent = '›';
+      crumbs.appendChild(separator);
+    }
+    const crumb = document.createElement('span');
+    crumb.className = 'crumb';
+    crumb.style.animationDelay = (index * 45) + 'ms';
+    crumb.textContent = part === 'you' ? '~' : part;
+    crumbs.appendChild(crumb);
+  });
+}
+function updateUI() {
+  psPath.textContent = prettyPath(cwd);
+  updateRowStates();
+  renderCrumbs();
+  renderChips();
+}
+let counterToken = 0;
+function updateCounter(n) {
+  const token = ++counterToken;
+  const from = Math.max(0, parseInt(countNum.textContent, 10) || 0);
+  /* the real number lands first; the count-up is only decoration, so a
+     throttled rAF can never leave a wrong number on screen */
+  countNum.textContent = String(n);
+  if (!reduceMotion && from !== n) {
+    const t0 = performance.now(), dur = 440;
+    (function step(t) {
+      if (token !== counterToken) return;
+      const p = Math.max(0, Math.min(1, (t - t0) / dur));
+      /* never repaint the old value on frame 0 — the true number is already up */
+      if (p > 0) {
+        const e = 1 - Math.pow(1 - p, 3);
+        countNum.textContent = String(Math.max(0, Math.round(from + (n - from) * e)));
+      }
+      if (p < 1) requestAnimationFrame(step);
+      else countNum.textContent = String(n);
+    })(t0);
+  }
+  counterEl.classList.toggle('zero', n === 0);
+  counterEl.classList.remove('pop');
+  void counterEl.offsetWidth;
+  counterEl.classList.add('pop');
+}
+function renderResults(matches) {
+  resultsList.innerHTML = '';
+  if (!matches || !matches.length) {
+    const none = document.createElement('span');
+    none.className = 'results-none';
+    none.textContent = lastContext ? 'Nothing matched that search.' : 'Nothing searched yet.';
+    resultsList.appendChild(none);
+    resultsHint.textContent = 'tap a match to jump to it';
+    return;
+  }
+  matches.forEach((entry, index) => {
+    const pill = document.createElement('button');
+    pill.type = 'button';
+    pill.className = 'hit-pill';
+    pill.style.animationDelay = Math.min(index * 45, 400) + 'ms';
+    const path = document.createElement('span');
+    path.className = 'p';
+    path.textContent = entry.display;
+    pill.appendChild(path);
+    pill.title = 'Show ' + entry.display + ' on the map';
+    pill.addEventListener('click', () => {
+      const row = rowOf.get(entry.node);
+      if (!row) return;
+      row.classList.remove('spot');
+      void row.offsetWidth;
+      row.classList.add('spot');
+      setTimeout(() => row.classList.remove('spot'), 1200);
+      scrollToRow(entry.node);
+    });
+    resultsList.appendChild(pill);
+  });
+  resultsHint.textContent = matches.length + (matches.length === 1 ? ' match' : ' matches') + ' · tap to jump';
+}
+
+/* ==================================================================
+   5. THE SEARCH PLAN CARD
+   ================================================================== */
+function termChip(text, kind) {
+  const chip = document.createElement('span');
+  chip.className = 'term-chip' + (kind ? ' ' + kind : '');
+  chip.textContent = text;
+  return chip;
+}
+function clearPlan(words) {
+  scanTerms.innerHTML = '';
+  scanWords.innerHTML = words || 'Give <b>find</b> a folder to start from and one or more tests to try.';
+}
+function setScanState(state, status, statusClass) {
+  scanCard.classList.remove('busy', 'hit', 'empty');
+  if (state) scanCard.classList.add(state);
+  scanStatus.className = 'scan-status' + (statusClass ? ' ' + statusClass : '');
+  scanStatus.textContent = status;
+}
+function describeSize(op, n, unit) {
+  const label = unit === 'm' ? n + ' MB' : unit === 'g' ? n + ' GB' : n + ' KB';
+  if (op === '+') return 'bigger than ' + label;
+  if (op === '-') return 'smaller than ' + label;
+  return 'exactly ' + label;
+}
+function unitWord(unit) {
+  return unit === 'm' ? 'MB' : unit === 'g' ? 'GB' : unit === 'b' ? 'bytes' : 'KB';
+}
+function renderPlan(ctx) {
+  scanTerms.innerHTML = '';
+  scanTerms.appendChild(termChip('start: ' + ctx.pathLabel, 'start'));
+  let emitted = false;
+  let joiner = 'and';
+  ctx.terms.forEach(test => {
+    if (test.op === 'or') { joiner = 'or'; return; }
+    if (test.op === 'and') { joiner = 'and'; return; }
+    if (test.op === 'not') return;
+    if (emitted) {
+      const op = document.createElement('span');
+      op.className = 'term-op' + (joiner === 'or' ? ' or' : '');
+      op.textContent = joiner;
+      scanTerms.appendChild(op);
+    }
+    let text = '', kind = '';
+    switch (test.type) {
+      case 'name': text = 'name ' + (test.ci ? '≈ ' : '= ') + test.value; break;
+      case 'path': text = 'path ' + (test.ci ? '≈ ' : '= ') + test.value; break;
+      case 'type': text = 'type = ' + (test.value === 'd' ? 'folder' : test.value === 'l' ? 'link' : 'file'); kind = 'hit'; break;
+      case 'size': text = 'size ' + describeSize(test.cmp, test.n, test.unit); break;
+      case 'maxdepth': text = 'depth ≤ ' + test.n; break;
+      case 'mindepth': text = 'depth ≥ ' + test.n; break;
+      case 'empty': text = 'is empty'; break;
+      case 'newer': text = 'newer than ' + test.ref.name; break;
+      case 'true': text = 'anything'; kind = 'hit'; break;
+    }
+    if (test.negate) { text = 'not ' + text; kind = 'neg'; }
+    scanTerms.appendChild(termChip(text, kind));
+    emitted = true;
+    joiner = 'and';
+  });
+  if (!ctx.terms.length) scanTerms.appendChild(termChip('everything', 'hit'));
+
+  /* plain english, which is the part beginners actually need */
+  const words = [];
+  const starters = ctx.paths.map(spec => spec === '.' ? 'here' : spec);
+  words.push('Look ' + (starters.length > 1 ? 'in ' + starters.join(' and ') : 'under ' + starters[0]));
+  const groups = [];
+  let group = [];
+  ctx.terms.forEach(test => {
+    if (test.op === 'or') { groups.push(group); group = []; return; }
+    if (test.op === 'and' || test.op === 'not') return;
+    let phrase = '';
+    switch (test.type) {
+      case 'name': phrase = 'named like <em>' + esc(test.value) + '</em>' + (test.ci ? ' (any case)' : ''); break;
+      case 'path': phrase = 'whose whole path looks like <em>' + esc(test.value) + '</em>'; break;
+      case 'type': phrase = test.value === 'd' ? 'that are <b>folders</b>' : test.value === 'l' ? 'that are <b>links</b>' : 'that are <b>files</b>'; break;
+      case 'size': phrase = describeSize(test.cmp, test.n, test.unit); break;
+      case 'maxdepth': phrase = 'no deeper than <b>' + test.n + '</b> level' + (test.n === 1 ? '' : 's'); break;
+      case 'mindepth': phrase = 'at least <b>' + test.n + '</b> level' + (test.n === 1 ? '' : 's') + ' down'; break;
+      case 'empty': phrase = 'with <b>nothing</b> inside'; break;
+      case 'newer': phrase = 'newer than <em>' + esc(test.ref.name) + '</em>'; break;
+      case 'true': phrase = 'anything at all'; break;
+    }
+    if (test.negate) phrase = 'NOT ' + phrase;
+    group.push(phrase);
+  });
+  groups.push(group);
+  const tail = groups.map(g => g.join(' and ')).filter(Boolean).join(' or ');
+  scanWords.innerHTML = '<b>find</b> ' + esc(words[0].replace('Look ', 'looks ')) + (tail ? ', ' + tail : '') + '.';
+}
+
+/* ==================================================================
+   6. THE FIND ENGINE
+   ================================================================== */
+const TESTS = {
+  name:      {arg: true},
+  iname:     {arg: true},
+  path:      {arg: true},
+  ipath:     {arg: true},
+  type:      {arg: true},
+  size:      {arg: true},
+  maxdepth:  {arg: true},
+  mindepth:  {arg: true},
+  newer:     {arg: true},
+  empty:     {arg: false},
+  true:      {arg: false},
+  false:     {arg: false}
+};
+const TEST_WORDS = {
+  name: 'name', iname: 'iname', path: 'path', ipath: 'ipath', type: 'type', size: 'size',
+  maxdepth: 'maxdepth', mindepth: 'mindepth', newer: 'newer', empty: 'empty', true: 'true', false: 'false'
+};
+
+function parseFind(args) {
+  const paths = [];
+  const terms = [];
+  let negate = false;
+  let i = 0;
+  let optionsEnded = false;
+
+  while (i < args.length && !optionsEnded) {
+    const arg = args[i];
+    if (arg === '--') { optionsEnded = true; i++; continue; }
+    if (arg === '-o' || arg === '-or' || arg === '--or') { terms.push({op: 'or'}); i++; continue; }
+    if (arg === '-a' || arg === '-and' || arg === '--and') { terms.push({op: 'and'}); i++; continue; }
+    if (arg === '-not' || arg === '!' || arg === '--not') { negate = true; terms.push({op: 'not'}); i++; continue; }
+    if (arg.startsWith('-') && arg.length > 1) break;
+    paths.push(arg);
+    i++;
+  }
+  if (!paths.length) paths.push('.');
+
+  while (i < args.length) {
+    const arg = args[i];
+    if (arg === '--') { i++; continue; }
+    if (arg === '-o' || arg === '-or' || arg === '--or') { terms.push({op: 'or'}); negate = false; i++; continue; }
+    if (arg === '-a' || arg === '-and' || arg === '--and') { terms.push({op: 'and'}); negate = false; i++; continue; }
+    if (arg === '-not' || arg === '!' || arg === '--not') { terms.push({op: 'not'}); negate = true; i++; continue; }
+    if (!arg.startsWith('-')) {
+      return {error: 'paths must precede expression: try find ' + (paths[0] === '.' ? 'PATH' : paths[0]) + ' -name ...', arg};
+    }
+    const key = arg.replace(/^--?/, '');
+    if (key === 'delete') {
+      return {error: 'find: -delete is not available in this lab', arg,
+        tip: 'Take the paths to <b>rm</b> instead — and read them twice. Deleting by pattern is how people lose work.'};
+    }
+    if (key === 'help') return {help: true};
+    const word = TEST_WORDS[key];
+    if (!word) return {error: "unknown predicate: '" + key + "'", arg};
+    const spec = TESTS[word];
+    /* -iname and -ipath are just -name / -path with case blindness */
+    const type = word === 'iname' ? 'name' : word === 'ipath' ? 'path' : word;
+    const term = {type, negate};
+    negate = false;
+    if (spec.arg) {
+      const value = args[i + 1];
+      if (value === undefined || (value.startsWith('-') && value.length > 1 && !/^-\d/.test(value))) {
+        return {error: 'missing argument after ' + arg, arg};
+      }
+      term.value = value;
+      i += 2;
+    } else {
+      i += 1;
+    }
+    if (word === 'iname' || word === 'ipath') term.ci = true;
+    if (type === 'type' && !/^[fdl]$/.test(term.value)) {
+      return {error: "unknown argument to -type: '" + term.value + "'", arg,
+        tip: '-type takes <b>f</b> (file), <b>d</b> (folder) or <b>l</b> (link).'};
+    }
+    if (type === 'size') {
+      const spec = parseSizeSpec(term.value);
+      if (!spec) {
+        return {error: "invalid size: '" + term.value + "'", arg,
+          tip: 'Sizes read like <b>+100k</b> (bigger), <b>-1m</b> (smaller) or <b>500b</b>.'};
+      }
+      term.cmp = spec.op;
+      term.n = spec.n;
+      term.unit = spec.unit;
+    }
+    if (type === 'maxdepth' || type === 'mindepth') {
+      if (!/^\d+$/.test(term.value)) {
+        return {error: "invalid argument to " + arg + ": '" + term.value + "'", arg,
+          tip: 'Depths are whole numbers, like <b>-maxdepth 2</b>.'};
+      }
+      term.n = parseInt(term.value, 10);
+    }
+    terms.push(term);
+  }
+  return {paths, terms};
+}
+
+function parseSizeSpec(raw) {
+  const match = String(raw).match(/^([+-]?)(\d+)([bkmgBKMG]?)$/);
+  if (!match) return null;
+  const op = match[1] || '=';
+  const n = parseInt(match[2], 10);
+  const unit = (match[3] || 'k').toLowerCase();
+  return {op, n, unit};
+}
+function sizeBytes(n, unit) {
+  if (unit === 'b') return n;
+  if (unit === 'm') return n * 1048576;
+  if (unit === 'g') return n * 1073741824;
+  return n * 1024;
+}
+function isEmpty(node) {
+  if (node.type === 'dir') return node.children.length === 0;
+  if (node.type === 'link') return false;
+  return (node.size || 0) === 0;
+}
+function testTerm(test, node, depth, ctx) {
+  switch (test.type) {
+    case 'name': return globToRegExp(test.value, !!test.ci).test(node.name);
+    case 'path': return globToRegExp(test.value, !!test.ci).test(absPath(node));
+    case 'type':
+      if (test.value === 'f') return node.type === 'file';
+      if (test.value === 'd') return node.type === 'dir';
+      if (test.value === 'l') return node.type === 'link';
+      return false;
+    case 'size': {
+      if (node.type === 'dir' || test.n === undefined) return false;
+      const bytes = node.size || 0;
+      const target = sizeBytes(test.n, test.unit);
+      if (test.cmp === '+') return bytes > target;
+      if (test.cmp === '-') return bytes < target;
+      return bytes === target;
+    }
+    case 'maxdepth': return depth <= test.n;
+    case 'mindepth': return depth >= test.n;
+    case 'empty': return isEmpty(node);
+    case 'newer': return test.ref && (node.mtime || 0) > (test.ref.mtime || 0);
+    case 'true': return true;
+    case 'false': return false;
+    default: return false;
+  }
+}
+
+function evaluate(terms, node, depth, ctx) {
+  if (!terms.length) return true;
+  let result = null;
+  let negateNext = false;
+  let group = true;
+  for (const test of terms) {
+    if (test.op === 'or') { result = result || group; group = true; continue; }
+    if (test.op === 'and') { continue; }
+    if (test.op === 'not') { negateNext = true; continue; }
+    const value = testTerm(test, node, depth, ctx);
+    group = group && (negateNext ? !value : value);
+    negateNext = false;
+  }
+  return (result === null ? group : result || group);
+}
+
+function collect(node, depth, terms, ctx, out) {
+  if (evaluate(terms, node, depth, ctx)) {
+    out.push({node, depth, display: ctx.display(node, depth)});
+  }
+  if (node.children) node.children.forEach(child => collect(child, depth + 1, terms, ctx, out));
+}
+
+function runFind(parsed, rawArgs) {
+  /* resolve start paths, attach -newer references */
+  const starts = [];
+  for (const spec of parsed.paths) {
+    const result = resolvePath(spec, cwd);
+    if (result.error) {
+      const reason = result.error === 'missing' ? 'No such file or directory' : 'Not a directory';
+      log("find: '" + esc(spec) + "': " + reason, 'err');
+      tip(result.error === 'missing'
+        ? 'Start from somewhere that exists — try <b>~</b> for your home folder, or <b>.</b> for here.'
+        : 'Part of that path is a file, not a folder.', true);
+      clearPlan();
+      setScanState('empty', 'nothing to search', 'none');
+      shakeInput();
+      return null;
+    }
+    starts.push({spec, node: result.node});
+  }
+  for (const test of parsed.terms) {
+    if (test.type !== 'newer') continue;
+    const ref = resolvePath(test.value, cwd);
+    if (ref.error || ref.node.type !== 'file') {
+      log("find: '" + esc(test.value) + "': No such file", 'err');
+      tip('-newer needs a real file to compare against. Use a path that exists, e.g. <b>-newer ~/documents/report.md</b>.', true);
+      clearPlan();
+      setScanState('empty', 'bad -newer target', 'none');
+      shakeInput();
+      return null;
+    }
+    test.ref = ref.node;
+  }
+
+  const firstSpec = starts[0].spec;
+  const ctx = {
+    paths: parsed.paths,
+    terms: parsed.terms,
+    pathLabel: parsed.paths.length > 1 ? parsed.paths.length + ' places' : (firstSpec === '.' ? '.' : firstSpec),
+    display(node, depth) {
+      if (firstSpec === '.') return './' + absPath(node).replace(/^\//, '').split('/').slice(1).join('/');
+      if (firstSpec === '~' || firstSpec === '~/') {
+        return node === HOME ? '~' : '~/' + absPath(node).replace('/home/you/', '');
+      }
+      const base = absPath(starts[0].node);
+      return node === starts[0].node ? firstSpec : firstSpec.replace(/\/$/, '') + absPath(node).slice(base.length);
+    }
+  };
+
+  /* collect */
+  const found = [];
+  starts.forEach(start => collect(start.node, 0, parsed.terms, ctx, found));
+  /* de-dupe when start paths overlap */
+  const seen = new Set();
+  const matches = found.filter(entry => {
+    if (seen.has(entry.node)) return false;
+    seen.add(entry.node);
+    return true;
+  });
+
+  renderPlan(ctx);
+  updateCounter(matches.length);
+  renderResults(matches);
+
+  /* the shell answers straight away — the sweep below is the same search,
+     drawn on the map */
+  printResults(ctx, matches);
+  lastContext = {
+    command: 'find',
+    paths: parsed.paths.slice(),
+    terms: parsed.terms.map(t => ({type: t.type, value: t.value, ci: !!t.ci, negate: !!t.negate, op: t.op, n: t.n, unit: t.unit, cmp: t.cmp})),
+    matches: matches.map(entry => entry.node),
+    displays: matches.map(entry => entry.display),
+    total: matches.length
+  };
+  recordEvidence(lastContext);
+  checkMission();
+
+  const token = ++scanToken;
+  clearScanFx();
+  setScanState('busy', 'scanning…', 'scanning');
+  scanStatus.textContent = 'scanning ' + (matches.length ? matches.length + ' hits' : 'the tree') + '…';
+
+  /* the scan sweep: rows light up as the beam passes them */
+  const rows = Array.prototype.slice.call(treeInner.querySelectorAll('.row'));
+  const base = treeInner.getBoundingClientRect();
+  const hitSet = new Set(matches.map(entry => entry.node));
+  let maxDelay = 0;
+  rows.forEach(row => {
+    row.classList.remove('found', 'dimmed');
+    void row.offsetWidth;
+    const node = nodeOfRow.get(row);
+    if (!node) return;
+    const y = row.getBoundingClientRect().top - base.top;
+    const delay = reduceMotion ? 0 : Math.max(0, y * 0.55);
+    if (hitSet.has(node)) {
+      row.style.animationDelay = delay + 'ms';
+      row.classList.add('found');
+      maxDelay = Math.max(maxDelay, delay);
+    } else {
+      row.style.transitionDelay = delay + 'ms';
+      row.classList.add('dimmed');
+    }
+  });
+
+  if (!reduceMotion) {
+    const bar = document.createElement('div');
+    bar.className = 'scan-bar';
+    treeInner.appendChild(bar);
+    const height = treeInner.scrollHeight;
+    bar.style.height = height + 'px';
+    bar.style.top = '-34px';
+    bar.style.animation = 'none';
+    requestAnimationFrame(() => {
+      bar.style.transition = 'top .72s cubic-bezier(.45,.05,.55,.95)';
+      bar.style.top = '0px';
+    });
+    scanBar = bar;
+    setTimeout(() => { if (scanBar === bar) { bar.remove(); scanBar = null; } }, 820);
+    const radar = document.getElementById('radar');
+    if (radar) { radar.classList.remove('on'); void radar.offsetWidth; radar.classList.add('on'); }
+    avatarScanPulse();
+  }
+
+  const finish = () => {
+    if (token !== scanToken) return;
+    rows.forEach(row => { row.style.transitionDelay = ''; row.style.animationDelay = ''; });
+    if (matches.length) {
+      setScanState('hit', matches.length + (matches.length === 1 ? ' match' : ' matches'), 'found');
+      if (matches.length) {
+        const box = relRect(rowOf.get(matches[0].node));
+        ping(box.left + 16, box.top + box.height / 2);
+        floatMark(matches[0].node, 'first match');
+      }
+      setTimeout(() => animateAvatarTo(matches[0].node), 120);
+    } else {
+      setScanState('empty', 'no matches', 'none');
+      scanWords.innerHTML = 'Nothing matched. Widen the search: drop a test, use <b>-iname</b>, or start from <b>~</b>.';
+    }
+  };
+  setTimeout(finish, reduceMotion ? 40 : Math.max(240, maxDelay + 190));
+  return lastContext;
+}
+
+function printResults(ctx, matches) {
+  if (!matches.length) return;
+  log('<span class="dim">' + matches.length + (matches.length === 1 ? ' result' : ' results') + '</span>');
+  matches.forEach(entry => {
+    const base = entry.display.split('/').pop() || entry.display;
+    const head = entry.display.slice(0, entry.display.length - base.length);
+    log((head ? '<span class="d">' + esc(head) + '</span>' : '') + '<mark>' + esc(base) + '</mark>');
+  });
+  if (matches.length > 6) {
+    log('<span class="dim">The map lit up ' + matches.length + ' rows — the list above is the short version.</span>');
+  }
+}
+
+/* ==================================================================
+   7. TERMINAL
+   ================================================================== */
+function log(html, className) {
+  const line = document.createElement('div');
+  line.className = 'line' + (className ? ' ' + className : '');
+  line.innerHTML = html;
+  term.appendChild(line);
+  term.scrollTop = term.scrollHeight;
+}
+function focusInput() {
+  try { input.focus({preventScroll: true}); } catch (error) { input.focus(); }
+}
+function shakeInput() {
+  form.classList.remove('shake');
+  void form.offsetWidth;
+  form.classList.add('shake');
+}
+function tip(html, kind) {
+  log('<span class="tip-line' + (kind ? ' ' + kind : '') + '">' + html + '</span>', 'tip-line-wrap');
+}
+
+/* ==================================================================
+   8. COMMANDS
+   ================================================================== */
+let history = [], historyIndex = -1;
+function tokenize(line) {
+  return line.match(/(?:[^\s"']+|"[^"]*"|'[^']*')+/g) || [];
+}
+function stripQuotes(token) {
+  return token.replace(/^"|"$/g, '').replace(/^'|'$/g, '');
+}
+function execute(raw) {
+  const line = raw.trim();
+  if (!line) return;
+  history.push(line);
+  historyIndex = -1;
+  log('<span class="p">you@linux:' + esc(prettyPath(cwd)) + '$</span> <span class="c">' + esc(line) + '</span>');
+  if (line === 'clear') { term.innerHTML = ''; return; }
+  if (line === 'help' || line === '--help') { showHelp(); return; }
+  const parts = tokenize(line);
+  const command = parts[0];
+  const args = parts.slice(1).map(stripQuotes);
+  if (command === 'find') doFind(args);
+  else if (command === 'ls') doLs(args);
+  else if (command === 'pwd') doPwd();
+  else if (command === 'cat') doCat(args);
+  else if (command === 'cd') doCd(args);
+  else {
+    log('bash: ' + esc(command) + ': command not found', 'err');
+    log('<span class="dim">This playground is learning <b>find</b>. Type <b>help</b> for the command list.</span>');
+    shakeInput();
+  }
+}
+
+function doFind(args) {
+  const parsed = parseFind(args);
+  if (parsed.help) { showFindHelp(); return; }
+  if (parsed.error) {
+    log('find: ' + esc(parsed.error), 'err');
+    if (parsed.tip) tip(parsed.tip, 'danger');
+    else tip('Run <b>find --help</b> to see every test this lab understands.', 'danger');
+    clearPlan('That search never ran, so the plan above is empty. Fix the command and try again.');
+    setScanState('empty', 'nothing searched', 'none');
+    shakeInput();
+    return;
+  }
+  runFind(parsed, args);
+}
+
+function showFindHelp() {
+  log('<span class="ok">find — walk the tree and test everything you meet</span>');
+  log('  <span class="hl">find PATH</span>                list everything under PATH');
+  log('  <span class="hl">find PATH -name PATTERN</span>   name matches a glob (* and ? work)');
+  log('  <span class="hl">find PATH -iname PATTERN</span>  same, ignoring upper/lower case');
+  log('  <span class="hl">find PATH -path PATTERN</span>    the whole path matches a glob');
+  log('  <span class="hl">find PATH -type f|d|l</span>     only files, only folders, or only links');
+  log('  <span class="hl">find PATH -size +100k</span>      bigger than 100 KB  (- is smaller)');
+  log('  <span class="hl">find PATH -maxdepth 2</span>     do not go deeper than 2 levels');
+  log('  <span class="hl">find PATH -mindepth 2</span>     skip the top levels');
+  log('  <span class="hl">find PATH -empty</span>          things with nothing inside');
+  log('  <span class="hl">find PATH -newer FILE</span>     changed after FILE was written');
+  log('  <span class="hl">-not</span> and <span class="hl">-o</span>            flip a test, or offer an alternative');
+  log('');
+  log('<span class="dim">Sizes read as KB by default: 1k, 2m, 500b. Paths start at . if you leave them out.</span>');
+}
+function showHelp() {
+  log('<span class="ok">Commands you can try:</span>');
+  log('  <span class="hl">find PATH -name "*.log"</span>   the star of this lab');
+  log('  <span class="hl">find --help</span>              every test explained');
+  log('  <span class="hl">ls / ls -l / ls -a</span>         look around a folder');
+  log('  <span class="hl">pwd</span>                        where am I?');
+  log('  <span class="hl">cat FILE</span>                   read a file');
+  log('  <span class="hl">cd PATH</span>                    move between folders');
+  log('  <span class="hl">clear</span>                      wipe the screen');
+}
+
+/* ---- pwd ---- */
+function doPwd() { log(esc(absPath(cwd))); }
+
+/* ---- cd ---- */
+function doCd(args) {
+  if (args.length > 1) { log('bash: cd: too many arguments', 'err'); shakeInput(); return; }
+  const arg = args[0] === undefined ? '' : args[0];
+  let target;
+  if (!arg) target = HOME;
+  else if (arg === '-') {
+    if (!prevDir) { log('bash: cd: OLDPWD not set', 'err'); shakeInput(); return; }
+    target = prevDir;
+  } else {
+    const result = resolvePath(arg, cwd);
+    if (result.error) {
+      log('bash: cd: ' + esc(arg) + ': ' + (result.error === 'missing' ? 'No such file or directory' : 'Not a directory'), 'err');
+      shakeInput();
+      return;
+    }
+    if (result.node.type !== 'dir') {
+      log('bash: cd: ' + esc(arg) + ': Not a directory', 'err');
+      tip('<b>' + esc(arg) + '</b> is a ' + typeWord(result.node) + '. Use <code>cat ' + esc(arg) + '</code> to read it.');
+      shakeInput();
+      return;
+    }
+    target = result.node;
+  }
+  if (target === cwd) { log('<span class="ok">You are already in ' + esc(prettyPath(cwd)) + '.</span>'); return; }
+  prevDir = cwd;
+  cwd = target;
+  updateUI();
+  animateAvatarTo(cwd);
+  log('<span class="ok">Now in ' + esc(prettyPath(cwd)) + '</span>');
+}
+
+/* ---- ls (full flag set) ---- */
+function parseLs(args) {
+  const flags = {a: false, l: false, t: false, r: false, one: false, h: false};
+  const paths = [];
+  let optionsEnded = false;
+  for (const arg of args) {
+    if (arg === '--help') return {help: true};
+    if (!optionsEnded && arg === '--') { optionsEnded = true; continue; }
+    if (!optionsEnded && arg.startsWith('--')) {
+      const names = {all: 'a', 'almost-all': 'a', long: 'l', 'time-sort': 't', reverse: 'r', oneline: 'one', 'human-readable': 'h'};
+      const key = arg.slice(2).split('=')[0];
+      if (!(key in names)) return {error: "unsupported option -- '" + arg.slice(2) + "'"};
+      flags[names[key]] = true;
+      continue;
+    }
+    if (!optionsEnded && arg.startsWith('-') && arg.length > 1) {
+      for (const flag of arg.slice(1)) {
+        if (flag === 'A') { flags.a = true; continue; }
+        if (flag === '1') { flags.one = true; continue; }
+        if (!(flag in flags)) return {error: "invalid option -- '" + flag + "'", tip: 'ls understands <code>-a</code>, <code>-A</code>, <code>-l</code>, <code>-h</code>, <code>-t</code>, <code>-r</code> and <code>-1</code>.'};
+        flags[flag] = true;
+      }
+      continue;
+    }
+    paths.push(arg);
+  }
+  if (paths.length > 1) return {error: 'this playground lists one path at a time'};
+  return {flags, path: paths[0] || '.'};
+}
+function lsMode(node) {
+  if (node.type === 'dir') return 'drwxr-xr-x';
+  if (node.type === 'link') return 'lrwxrwxrwx';
+  return node.name.startsWith('.') ? '-rw-------' : '-rw-r--r--';
+}
+function lsSizeText(node, human) {
+  if (node.type === 'dir') return human ? '4.0K' : '4096';
+  const bytes = node.size || 0;
+  if (!human) return String(bytes);
+  if (bytes >= 1048576) return (bytes / 1048576).toFixed(1) + 'M';
+  if (bytes >= 1024) return (bytes / 1024).toFixed(1) + 'K';
+  return bytes + 'B';
+}
+function doLs(args) {
+  const parsed = parseLs(args);
+  if (parsed.help) { showLsHelp(); return; }
+  if (parsed.error) { log('ls: ' + esc(parsed.error), 'err'); if (parsed.tip) tip(parsed.tip, 'danger'); shakeInput(); return; }
+  const result = resolvePath(parsed.path, cwd);
+  if (result.error) {
+    log("ls: cannot access '" + esc(parsed.path) + "': " + (result.error === 'missing' ? 'No such file or directory' : 'Not a directory'), 'err');
+    shakeInput();
+    return;
+  }
+  const node = result.node;
+  let entries = node.type === 'dir' ? node.children.slice() : [node];
+  if (node.type === 'dir' && !parsed.flags.a) entries = entries.filter(entry => !entry.name.startsWith('.'));
+  entries.sort(byName);
+  if (parsed.flags.t) entries.sort((left, right) => right.mtime - left.mtime);
+  if (parsed.flags.r) entries.reverse();
+  if (!entries.length) { log('<span class="dim">(empty)</span>'); return; }
+  const paint = entry => {
+    const kind = entry.name.startsWith('.') ? 'code' : entry.type === 'dir' ? 'd' : entry.type === 'link' ? 'hl' : 'f';
+    const suffix = entry.type === 'dir' ? '/' : entry.type === 'link' ? '@' : '';
+    return '<span class="' + kind + '">' + esc(entry.name + suffix) + '</span>';
+  };
+  if (parsed.flags.l) {
+    entries.forEach(entry => {
+      const date = new Date(entry.mtime).toLocaleDateString('en-US', {month: 'short', day: '2-digit'});
+      log(lsMode(entry) + '  you  you  ' + lsSizeText(entry, parsed.flags.h).padStart(6, ' ') + '  ' + date + '  ' +
+        '<span class="' + (entry.type === 'dir' ? 'd' : entry.type === 'link' ? 'hl' : 'f') + '">' +
+        esc(entry.name + (entry.type === 'dir' ? '/' : entry.type === 'link' ? ' -> ' + entry.target : '')) + '</span>');
+    });
+  } else if (parsed.flags.one) {
+    entries.forEach(entry => log(paint(entry)));
+  } else {
+    log(entries.map(paint).join('   '));
+  }
+  log('<span class="dim">' + entries.length + (entries.length === 1 ? ' entry' : ' entries') + ' in ' + esc(prettyPath(node)) + '</span>');
+}
+function showLsHelp() {
+  log('<span class="ok">ls — list what is here</span>');
+  log('  <span class="hl">ls</span>              names in the current folder');
+  log('  <span class="hl">ls -l</span>            long view: mode, size, date');
+  log('  <span class="hl">ls -a</span>            include hidden names like .bashrc');
+  log('  <span class="hl">ls -A</span>            same idea, written the other way');
+  log('  <span class="hl">ls -h</span>            human-readable sizes with -l');
+  log('  <span class="hl">ls -t</span>            newest first');
+  log('  <span class="hl">ls -r</span>            reverse the order');
+  log('  <span class="hl">ls -1</span>            one entry per line');
+  log('  <span class="hl">ls PATH</span>          list another folder, e.g. <b>ls ~/logs</b>');
+  log('');
+  log('<span class="dim">Flags combine: <b>ls -lah</b>, <b>ls -lat</b>, <b>ls -a1</b>.</span>');
+}
+
+/* ---- cat ---- */
+function doCat(args) {
+  const names = args.filter(arg => !arg.startsWith('-'));
+  if (!names.length) { log('cat: missing file operand', 'err'); shakeInput(); return; }
+  const files = [];
+  for (const spec of names) {
+    const result = resolvePath(spec, cwd);
+    if (result.error || result.node.type !== 'file') {
+      log("cat: '" + esc(spec) + "': " + (result.error === 'missing' ? 'No such file or directory' : result.error === 'notdir' ? 'Not a directory' : 'Is a directory'), 'err');
+      shakeInput();
+      return;
+    }
+    files.push(result.node);
+  }
+  files.forEach((file, index) => {
+    if (files.length > 1) log('<span class="dim">── ' + esc(file.name) + ' ──</span>');
+    file.content.forEach((text, lineIndex) => {
+      log((args.includes('-n') ? '<span class="code">' + String(lineIndex + 1).padStart(3, ' ') + '</span> ' : '') + esc(text));
+    });
+    if (index < files.length - 1) log('');
+  });
+  const last = files[files.length - 1];
+  const row = rowOf.get(last);
+  if (row) {
+    row.classList.remove('spot');
+    void row.offsetWidth;
+    row.classList.add('spot');
+    setTimeout(() => row.classList.remove('spot'), 1200);
+  }
+}
+
+/* clicking the map */
+function onNodeClick(node) {
+  if (node.type === 'file') { execute('cat ' + (node.parent === cwd ? node.name : prettyPath(node))); return; }
+  if (node.type === 'link') {
+    const spec = node.parent === cwd ? node.name : prettyPath(node);
+    log('<span class="dim">' + esc(spec) + ' is a link → ' + esc(node.target) + '</span>');
+    tip('Links are pointers, not real files. <code>find -type l</code> hunts for exactly these.');
+    return;
+  }
+  if (node === cwd) {
+    log('<span class="dim">You are already here. Try <b>find . -name "*.txt"</b> to search from this spot.</span>');
+    return;
+  }
+  execute('cd ' + (node.parent === cwd ? node.name : prettyPath(node)));
+}
+
+/* ==================================================================
+   9. MISSIONS
+   ================================================================== */
+const evidence = {exact: false, glob: false, iname: false, typeDirDepth: false, sizeFile: false, combo: false};
+function recordEvidence(ctx) {
+  const names = ctx.terms.filter(t => t.type === 'name');
+  if (names.some(t => !String(t.value).includes('*')) && ctx.matches.indexOf(notes) > -1) evidence.exact = true;
+  if (names.some(t => String(t.value).includes('*'))) evidence.glob = true;
+  if (names.some(t => t.ci)) evidence.iname = true;
+  if (ctx.terms.some(t => t.type === 'type' && t.value === 'd') && ctx.terms.some(t => t.type === 'maxdepth')) evidence.typeDirDepth = true;
+  if (ctx.terms.some(t => t.type === 'type' && t.value === 'f') && ctx.terms.some(t => t.type === 'size')) evidence.sizeFile = true;
+  if (ctx.terms.length >= 3 && ctx.terms.some(t => t.type === 'size') && names.length) evidence.combo = true;
+}
+const missions = [
+  {text: 'Find the file called <b>notes.txt</b> anywhere under your home folder.',
+   hint: 'Start with the folder, then add the test: <code>find ~ -name "notes.txt"</code>',
+   answer: 'find ~ -name "notes.txt"',
+   check: c => evidence.exact || (c && c.terms.some(t => t.type === 'name') && c.matches.indexOf(notes) > -1)},
+
+  {text: 'Now find <b>every</b> file whose name ends in <b>.log</b>.',
+   hint: 'A <code>*</code> stands in for any characters. Type: <code>find ~ -name "*.log"</code>',
+   answer: 'find ~ -name "*.log"',
+   check: c => evidence.glob || (c && c.terms.some(t => t.type === 'name' && String(t.value).includes('*')) && c.matches.length > 0)},
+
+  {text: 'Find <b>TODO.md</b> even though you type it in <b>lower case</b>.',
+   hint: '<code>-iname</code> ignores upper/lower case. Type: <code>find ~ -iname "todo.md"</code>',
+   answer: 'find ~ -iname "todo.md"',
+   check: c => evidence.iname || (c && c.terms.some(t => t.ci) && c.matches.length > 0)},
+
+  {text: 'List only the <b>folders</b> sitting directly in your home folder — not the ones deeper down.',
+   hint: 'Two tests at once: <code>find ~ -maxdepth 1 -type d</code>',
+   answer: 'find ~ -maxdepth 1 -type d',
+   check: c => evidence.typeDirDepth || (c && c.terms.some(t => t.type === 'type' && t.value === 'd') && c.terms.some(t => t.type === 'maxdepth'))},
+
+  {text: 'Find every <b>file</b> bigger than <b>100 KB</b>.',
+   hint: 'Size comes first, then the unit: <code>find ~ -type f -size +100k</code>',
+   answer: 'find ~ -type f -size +100k',
+   check: c => evidence.sizeFile || (c && c.terms.some(t => t.type === 'size') && c.terms.some(t => t.type === 'type' && t.value === 'f') && c.matches.length > 0)},
+
+  {text: 'Final challenge: <b>.txt</b> files that are <b>smaller than 1 KB</b>.',
+   hint: 'Combine all three: <code>find ~ -type f -name "*.txt" -size -1k</code>',
+   answer: 'find ~ -type f -name "*.txt" -size -1k',
+   check: c => evidence.combo || (c && c.terms.length >= 3 && c.terms.some(t => t.type === 'size') && c.terms.some(t => t.type === 'name') && c.matches.length > 0)}
+];
+const missionCount = missions.length;
+let missionIndex = 0, missionLocked = false;
+
+function renderMission() {
+  const mission = missions[Math.min(missionIndex, missionCount - 1)];
+  missionBadge.textContent = 'Mission ' + (missionIndex + 1) + ' / ' + missionCount;
+  missionText.innerHTML = mission.text;
+  hintBar.textContent = '';
+  hintBar.classList.remove('show');
+  renderChips();
+}
+function checkMission() {
+  if (missionLocked || missionIndex >= missionCount || !lastContext) return;
+  let passed = false;
+  try { passed = missions[missionIndex].check(lastContext); } catch (error) { passed = false; }
+  if (passed) completeMission();
+}
+function completeMission() {
+  missionLocked = true;
+  stepsEl.children[missionIndex].classList.add('done');
+  missionEl.classList.add('complete');
+  setTimeout(() => {
+    missionEl.classList.remove('complete');
+    missionIndex++;
+    missionLocked = false;
+    if (missionIndex >= missionCount) finishAll();
+    else { renderMission(); checkMission(); }
+  }, 950);
+}
+function finishAll() {
+  missionBadge.textContent = 'All done';
+  missionText.innerHTML = 'You can search a whole filesystem by shape, name and size. Keep exploring!';
+  hintBtn.style.display = 'none';
+  hintBar.classList.remove('show');
+  confetti();
+  log('<span class="ok">All missions complete — nicely done!</span>');
+  log('<span class="dim">find answers questions about the tree. When you know the name, ls and cat are faster.</span>');
+}
+function confetti() {
+  const colors = ['#38bdf8', '#fbbf24', '#4ade80', '#7dd3fc', '#f472b6', '#bae6fd'];
+  for (let i = 0; i < 55; i++) {
+    const piece = document.createElement('i');
+    piece.className = 'confetti';
+    piece.style.left = Math.random() * 100 + '%';
+    piece.style.background = colors[i % colors.length];
+    piece.style.animationDelay = (Math.random() * 0.45) + 's';
+    piece.style.animationDuration = (1.7 + Math.random() * 1.3) + 's';
+    piece.style.setProperty('--rot', (Math.random() * 900 - 450) + 'deg');
+    document.body.appendChild(piece);
+    setTimeout(() => piece.remove(), 3600);
+  }
+}
+
+/* ==================================================================
+   10. CHIPS + EVENTS
+   ================================================================== */
+function renderChips() {
+  chips.innerHTML = '';
+  const mission = missions[Math.min(missionIndex, missionCount - 1)];
+  const list = [];
+  if (mission && mission.answer) list.push(mission.answer);
+  list.push('find .', 'find ~ -name "*.txt"', 'find ~ -type d -maxdepth 1', 'find ~ -size +1m');
+  const essentials = ['ls', 'pwd', 'help'];
+  const seen = new Set();
+  list.filter(command => {
+    if (seen.has(command)) return false;
+    seen.add(command);
+    return true;
+  }).slice(0, 4).concat(essentials).forEach(command => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'chip';
+    button.textContent = command;
+    button.addEventListener('click', () => { input.value = ''; execute(command); focusInput(); });
+    chips.appendChild(button);
+  });
+}
+
+hintBtn.addEventListener('click', () => {
+  if (hintBar.classList.contains('show')) { hintBar.classList.remove('show'); renderChips(); return; }
+  const mission = missions[Math.min(missionIndex, missionCount - 1)];
+  hintBar.innerHTML = mission.hint;
+  hintBar.classList.add('show');
+  renderChips();
+});
+form.addEventListener('submit', event => {
+  event.preventDefault();
+  const value = input.value;
+  input.value = '';
+  execute(value);
+  focusInput();
+});
+input.addEventListener('keydown', event => {
+  if (event.key === 'ArrowUp') {
+    event.preventDefault();
+    if (historyIndex < history.length - 1) {
+      historyIndex++;
+      input.value = history[history.length - 1 - historyIndex];
+      input.setSelectionRange(input.value.length, input.value.length);
+    }
+  } else if (event.key === 'ArrowDown') {
+    event.preventDefault();
+    if (historyIndex > 0) {
+      historyIndex--;
+      input.value = history[history.length - 1 - historyIndex];
+    } else {
+      historyIndex = -1;
+      input.value = '';
+    }
+  } else if (event.key === 'Tab') {
+    event.preventDefault();
+    completeToken();
+  }
+});
+function completeToken() {
+  const value = input.value;
+  const tokens = value.split(/\s+/);
+  const last = tokens[tokens.length - 1] || '';
+  if (!last) return;
+  const slash = last.lastIndexOf('/');
+  const dirPart = slash > -1 ? last.slice(0, slash + 1) : '';
+  const fragment = slash > -1 ? last.slice(slash + 1) : last;
+  let candidates = [];
+  if (fragment.startsWith('-') && tokens.length > 1) {
+    candidates = ['-name', '-iname', '-type', '-size', '-path', '-maxdepth', '-mindepth', '-empty', '-newer', '-not', '-o', '--help'];
+  } else {
+    const result = resolvePath(dirPart || '.', cwd);
+    if (result.error || result.node.type !== 'dir') return;
+    candidates = result.node.children.map(child => child.name + (child.type === 'dir' ? '/' : ''));
+  }
+  const hits = candidates.filter(candidate => candidate.startsWith(fragment));
+  if (!hits.length) return;
+  if (hits.length === 1) {
+    const suffix = hits[0].endsWith('/') ? '' : ' ';
+    input.value = value.slice(0, value.length - last.length) + dirPart + hits[0] + suffix;
+    input.setSelectionRange(input.value.length, input.value.length);
+  } else {
+    log('<span class="dim">' + esc(hits.join('  ')) + '</span>');
+  }
+}
+
+/* ==================================================================
+   11. RESET + BOOT
+   ================================================================== */
+let scanToken = 0;
+let scanBar = null;
+function clearScanFx() {
+  if (scanBar) { scanBar.remove(); scanBar = null; }
+  const radar = document.getElementById('radar');
+  if (radar) radar.classList.remove('on');
+  treeInner.querySelectorAll('.row').forEach(row => { row.style.transitionDelay = ''; row.style.animationDelay = ''; });
+}
+function clearHighlights() {
+  const rows = treeInner.querySelectorAll('.row');
+  rows.forEach(row => { row.classList.remove('found', 'dimmed', 'spot'); row.style.animationDelay = ''; row.style.transitionDelay = ''; });
+}
+function resetLab() {
+  buildModel();
+  buildTree();
+  cwd = HOME;
+  prevDir = null;
+  lastContext = null;
+  history = [];
+  historyIndex = -1;
+  missionIndex = 0;
+  missionLocked = false;
+  Object.keys(evidence).forEach(key => { evidence[key] = false; });
+  term.innerHTML = '';
+  stepsEl.innerHTML = '';
+  missions.forEach(() => stepsEl.appendChild(document.createElement('i')));
+  hintBtn.style.display = '';
+  input.value = '';
+  countNum.textContent = '0';
+  counterToken++;
+  scanToken++;
+  counterEl.classList.add('zero');
+  scanCard.className = 'scan-card';
+  renderResults(null);
+  requestAnimationFrame(() => {
+    moveAvatar(false);
+    updateUI();
+    renderMission();
+    setScanState(null, 'waiting for a search', '');
+    scanTerms.innerHTML = '';
+    scanWords.textContent = 'find walks the tree and applies your tests to every single thing it meets.';
+    log('<span class="hl">Fresh filesystem.</span> Every mission is live again.');
+  });
+}
+resetBtn.addEventListener('click', () => {
+  resetLab();
+  resetBtn.classList.remove('spin');
+  void resetBtn.offsetWidth;
+  resetBtn.classList.add('spin');
+  setTimeout(() => resetBtn.classList.remove('spin'), 600);
+});
+window.addEventListener('resize', () => moveAvatar(false));
+
+HOME = buildModel();
+buildTree();
+stepsEl.innerHTML = '';
+missions.forEach(() => stepsEl.appendChild(document.createElement('i')));
+cwd = HOME;
+renderResults(null);
+
+requestAnimationFrame(() => {
+  moveAvatar(false);
+  updateUI();
+  renderMission();
+  log('<span class="hl">Welcome to the visual find terminal.</span>');
+  log('<b>find</b> walks the whole tree and tests every file and folder against your rules.');
+  log('Watch the blue beam sweep the map — whatever matches lights up.');
+  log('');
+  log('<span class="dim">Try this first:</span> <span class="code">find ~ -name "*.log"</span>');
+});
+
+if (!('ontouchstart' in window) && window.innerWidth > 900) setTimeout(focusInput, 400);
+</script>
+</body>
+</html>
