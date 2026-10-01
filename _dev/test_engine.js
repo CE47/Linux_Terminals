@@ -86,6 +86,28 @@ contains('find -type d', run(sh,'find . -type d').out, 'logs');
 // tree
 contains('tree runs', run(sh,'tree').out, '├──');
 
+// df / du / ps
+contains('df header', run(sh,'df').out, 'Filesystem');
+contains('df shows full fs', run(sh,'df').out, '100%');
+contains('df -h human', run(sh,'df -h').out, 'G');
+eq('df | grep full | cut mount', run(sh,'df | grep 100% | cut -d " " -f 6').out, '/var');
+(function(){
+  const d = new Shell();
+  d.mkdir('~/space'); d.mkfile('~/space/big.bin', 'B'.repeat(4096)); d.mkfile('~/space/tiny.txt','x\n');
+  contains('du -s summary', run(d,'du -s ~/space').out, 'space');
+  contains('du -a lists files', run(d,'du -a ~/space').out, 'big.bin');
+  contains('du -ah human', run(d,'du -ah ~/space').out, 'K');
+  eq('du missing path code', run(d,'du ~/nope').code, 1);
+})();
+contains('ps aux header', run(sh,'ps aux').out, '%CPU');
+contains('ps aux runaway', run(sh,'ps aux').out, 'worker.js');
+eq('ps aux grep worker.js cut pid', run(sh,'ps aux | grep worker.js | cut -d " " -f 2').out, '6971');
+contains('ps -ef header', run(sh,'ps -ef').out, 'PPID');
+contains('man df', run(sh,'man df').out, 'disk space');
+contains('man du', run(sh,'man du').out, 'file space');
+contains('man ps', run(sh,'man ps').out, 'processes');
+contains('help lists df du ps', run(sh,'help').out, 'df du ps');
+
 // errors
 eq('cat missing', run(sh,'cat nope.txt').out, 'cat: nope.txt: No such file or directory');
 eq('cd missing', run(sh,'cd nope').out, 'cd: nope: No such file or directory');

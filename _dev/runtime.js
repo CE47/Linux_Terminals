@@ -22,8 +22,8 @@
   };
   const esc = s => String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-  const DIFF_COLORS = {Rookie:'#4ade80','Field Agent':'#38bdf8',Specialist:'#a78bfa',Master:'#fbbf24'};
-  const RANKS = [ [0,'Rookie'],[300,'Operator'],[800,'Engineer'],[1500,'Specialist'],[2600,'Sysadmin'],[4000,'Shell Master'] ];
+  const DIFF_COLORS = {Rookie:'#4ade80','Field Agent':'#38bdf8',Specialist:'#a78bfa',Master:'#fbbf24',Expert:'#fb7185'};
+  const RANKS = [ [0,'Rookie'],[300,'Operator'],[800,'Engineer'],[1500,'Specialist'],[2600,'Sysadmin'],[4000,'Shell Master'],[6000,'Grandmaster'] ];
 
   const GAME = {
     sh:null, scen:null, stepIdx:0, attempts:0, xp:0, cleared:{}, rowOf:null, treeInner:null, blob:null,
@@ -165,10 +165,13 @@
     setPs1(); renderCrumbs(); refreshTreeFull();
     renderObjective(); renderQuestLog(); updateHeaderStats();
     $.termSub.textContent = scen.title;
+    const expert = scen.difficulty === 'Expert';
+    $.hintBtn.style.display = expert ? 'none' : '';
     log(`<span class="hl">${scen.icon} ${esc(scen.title)}</span>`,'sys');
     log(`<span class="narr">${esc(scen.story)}</span>`,'sys');
     log(``,'sys');
-    log(`<span class="sys">Type commands below. Use <b>Hint</b> if you get stuck. Type <b>help</b> for available commands.</span>`,'sys');
+    if(expert) log(`<span class="sys">Expert mission — no hints. Type <b>help</b> for available commands.</span>`,'sys');
+    else log(`<span class="sys">Type commands below. Use <b>Hint</b> if you get stuck. Type <b>help</b> for available commands.</span>`,'sys');
     $.input.disabled=false; $.input.value='';
     if(!('ontouchstart' in window) && window.innerWidth>980) setTimeout(()=>$.input.focus(),200);
   }
@@ -259,7 +262,7 @@
     if(e.key==='ArrowUp'){ e.preventDefault(); if(GAME.histIdx<GAME.history.length-1){ GAME.histIdx++; $.input.value=GAME.history[GAME.history.length-1-GAME.histIdx]; } }
     else if(e.key==='ArrowDown'){ e.preventDefault(); if(GAME.histIdx>0){ GAME.histIdx--; $.input.value=GAME.history[GAME.history.length-1-GAME.histIdx]; } else { GAME.histIdx=-1; $.input.value=''; } }
   });
-  $.hintBtn.addEventListener('click', ()=>{ if(!GAME.scen) return; if($.hintbar.classList.contains('show')){ $.hintbar.classList.remove('show'); return; } const step=GAME.scen.steps[GAME.stepIdx]; $.hintbar.innerHTML='💡 '+(step.hint||'').replace(/`([^`]+)`/g,'<code>$1</code>').replace(/</g,'&lt;').replace(/&lt;code&gt;/g,'<code>').replace(/&lt;\/code&gt;/g,'</code>'); $.hintbar.classList.add('show'); });
+  $.hintBtn.addEventListener('click', ()=>{ if(!GAME.scen || GAME.scen.difficulty==='Expert') return; if($.hintbar.classList.contains('show')){ $.hintbar.classList.remove('show'); return; } const step=GAME.scen.steps[GAME.stepIdx]; $.hintbar.innerHTML='💡 '+(step.hint||'').replace(/`([^`]+)`/g,'<code>$1</code>').replace(/</g,'&lt;').replace(/&lt;code&gt;/g,'<code>').replace(/&lt;\/code&gt;/g,'</code>'); $.hintbar.classList.add('show'); });
   $.menuBtn.addEventListener('click', openSelect);
   $.briefBack.addEventListener('click', openSelect);
   $.vicMenu.addEventListener('click', openSelect);

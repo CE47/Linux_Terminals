@@ -198,7 +198,7 @@ button{font:inherit}
       <div class="hero-copy reveal">
         <p class="eyebrow"><span class="eyebrow-line"></span> Interactive command school</p>
         <h1>Learn the terminal by <em>moving through a living filesystem.</em></h1>
-        <p class="hero-lede">Seventeen visual labs turn abstract Linux commands into visible journeys. Navigate folders, inspect files, search text, and watch your changes take root.</p>
+        <p class="hero-lede">Twenty visual labs turn abstract Linux commands into visible journeys. Navigate folders, inspect files, search text, watch disk and processes, and see your changes take root.</p>
         <div class="hero-actions">
           <a class="button button-primary" href="ls.html">Start with <code>ls</code><span class="button-arrow">↗</span></a>
           <a class="button button-secondary" href="assessment.html">Take the assessment<span class="button-arrow">↗</span></a>
@@ -245,8 +245,8 @@ button{font:inherit}
     </section>
 
     <section class="signal-strip reveal" aria-label="Project highlights">
-      <div class="signal-item"><span class="signal-value">17</span><span class="signal-label">command labs</span></div>
-      <div class="signal-item"><span class="signal-value">102</span><span class="signal-label">guided missions</span></div>
+      <div class="signal-item"><span class="signal-value">20</span><span class="signal-label">command labs</span></div>
+      <div class="signal-item"><span class="signal-value">120</span><span class="signal-label">guided missions</span></div>
       <div class="signal-item"><span class="signal-value">0</span><span class="signal-label">dependencies to install</span></div>
     </section>
 
@@ -254,13 +254,13 @@ button{font:inherit}
       <div class="section-heading reveal">
         <div>
           <p class="section-kicker">Choose your starting point</p>
-          <h2>Seventeen ways to <em>see</em> the shell.</h2>
+          <h2>Twenty ways to <em>see</em> the shell.</h2>
         </div>
         <p class="section-intro">Each playground is a self-contained visual lesson. Pick a command, follow the missions, and let the filesystem show you what happened.</p>
       </div>
       <div class="filter-bar reveal" role="toolbar" aria-label="Filter command labs">
-        <button class="filter-button active" type="button" data-filter="all">All labs <span>17</span></button>
-        <button class="filter-button" type="button" data-filter="inspect">Inspect <span>07</span></button>
+        <button class="filter-button active" type="button" data-filter="all">All labs <span>20</span></button>
+        <button class="filter-button" type="button" data-filter="inspect">Inspect <span>10</span></button>
         <button class="filter-button" type="button" data-filter="navigate">Navigate <span>02</span></button>
         <button class="filter-button" type="button" data-filter="build">Build <span>08</span></button>
       </div>
@@ -367,6 +367,24 @@ button{font:inherit}
           <p>Search for patterns and watch matches light up across files. Tune case, line numbers, counts, and recursive search.</p>
           <div class="card-footer"><div class="card-tags"><span class="card-tag">-i</span><span class="card-tag">-n</span><span class="card-tag">-r</span></div><a class="card-link" href="grep.html">Open lab <span>↗</span></a></div>
         </article>
+        <article class="lab-card reveal" data-card data-category="inspect" style="--card-accent:#22d3ee">
+          <div class="card-top"><span class="card-number">18</span><span class="card-type">Inspect</span><span class="card-arrow">↗</span></div>
+          <h3><code>df</code></h3>
+          <p>Read how full every mounted filesystem is. Disk gauges fill by usage so the disk that pages you at 3 AM is obvious.</p>
+          <div class="card-footer"><div class="card-tags"><span class="card-tag">-h</span><span class="card-tag">Use%</span><span class="card-tag">mounts</span></div><a class="card-link" href="df.html">Open lab <span>↗</span></a></div>
+        </article>
+        <article class="lab-card reveal" data-card data-category="inspect" style="--card-accent:#f59e0b">
+          <div class="card-top"><span class="card-number">19</span><span class="card-type">Inspect</span><span class="card-arrow">↗</span></div>
+          <h3><code>du</code></h3>
+          <p>Hunt down the space hog folder by folder. A size map ranks every entry so the biggest offender jumps out.</p>
+          <div class="card-footer"><div class="card-tags"><span class="card-tag">-s</span><span class="card-tag">-h</span><span class="card-tag">-a</span></div><a class="card-link" href="du.html">Open lab <span>↗</span></a></div>
+        </article>
+        <article class="lab-card reveal" data-card data-category="inspect" style="--card-accent:#a78bfa">
+          <div class="card-top"><span class="card-number">20</span><span class="card-type">Inspect</span><span class="card-arrow">↗</span></div>
+          <h3><code>ps</code></h3>
+          <p>See what is actually running — and what is on fire. A process monitor flags the runaway pinning a CPU core.</p>
+          <div class="card-footer"><div class="card-tags"><span class="card-tag">aux</span><span class="card-tag">-ef</span><span class="card-tag">%CPU</span></div><a class="card-link" href="ps.html">Open lab <span>↗</span></a></div>
+        </article>
       </div>
       <div class="no-results" id="noResults" role="status">No labs match that filter.</div>
     </section>
@@ -408,7 +426,7 @@ button{font:inherit}
   </main>
 
   <footer class="site-footer">
-    <span><span class="footer-mark">●</span> Visual Linux · seventeen visual command labs</span>
+    <span><span class="footer-mark">●</span> Visual Linux · twenty visual command labs</span>
     <a class="footer-link" href="#top">Back to top ↑</a>
   </footer>
 </div>

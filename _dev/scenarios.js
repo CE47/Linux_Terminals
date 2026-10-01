@@ -2152,4 +2152,597 @@ SCENARIOS.push({
   ]
 });
 
+/* ================================================================== *
+ *  NEW SCENARIOS — EXPERT (10)
+ *  The hardest tier. No hints. More steps than Master (13-15 each),
+ *  longer multi-stage pipelines, and tighter correctness checks.
+ *  Only seasoned Linux operators should be able to clear these.
+ * ================================================================== */
+
+/* X1. Kernel Panic Postmortem */
+SCENARIOS.push({
+  id:'kernel-postmortem',
+  title:'Kernel Panic Postmortem',
+  icon:'💥',
+  difficulty:'Expert',
+  story:'A node crashed hard. You are handed a tangle of ring-buffer dumps and must reconstruct the timeline, isolate the offending module, quantify the fault signature, and deliver a frozen, line-numbered postmortem — all from the shell, no notes.',
+  brief:'Reconstruct a crash timeline and signature with grep -oE, cut, sort, uniq -c, nl, and chmod.',
+  setup(sh){
+    sh.mkdir('~/panic/dumps'); sh.mkdir('~/panic/out');
+    sh.mkfile('~/panic/dumps/ring0.log', [
+      '[0.100] module=net state=ok',
+      '[0.250] module=mem state=ok',
+      '[0.400] module=net state=warn',
+      '[0.550] module=disk state=ok',
+      '[0.700] module=net state=panic',
+      '[0.850] module=mem state=warn',
+      '[0.900] module=net state=panic'
+    ].join('\n')+'\n');
+    sh.mkfile('~/panic/dumps/ring1.log', [
+      '[1.100] module=disk state=warn',
+      '[1.250] module=net state=panic',
+      '[1.400] module=mem state=ok',
+      '[1.550] module=disk state=panic'
+    ].join('\n')+'\n');
+  },
+  steps:[
+    { brief:'Enter the panic folder.', check:(sh)=> cwdIs(sh,'~/panic'), solution:['cd ~/panic'] },
+    { brief:'Count the total ring-buffer lines across both dumps at once (expect a total line).', check:(sh,ctx)=> ctx.cmd==='wc' && ctx.out.includes('total') && ctx.out.includes('11'), solution:['wc -l dumps/ring0.log dumps/ring1.log'] },
+    { brief:'Gather every line that recorded a panic across all dumps (recursive) into out/panics.txt.', check:(sh)=> isFile(sh,'~/panic/out/panics.txt') && linecount(sh,'~/panic/out/panics.txt')===4, solution:['grep -r "state=panic" dumps > out/panics.txt'] },
+    { brief:'Extract just the timestamps (the [n.nnn] token) from the panic lines into out/timeline.txt, preserving order.', check:(sh)=>{ const n=sh.get('~/panic/out/timeline.txt'); if(!n) return false; const ls=fileLines(n); return ls.length===4 && ls[0]==='0.700' && ls.includes('1.550'); }, solution:['grep -oE "[0-9]+\\.[0-9]+" out/panics.txt > out/timeline.txt'] },
+    { brief:'From the panic lines, extract the module name (the module=X token value) and tally each with counts into out/by_module.txt.', check:(sh)=> isFile(sh,'~/panic/out/by_module.txt') && has(sh,'~/panic/out/by_module.txt','net') && has(sh,'~/panic/out/by_module.txt','disk'), solution:['grep -oE "module=[a-z]+" out/panics.txt | cut -d = -f 2 | sort | uniq -c > out/by_module.txt'] },
+    { brief:'Determine the single worst module: from the panic lines, isolate the module value, tally, rank by frequency, and keep only the top line in out/worst.txt.', check:(sh)=> isFile(sh,'~/panic/out/worst.txt') && has(sh,'~/panic/out/worst.txt','net') && linecount(sh,'~/panic/out/worst.txt')===1, solution:['grep -oE "module=[a-z]+" out/panics.txt | cut -d = -f 2 | sort | uniq -c | sort -nr | head -n 1 > out/worst.txt'] },
+    { brief:'How many distinct modules panicked? Count the unique module values among the panic lines.', check:(sh,ctx)=> ctx.out.trim()==='2' && ctx.line.includes('sort -u') && ctx.line.includes('wc'), solution:['grep -oE "module=[a-z]+" out/panics.txt | sort -u | wc -l'] },
+    { brief:'The net module is the culprit. Count exactly how many times net panicked.', check:(sh,ctx)=> ctx.out.trim()==='3' && /grep/.test(ctx.line), solution:['grep -c "module=net state=panic" out/panics.txt'] },
+    { brief:'Start the postmortem: write the headline "ROOT CAUSE: net" into out/report.txt.', check:(sh)=> has(sh,'~/panic/out/report.txt','ROOT CAUSE: net'), solution:['echo "ROOT CAUSE: net" > out/report.txt'] },
+    { brief:'Append "panics: net=3" to the report.', check:(sh)=> has(sh,'~/panic/out/report.txt','panics: net=3') && linecount(sh,'~/panic/out/report.txt')===2, solution:['echo "panics: net=3" >> out/report.txt'] },
+    { brief:'Append the first panic timestamp to the report as "first: 0.700".', check:(sh)=> has(sh,'~/panic/out/report.txt','first: 0.700') && linecount(sh,'~/panic/out/report.txt')===3, solution:['echo "first: 0.700" >> out/report.txt'] },
+    { brief:'Produce a line-numbered final postmortem out/report.final.txt from the report.', check:(sh)=> isFile(sh,'~/panic/out/report.final.txt') && has(sh,'~/panic/out/report.final.txt','ROOT CAUSE: net'), solution:['nl out/report.txt > out/report.final.txt'] },
+    { brief:'Freeze the entire out directory read-only recursively (chmod -R 400).', check:(sh)=> mode(sh,'~/panic/out/report.final.txt')===0o400 && mode(sh,'~/panic/out/panics.txt')===0o400, solution:['chmod -R 400 out'] },
+    { brief:'Confirm the frozen postmortem as a tree of out.', check:(sh,ctx)=> ctx.cmd==='tree' && ctx.out.includes('report.final.txt') && ctx.out.includes('by_module.txt'), solution:['tree out'] }
+  ]
+});
+
+/* X2. The Log Correlation Engine */
+SCENARIOS.push({
+  id:'log-correlation',
+  title:'The Log Correlation Engine',
+  icon:'🧮',
+  difficulty:'Expert',
+  story:'Three services emit logs in three different formats. Correlate them by request id, find the id that failed everywhere, and emit a single reconciled evidence bundle. One wrong field index and the whole chain breaks.',
+  brief:'Cross-format correlation with cut on different delimiters, grep, sort, uniq, and redirection.',
+  setup(sh){
+    sh.mkdir('~/corr/logs'); sh.mkdir('~/corr/out');
+    sh.mkfile('~/corr/logs/gateway.log', [
+      'REQ100|200|/home',
+      'REQ101|500|/pay',
+      'REQ102|200|/home',
+      'REQ101|500|/pay',
+      'REQ103|404|/old'
+    ].join('\n')+'\n');
+    sh.mkfile('~/corr/logs/auth.csv', [
+      'id,user,result',
+      'REQ100,alice,ok',
+      'REQ101,bob,deny',
+      'REQ102,carol,ok',
+      'REQ101,bob,deny',
+      'REQ103,dave,ok'
+    ].join('\n')+'\n');
+    sh.mkfile('~/corr/logs/db.log', [
+      'REQ101 timeout',
+      'REQ100 ok',
+      'REQ101 timeout',
+      'REQ103 ok'
+    ].join('\n')+'\n');
+  },
+  steps:[
+    { brief:'Enter the corr folder.', check:(sh)=> cwdIs(sh,'~/corr'), solution:['cd ~/corr'] },
+    { brief:'From the pipe-delimited gateway log, extract the request ids (field 1) of the 500 errors, unique, into out/gw_fail.txt.', check:(sh)=>{ const n=sh.get('~/corr/out/gw_fail.txt'); if(!n) return false; const ls=fileLines(n); return ls.length===1 && ls[0]==='REQ101'; }, solution:['grep "|500|" logs/gateway.log | cut -d "|" -f 1 | sort -u > out/gw_fail.txt'] },
+    { brief:'From the comma-delimited auth log, extract the ids (field 1) whose result is deny, unique, skipping the header, into out/auth_fail.txt.', check:(sh)=>{ const n=sh.get('~/corr/out/auth_fail.txt'); if(!n) return false; const ls=fileLines(n); return ls.length===1 && ls[0]==='REQ101'; }, solution:['grep deny logs/auth.csv | cut -d , -f 1 | sort -u > out/auth_fail.txt'] },
+    { brief:'From the space-delimited db log, extract the ids (field 1) that hit a timeout, unique, into out/db_fail.txt.', check:(sh)=>{ const n=sh.get('~/corr/out/db_fail.txt'); if(!n) return false; const ls=fileLines(n); return ls.length===1 && ls[0]==='REQ101'; }, solution:['grep timeout logs/db.log | cut -d " " -f 1 | sort -u > out/db_fail.txt'] },
+    { brief:'Concatenate all three failure id lists into out/all_fail.txt.', check:(sh)=> isFile(sh,'~/corr/out/all_fail.txt') && linecount(sh,'~/corr/out/all_fail.txt')===3, solution:['cat out/gw_fail.txt out/auth_fail.txt out/db_fail.txt > out/all_fail.txt'] },
+    { brief:'The id that failed in all three services appears 3 times. Tally the combined list and keep the ids that occur more than once into out/common.txt.', check:(sh)=>{ const n=sh.get('~/corr/out/common.txt'); if(!n) return false; const c=n.content||''; return c.includes('REQ101'); }, solution:['sort out/all_fail.txt | uniq -d > out/common.txt'] },
+    { brief:'Count how many times REQ101 appears across every raw log, recursively.', check:(sh,ctx)=> ctx.out.includes('gateway.log') && /grep/.test(ctx.line), solution:['grep -rc REQ101 logs'] },
+    { brief:'Gather every raw line mentioning REQ101 from all logs (recursive) into out/req101.txt.', check:(sh)=> isFile(sh,'~/corr/out/req101.txt') && linecount(sh,'~/corr/out/req101.txt')===6, solution:['grep -r REQ101 logs > out/req101.txt'] },
+    { brief:'From the auth log, which user owns the failing id? Extract the user (field 2) for REQ101, unique, into out/culprit.txt.', check:(sh)=>{ const n=sh.get('~/corr/out/culprit.txt'); if(!n) return false; const ls=fileLines(n); return ls.length===1 && ls[0]==='bob'; }, solution:['grep REQ101 logs/auth.csv | cut -d , -f 2 | sort -u > out/culprit.txt'] },
+    { brief:'Write the verdict "FAILING REQ: REQ101 user=bob" into out/verdict.txt.', check:(sh)=> has(sh,'~/corr/out/verdict.txt','FAILING REQ: REQ101 user=bob'), solution:['echo "FAILING REQ: REQ101 user=bob" > out/verdict.txt'] },
+    { brief:'Count the distinct request ids seen in the gateway log (field 1), unique.', check:(sh,ctx)=> ctx.out.trim()==='4' && ctx.line.includes('sort -u'), solution:['cut -d "|" -f 1 logs/gateway.log | sort -u | wc -l'] },
+    { brief:'Assemble the evidence bundle: concatenate the verdict then the raw REQ101 lines into out/bundle.txt.', check:(sh)=> isFile(sh,'~/corr/out/bundle.txt') && has(sh,'~/corr/out/bundle.txt','FAILING REQ') && has(sh,'~/corr/out/bundle.txt','timeout'), solution:['cat out/verdict.txt out/req101.txt > out/bundle.txt'] },
+    { brief:'Freeze the bundle read-only (chmod 400).', check:(sh)=> mode(sh,'~/corr/out/bundle.txt')===0o400, solution:['chmod 400 out/bundle.txt'] },
+    { brief:'Tree the out folder to confirm the reconciled artifacts.', check:(sh,ctx)=> ctx.cmd==='tree' && ctx.out.includes('bundle.txt') && ctx.out.includes('common.txt'), solution:['tree out'] }
+  ]
+});
+
+/* X3. The Secret Sweep */
+SCENARIOS.push({
+  id:'secret-sweep',
+  title:'The Secret Sweep',
+  icon:'🗝️',
+  difficulty:'Expert',
+  story:'A pre-audit secret scan found leaked credentials buried across a messy repo. Find every secret, redact them in place, lock the sensitive files, prove the redaction held, and sign the attestation. Miss one and the audit fails.',
+  brief:'Full secret-hunt and remediation with find, grep -r, sed -i, chmod, stat, redirection.',
+  setup(sh){
+    sh.mkdir('~/repo/src'); sh.mkdir('~/repo/conf'); sh.mkdir('~/repo/keys'); sh.mkdir('~/repo/audit');
+    sh.mkfile('~/repo/src/app.js', 'const API_KEY="sk_live_ABC123";\nstart();\n');
+    sh.mkfile('~/repo/src/util.js', 'export const n=1;\n');
+    sh.mkfile('~/repo/conf/db.conf', 'password=hunter2\nhost=prod\n', {mode:0o644});
+    sh.mkfile('~/repo/conf/cache.conf', 'ttl=60\n', {mode:0o644});
+    sh.mkfile('~/repo/keys/id_rsa', 'PRIVATEKEYDATA\n', {mode:0o644});
+    sh.mkfile('~/repo/keys/id_rsa.pub', 'ssh-rsa AAAA\n', {mode:0o644});
+  },
+  steps:[
+    { brief:'Enter the repo.', check:(sh)=> cwdIs(sh,'~/repo'), solution:['cd ~/repo'] },
+    { brief:'Sweep the whole tree recursively for the token "API_KEY".', check:(sh,ctx)=> /grep/.test(ctx.line) && ctx.out.includes('app.js'), solution:['grep -r API_KEY .'] },
+    { brief:'Sweep recursively, case-insensitively, for "password".', check:(sh,ctx)=> /grep/.test(ctx.line) && ctx.out.includes('db.conf'), solution:['grep -ri password .'] },
+    { brief:'Record every file+line mentioning a live secret key prefix (sk_live) recursively into audit/leaks.txt.', check:(sh)=> isFile(sh,'~/repo/audit/leaks.txt') && has(sh,'~/repo/audit/leaks.txt','app.js'), solution:['grep -r sk_live . > audit/leaks.txt'] },
+    { brief:'Redact the API key value in src/app.js in place: replace sk_live_ABC123 with REDACTED (global).', check:(sh)=> has(sh,'~/repo/src/app.js','REDACTED') && !has(sh,'~/repo/src/app.js','sk_live_ABC123'), solution:['sed -i s/sk_live_ABC123/REDACTED/g src/app.js'] },
+    { brief:'Redact the db password in place: replace hunter2 with REDACTED.', check:(sh)=> has(sh,'~/repo/conf/db.conf','REDACTED') && !has(sh,'~/repo/conf/db.conf','hunter2'), solution:['sed -i s/hunter2/REDACTED/ conf/db.conf'] },
+    { brief:'Find the private key file by exact name anywhere in the tree.', check:(sh,ctx)=> ctx.cmd==='find' && ctx.out.includes('id_rsa') && !ctx.out.includes('id_rsa.pub'), solution:['find . -name id_rsa'] },
+    { brief:'Lock the private key to owner read/write only (chmod 600).', check:(sh)=> mode(sh,'~/repo/keys/id_rsa')===0o600, solution:['chmod 600 keys/id_rsa'] },
+    { brief:'Lock the db config to owner read/write only (chmod 600).', check:(sh)=> mode(sh,'~/repo/conf/db.conf')===0o600, solution:['chmod 600 conf/db.conf'] },
+    { brief:'Prove the private key is owner-only via its long listing.', check:(sh,ctx)=> ctx.cmd==='ls' && /rw-------/.test(ctx.out), solution:['ls -l keys/id_rsa'] },
+    { brief:'Verify with stat that id_rsa is mode 600.', check:(sh,ctx)=> ctx.cmd==='stat' && ctx.out.includes('600'), solution:['stat keys/id_rsa'] },
+    { brief:'Verify no live secret remains in the code or config: a recursive grep of src and conf for sk_live must find nothing (exit code 1).', check:(sh,ctx)=> /grep/.test(ctx.line) && ctx.code===1, solution:['grep -r sk_live src conf'] },
+    { brief:'Verify no plaintext password value remains in src or conf: recursive grep for hunter2 finds nothing.', check:(sh,ctx)=> /grep/.test(ctx.line) && ctx.code===1, solution:['grep -r hunter2 src conf'] },
+    { brief:'Sign the attestation: write "SWEEP CLEAN" into audit/attestation.txt.', check:(sh)=> has(sh,'~/repo/audit/attestation.txt','SWEEP CLEAN'), solution:['echo "SWEEP CLEAN" > audit/attestation.txt'] }
+  ]
+});
+
+/* X4. The Billing Reconciliation */
+SCENARIOS.push({
+  id:'billing-recon',
+  title:'The Billing Reconciliation',
+  icon:'💳',
+  difficulty:'Expert',
+  story:'Finance suspects double-charges. Reconcile a raw charge ledger: normalize it, detect duplicate transactions, rank customers by spend, isolate the disputed charges, and freeze a signed reconciliation. Precision is everything.',
+  brief:'Dedup detection and ranking with sort, uniq -d/-c, cut, grep, sort -t -k -n, chmod.',
+  setup(sh){
+    sh.mkdir('~/billing'); sh.mkdir('~/billing/out');
+    sh.mkfile('~/billing/charges.csv', [
+      'txid,customer,amount',
+      'T1,alice,120',
+      'T2,bob,45',
+      'T3,alice,120',
+      'T4,carol,300',
+      'T2,bob,45',
+      'T5,alice,80',
+      'T4,carol,300'
+    ].join('\n')+'\n');
+  },
+  steps:[
+    { brief:'Enter the billing folder.', check:(sh)=> cwdIs(sh,'~/billing'), solution:['cd ~/billing'] },
+    { brief:'Count the ledger rows including the header.', check:(sh,ctx)=> ctx.cmd==='wc' && ctx.out.trim().startsWith('8'), solution:['wc -l charges.csv'] },
+    { brief:'Strip the header into a clean body file out/body.csv (everything except the header line).', check:(sh)=>{ const n=sh.get('~/billing/out/body.csv'); if(!n) return false; const ls=fileLines(n); return ls.length===7 && !ls.some(l=>l.startsWith('txid')); }, solution:['grep -v "^txid," charges.csv > out/body.csv'] },
+    { brief:'Detect duplicate charges: sort the body and emit only the lines that appear more than once into out/dupes.csv.', check:(sh)=>{ const n=sh.get('~/billing/out/dupes.csv'); if(!n) return false; const ls=fileLines(n); return ls.length===2 && ls.some(l=>l.startsWith('T2,')) && ls.some(l=>l.startsWith('T4,')); }, solution:['sort out/body.csv | uniq -d > out/dupes.csv'] },
+    { brief:'How many distinct transactions actually exist? Count the unique rows in the body.', check:(sh,ctx)=> ctx.out.trim()==='5' && ctx.line.includes('sort -u') && ctx.line.includes('wc'), solution:['sort -u out/body.csv | wc -l'] },
+    { brief:'Produce the deduplicated ledger (unique rows, sorted) into out/clean.csv.', check:(sh)=> isFile(sh,'~/billing/out/clean.csv') && linecount(sh,'~/billing/out/clean.csv')===5, solution:['sort -u out/body.csv > out/clean.csv'] },
+    { brief:'Rank the clean ledger by amount (field 3) descending into out/by_amount.csv.', check:(sh)=> isFile(sh,'~/billing/out/by_amount.csv') && fileLines(sh.get('~/billing/out/by_amount.csv'))[0].includes('300'), solution:['sort -t , -k 3 -nr out/clean.csv > out/by_amount.csv'] },
+    { brief:'Tally the number of distinct charges per customer: cut the customer (field 2) from the clean ledger, sort, uniq -c into out/per_customer.txt.', check:(sh)=> isFile(sh,'~/billing/out/per_customer.txt') && has(sh,'~/billing/out/per_customer.txt','alice'), solution:['cut -d , -f 2 out/clean.csv | sort | uniq -c > out/per_customer.txt'] },
+    { brief:'Find the customer with the most distinct charges: tally, rank by count desc, keep the top line into out/top_customer.txt.', check:(sh)=> isFile(sh,'~/billing/out/top_customer.txt') && has(sh,'~/billing/out/top_customer.txt','alice') && linecount(sh,'~/billing/out/top_customer.txt')===1, solution:['cut -d , -f 2 out/clean.csv | sort | uniq -c | sort -nr | head -n 1 > out/top_customer.txt'] },
+    { brief:'How many customers were double-charged? Count the distinct customers appearing in the dupes.', check:(sh,ctx)=> ctx.out.trim()==='2' && ctx.line.includes('sort -u'), solution:['cut -d , -f 2 out/dupes.csv | sort -u | wc -l'] },
+    { brief:'List the double-charged customers (field 2 of dupes, unique) into out/refund_list.txt.', check:(sh)=>{ const n=sh.get('~/billing/out/refund_list.txt'); if(!n) return false; const ls=fileLines(n); return ls.includes('bob') && ls.includes('carol') && ls.length===2; }, solution:['cut -d , -f 2 out/dupes.csv | sort -u > out/refund_list.txt'] },
+    { brief:'Write the reconciliation headline "DUPLICATES: 2 customers" into out/recon.txt.', check:(sh)=> has(sh,'~/billing/out/recon.txt','DUPLICATES: 2 customers'), solution:['echo "DUPLICATES: 2 customers" > out/recon.txt'] },
+    { brief:'Append the refund list to the reconciliation report.', check:(sh)=> has(sh,'~/billing/out/recon.txt','bob') && has(sh,'~/billing/out/recon.txt','carol') && linecount(sh,'~/billing/out/recon.txt')===3, solution:['cat out/refund_list.txt >> out/recon.txt'] },
+    { brief:'Freeze the entire out directory read-only recursively (chmod -R 400).', check:(sh)=> mode(sh,'~/billing/out/recon.txt')===0o400 && mode(sh,'~/billing/out/clean.csv')===0o400, solution:['chmod -R 400 out'] },
+    { brief:'Tree the out folder to confirm the reconciliation set.', check:(sh,ctx)=> ctx.cmd==='tree' && ctx.out.includes('recon.txt') && ctx.out.includes('dupes.csv'), solution:['tree out'] }
+  ]
+});
+
+/* X5. The Zero-Downtime Cutover */
+SCENARIOS.push({
+  id:'zero-downtime',
+  title:'The Zero-Downtime Cutover',
+  icon:'🔀',
+  difficulty:'Expert',
+  story:'Blue is live, green is staged, and the whole company is watching the switch. Validate green, migrate config, flip traffic, keep an auditable backup of blue, and prove the cutover is clean. One misstep and you take production down.',
+  brief:'A full blue/green cutover with cp -r, sed -i, grep, find, chmod, and strict verification.',
+  setup(sh){
+    sh.mkdir('~/deploy/blue/config'); sh.mkdir('~/deploy/green/config'); sh.mkdir('~/deploy/archive');
+    sh.mkfile('~/deploy/blue/config/app.conf', ['color=blue','mode=live','port=8080','version=1.0'].join('\n')+'\n');
+    sh.mkfile('~/deploy/blue/app.js', 'var color="blue";\nboot();\n');
+    sh.mkfile('~/deploy/green/config/app.conf', ['color=green','mode=staged','port=8080','version=2.0'].join('\n')+'\n');
+    sh.mkfile('~/deploy/green/app.js', 'var color="green";\nboot();\n');
+    sh.mkfile('~/deploy/green/debug.log', 'noise\n'.repeat(4));
+  },
+  steps:[
+    { brief:'Enter the deploy folder.', check:(sh)=> cwdIs(sh,'~/deploy'), solution:['cd ~/deploy'] },
+    { brief:'Validate green is currently staged, not live: confirm its config says mode=staged.', check:(sh,ctx)=> ctx.cmd==='grep' && ctx.out.includes('mode=staged'), solution:['grep mode green/config/app.conf'] },
+    { brief:'Back up the entire live blue tree into archive/blue (recursive copy).', check:(sh)=> isDir(sh,'~/deploy/archive/blue') && isFile(sh,'~/deploy/archive/blue/config/app.conf') && has(sh,'~/deploy/archive/blue/config/app.conf','color=blue'), solution:['cp -r blue archive/blue'] },
+    { brief:'Confirm the blue backup captured the config by reading it from the archive.', check:(sh,ctx)=> ctx.cmd==='cat' && ctx.out.includes('color=blue') && ctx.out.includes('version=1.0'), solution:['cat archive/blue/config/app.conf'] },
+    { brief:'The green build must not ship debug logs. Remove green/debug.log.', check:(sh)=> !exists(sh,'~/deploy/green/debug.log'), solution:['rm green/debug.log'] },
+    { brief:'Promote green: flip its config from mode=staged to mode=live in place.', check:(sh)=> has(sh,'~/deploy/green/config/app.conf','mode=live') && !has(sh,'~/deploy/green/config/app.conf','mode=staged'), solution:['sed -i s/mode=staged/mode=live/ green/config/app.conf'] },
+    { brief:'Retire blue: flip its config from mode=live to mode=retired in place.', check:(sh)=> has(sh,'~/deploy/blue/config/app.conf','mode=retired'), solution:['sed -i s/mode=live/mode=retired/ blue/config/app.conf'] },
+    { brief:'Verify exactly one config is now live across the whole deploy tree: a recursive count should show green with 1.', check:(sh,ctx)=> /grep/.test(ctx.line) && ctx.out.includes('green/config/app.conf'), solution:['grep -rc "mode=live" blue green'] },
+    { brief:'Confirm no config anywhere still says staged (recursive grep finds nothing).', check:(sh,ctx)=> /grep/.test(ctx.line) && ctx.code===1, solution:['grep -r "mode=staged" blue green'] },
+    { brief:'Snapshot the now-live green config into archive/live.conf for the record.', check:(sh)=> isFile(sh,'~/deploy/archive/live.conf') && has(sh,'~/deploy/archive/live.conf','color=green') && has(sh,'~/deploy/archive/live.conf','mode=live'), solution:['cp green/config/app.conf archive/live.conf'] },
+    { brief:'Freeze the blue backup read-only recursively so it cannot be mutated (chmod -R 400 archive/blue).', check:(sh)=> mode(sh,'~/deploy/archive/blue/config/app.conf')===0o400, solution:['chmod -R 400 archive/blue'] },
+    { brief:'Write the cutover record "CUTOVER OK green v2.0" into archive/cutover.txt.', check:(sh)=> has(sh,'~/deploy/archive/cutover.txt','CUTOVER OK green v2.0'), solution:['echo "CUTOVER OK green v2.0" > archive/cutover.txt'] },
+    { brief:'Final confirmation: read the live green config end to end.', check:(sh,ctx)=> ctx.cmd==='cat' && ctx.out.includes('color=green') && ctx.out.includes('mode=live') && ctx.out.includes('version=2.0'), solution:['cat green/config/app.conf'] },
+    { brief:'Tree the whole deploy tree to prove the final topology.', check:(sh,ctx)=> ctx.cmd==='tree' && ctx.out.includes('archive') && ctx.out.includes('cutover.txt'), solution:['tree'] }
+  ]
+});
+
+/* X6. The Access Control Rebuild */
+SCENARIOS.push({
+  id:'acl-rebuild',
+  title:'The Access Control Rebuild',
+  icon:'🛡️',
+  difficulty:'Expert',
+  story:'A compromised service left permissions and ownership in ruins across a shared project. Rebuild the entire access-control posture from scratch — keys, scripts, shared data, and ownership — then prove every bit is correct before handing back the keys.',
+  brief:'Deep permission and ownership repair with chmod (octal+symbolic -R), chown -R, find, ls -l, stat.',
+  setup(sh){
+    sh.mkdir('~/svc/bin'); sh.mkdir('~/svc/secrets'); sh.mkdir('~/svc/shared'); sh.mkdir('~/svc/public');
+    sh.mkfile('~/svc/bin/run.sh', '#!/bin/sh\necho run\n', {mode:0o644});
+    sh.mkfile('~/svc/bin/deploy.sh', '#!/bin/sh\necho deploy\n', {mode:0o644});
+    sh.mkfile('~/svc/secrets/id_rsa', 'KEY\n', {mode:0o666});
+    sh.mkfile('~/svc/secrets/token', 'TOK\n', {mode:0o666});
+    sh.mkfile('~/svc/shared/data.db', 'DB\n', {mode:0o600});
+    sh.mkfile('~/svc/public/index.html', '<h1>hi</h1>\n', {mode:0o600});
+  },
+  steps:[
+    { brief:'Enter the service root.', check:(sh)=> cwdIs(sh,'~/svc'), solution:['cd ~/svc'] },
+    { brief:'Survey the damage: inspect the secrets directory in long format.', check:(sh,ctx)=> ctx.cmd==='ls' && ctx.out.includes('id_rsa') && /rw-rw-rw-/.test(ctx.out), solution:['ls -l secrets'] },
+    { brief:'Find every shell script under the tree.', check:(sh,ctx)=> ctx.cmd==='find' && ctx.out.includes('run.sh') && ctx.out.includes('deploy.sh'), solution:['find . -name "*.sh"'] },
+    { brief:'Lock down ALL secrets recursively to owner read/write only (chmod -R 600 secrets).', check:(sh)=> mode(sh,'~/svc/secrets/id_rsa')===0o600 && mode(sh,'~/svc/secrets/token')===0o600, solution:['chmod -R 600 secrets'] },
+    { brief:'Make run.sh owner-executable while keeping sane access (chmod 755 run.sh).', check:(sh)=> mode(sh,'~/svc/bin/run.sh')===0o755, solution:['chmod 755 bin/run.sh'] },
+    { brief:'Add the execute bit to deploy.sh symbolically for everyone (chmod +x).', check:(sh)=> (mode(sh,'~/svc/bin/deploy.sh')&0o111)===0o111, solution:['chmod +x bin/deploy.sh'] },
+    { brief:'The shared db should be group-readable too: set it to 640.', check:(sh)=> mode(sh,'~/svc/shared/data.db')===0o640, solution:['chmod 640 shared/data.db'] },
+    { brief:'Publish the public page world-readable (chmod 644 public/index.html).', check:(sh)=> mode(sh,'~/svc/public/index.html')===0o644, solution:['chmod 644 public/index.html'] },
+    { brief:'Hand the whole service to the service account: recursively chown everything to "svc".', check:(sh)=>{ const a=sh.get('~/svc/secrets/id_rsa'), b=sh.get('~/svc/bin/run.sh'); return a.owner==='svc' && b.owner==='svc'; }, solution:['chown -R svc .'] },
+    { brief:'Set the group of the shared directory tree to "team" recursively (chown -R :team shared).', check:(sh)=>{ const a=sh.get('~/svc/shared'), b=sh.get('~/svc/shared/data.db'); return a.group==='team' && b.group==='team'; }, solution:['chown -R :team shared'] },
+    { brief:'Prove the private key is now owner-only via its long listing.', check:(sh,ctx)=> ctx.cmd==='ls' && /rw-------/.test(ctx.out), solution:['ls -l secrets/id_rsa'] },
+    { brief:'Verify run.sh is executable via stat (expect 755).', check:(sh,ctx)=> ctx.cmd==='stat' && ctx.out.includes('755'), solution:['stat bin/run.sh'] },
+    { brief:'Verify ownership of the secrets changed via a long listing (owner svc).', check:(sh,ctx)=> ctx.cmd==='ls' && ctx.out.includes('svc'), solution:['ls -l secrets'] },
+    { brief:'Record the rebuild attestation: write "ACL REBUILT" into audit note at ~/svc/REBUILT.txt.', check:(sh)=> has(sh,'~/svc/REBUILT.txt','ACL REBUILT'), solution:['echo "ACL REBUILT" > REBUILT.txt'] },
+    { brief:'Tree the whole service to confirm the final structure.', check:(sh,ctx)=> ctx.cmd==='tree' && ctx.out.includes('secrets') && ctx.out.includes('shared'), solution:['tree'] }
+  ]
+});
+
+/* X7. The Telemetry Rollup */
+SCENARIOS.push({
+  id:'telemetry-rollup',
+  title:'The Telemetry Rollup',
+  icon:'📡',
+  difficulty:'Expert',
+  story:'A fleet streamed raw telemetry all night. Build an end-to-end rollup: normalize the feed, compute per-host error rates, rank the worst hosts, extract the single hottest metric, and ship a frozen dashboard snapshot. Entirely by pipeline.',
+  brief:'End-to-end analytics with tr, cut, grep, sort -n/-nr, uniq -c, head, tail, chmod.',
+  setup(sh){
+    sh.mkdir('~/telem'); sh.mkdir('~/telem/out');
+    sh.mkfile('~/telem/raw.txt', [
+      'web1;OK;20',
+      'web2;ERR;80',
+      'web1;ERR;90',
+      'db1;OK;15',
+      'web2;ERR;85',
+      'db1;ERR;95',
+      'web1;OK;30',
+      'web2;OK;25',
+      'db1;ERR;99'
+    ].join('\n')+'\n');
+  },
+  steps:[
+    { brief:'Enter the telem folder.', check:(sh)=> cwdIs(sh,'~/telem'), solution:['cd ~/telem'] },
+    { brief:'Count the raw samples.', check:(sh,ctx)=> ctx.cmd==='wc' && ctx.out.trim().startsWith('9'), solution:['wc -l raw.txt'] },
+    { brief:'The feed is semicolon-delimited. Normalize it to commas into out/norm.csv using tr.', check:(sh)=> isFile(sh,'~/telem/out/norm.csv') && has(sh,'~/telem/out/norm.csv','web1,OK,20') && !has(sh,'~/telem/out/norm.csv',';'), solution:['cat raw.txt | tr ";" "," > out/norm.csv'] },
+    { brief:'List the distinct hosts (field 1) from the normalized feed, sorted, into out/hosts.txt.', check:(sh)=>{ const n=sh.get('~/telem/out/hosts.txt'); if(!n) return false; const ls=fileLines(n); return ls.length===3 && ls.includes('web1') && ls.includes('db1'); }, solution:['cut -d , -f 1 out/norm.csv | sort -u > out/hosts.txt'] },
+    { brief:'Count the total error samples (lines containing ERR) in the normalized feed.', check:(sh,ctx)=> /grep/.test(ctx.line) && ctx.out.trim()==='5', solution:['grep -c ERR out/norm.csv'] },
+    { brief:'Tally errors per host: from the ERR rows cut the host, sort, uniq -c into out/err_by_host.txt.', check:(sh)=> isFile(sh,'~/telem/out/err_by_host.txt') && has(sh,'~/telem/out/err_by_host.txt','web2') && has(sh,'~/telem/out/err_by_host.txt','web1'), solution:['grep ERR out/norm.csv | cut -d , -f 1 | sort | uniq -c > out/err_by_host.txt'] },
+    { brief:'Rank the hosts by error count and keep the single worst into out/worst_host.txt.', check:(sh)=> isFile(sh,'~/telem/out/worst_host.txt') && (has(sh,'~/telem/out/worst_host.txt','web2')) && linecount(sh,'~/telem/out/worst_host.txt')===1, solution:['grep ERR out/norm.csv | cut -d , -f 1 | sort | uniq -c | sort -nr | head -n 1 > out/worst_host.txt'] },
+    { brief:'Extract every metric value (field 3) from the ERR rows, sort numerically into out/err_values.txt.', check:(sh)=>{ const n=sh.get('~/telem/out/err_values.txt'); if(!n) return false; const ls=fileLines(n); return ls[0]==='80' && ls[ls.length-1]==='99' && ls.length===5; }, solution:['grep ERR out/norm.csv | cut -d , -f 3 | sort -n > out/err_values.txt'] },
+    { brief:'The peak error metric is the last value. Show it.', check:(sh,ctx)=> ctx.cmd==='tail' && ctx.out.trim()==='99', solution:['tail -n 1 out/err_values.txt'] },
+    { brief:'The lowest error metric is the first value. Show it.', check:(sh,ctx)=> ctx.cmd==='head' && ctx.out.trim()==='80', solution:['head -n 1 out/err_values.txt'] },
+    { brief:'How many distinct error metric values were observed? Count the unique numeric values.', check:(sh,ctx)=> ctx.line.includes('sort') && ctx.out.trim()==='5', solution:['grep ERR out/norm.csv | cut -d , -f 3 | sort -nu | wc -l'] },
+    { brief:'Write the dashboard headline "PEAK ERR 99 host web2" into out/dashboard.txt.', check:(sh)=> has(sh,'~/telem/out/dashboard.txt','PEAK ERR 99 host web2'), solution:['echo "PEAK ERR 99 host web2" > out/dashboard.txt'] },
+    { brief:'Append the per-host error tally to the dashboard.', check:(sh)=> has(sh,'~/telem/out/dashboard.txt','PEAK ERR 99 host web2') && has(sh,'~/telem/out/dashboard.txt','web2') && linecount(sh,'~/telem/out/dashboard.txt')>=4, solution:['cat out/err_by_host.txt >> out/dashboard.txt'] },
+    { brief:'Freeze the out directory read-only recursively (chmod -R 500).', check:(sh)=> mode(sh,'~/telem/out/dashboard.txt')===0o500 && mode(sh,'~/telem/out/norm.csv')===0o500, solution:['chmod -R 500 out'] },
+    { brief:'Tree the out folder to confirm the snapshot.', check:(sh,ctx)=> ctx.cmd==='tree' && ctx.out.includes('dashboard.txt') && ctx.out.includes('err_by_host.txt'), solution:['tree out'] }
+  ]
+});
+
+/* X8. The Codebase Migration */
+SCENARIOS.push({
+  id:'codebase-migration',
+  title:'The Codebase Migration',
+  icon:'🧬',
+  difficulty:'Expert',
+  story:'A legacy codebase must move to a new layout AND adopt a renamed API in the same pass — with backups of everything touched, verification that no old symbol survives, and the legacy tree left spotless. This is the migration that cannot be rolled back.',
+  brief:'Simultaneous restructure + API rename with mkdir -p, mv, cp, sed -i, grep -r, find, rmdir.',
+  setup(sh){
+    sh.mkdir('~/legacy/lib'); sh.mkdir('~/legacy/web');
+    sh.mkfile('~/legacy/lib/core.js', 'export function oldApi(){ return 1 }\n');
+    sh.mkfile('~/legacy/lib/helper.js', 'import {oldApi} from "./core"\noldApi()\n');
+    sh.mkfile('~/legacy/web/page.js', 'import {oldApi} from "../lib/core"\noldApi()\n');
+    sh.mkfile('~/legacy/web/index.html', '<h1>Legacy</h1>\n');
+    sh.mkfile('~/legacy/README', 'old project\n');
+  },
+  steps:[
+    { brief:'Build the new structure in one command: ~/app/src ~/app/public ~/app/backup.', check:(sh)=> isDir(sh,'~/app/src') && isDir(sh,'~/app/public') && isDir(sh,'~/app/backup'), solution:['mkdir -p ~/app/src ~/app/public ~/app/backup'] },
+    { brief:'Enter the legacy root.', check:(sh)=> cwdIs(sh,'~/legacy'), solution:['cd ~/legacy'] },
+    { brief:'Inventory every usage of oldApi across the legacy tree (recursive grep).', check:(sh,ctx)=> /grep/.test(ctx.line) && ctx.out.includes('core.js') && ctx.out.includes('page.js'), solution:['grep -r oldApi .'] },
+    { brief:'Count the oldApi references per file (recursive count).', check:(sh,ctx)=> /grep/.test(ctx.line) && ctx.out.includes('core.js:1') && ctx.out.includes('page.js:2'), solution:['grep -rc oldApi .'] },
+    { brief:'Back up the entire lib directory into ~/app/backup (recursive copy) before touching anything.', check:(sh)=> isDir(sh,'~/app/backup/lib') && isFile(sh,'~/app/backup/lib/core.js'), solution:['cp -r lib ~/app/backup/lib'] },
+    { brief:'Move the two library JS files into ~/app/src with a wildcard.', check:(sh)=> isFile(sh,'~/app/src/core.js') && isFile(sh,'~/app/src/helper.js') && !exists(sh,'~/legacy/lib/core.js'), solution:['mv lib/*.js ~/app/src/'] },
+    { brief:'Move the web page.js into ~/app/src too.', check:(sh)=> isFile(sh,'~/app/src/page.js') && !exists(sh,'~/legacy/web/page.js'), solution:['mv web/page.js ~/app/src/'] },
+    { brief:'Move the html into ~/app/public.', check:(sh)=> isFile(sh,'~/app/public/index.html') && !exists(sh,'~/legacy/web/index.html'), solution:['mv web/index.html ~/app/public/'] },
+    { brief:'Rename the old README to README.md as you move it into ~/app.', check:(sh)=> isFile(sh,'~/app/README.md') && !exists(sh,'~/legacy/README'), solution:['mv README ~/app/README.md'] },
+    { brief:'Adopt the new API name in core.js: replace oldApi with freshApi in place (global).', check:(sh)=> has(sh,'~/app/src/core.js','freshApi') && !has(sh,'~/app/src/core.js','oldApi'), solution:['sed -i s/oldApi/freshApi/g ~/app/src/core.js'] },
+    { brief:'Do the same rename in helper.js.', check:(sh)=> has(sh,'~/app/src/helper.js','freshApi') && !has(sh,'~/app/src/helper.js','oldApi'), solution:['sed -i s/oldApi/freshApi/g ~/app/src/helper.js'] },
+    { brief:'And in page.js.', check:(sh)=> has(sh,'~/app/src/page.js','freshApi') && !has(sh,'~/app/src/page.js','oldApi'), solution:['sed -i s/oldApi/freshApi/g ~/app/src/page.js'] },
+    { brief:'Verify no oldApi survives anywhere in the new app (recursive grep finds nothing).', check:(sh,ctx)=> /grep/.test(ctx.line) && ctx.code===1, solution:['grep -r oldApi ~/app/src'] },
+    { brief:'The legacy lib and web folders should be empty now. Remove them with rmdir.', check:(sh)=> !exists(sh,'~/legacy/lib') && !exists(sh,'~/legacy/web'), solution:['rmdir lib web'] },
+    { brief:'Tree the new app to confirm the migrated, renamed layout.', check:(sh,ctx)=> ctx.cmd==='tree' && ctx.out.includes('src') && ctx.out.includes('README.md') && ctx.out.includes('backup'), solution:['tree ~/app'] }
+  ]
+});
+
+/* X9. The Intrusion Timeline */
+SCENARIOS.push({
+  id:'intrusion-timeline',
+  title:'The Intrusion Timeline',
+  icon:'🩸',
+  difficulty:'Expert',
+  story:'An attacker got in and moved laterally. Reconstruct the full kill chain from auth, web, and process logs: pinpoint the entry IP, trace which accounts it pivoted to, extract the exact commands it ran, and lock an immutable evidence vault for the IR team.',
+  brief:'Multi-source intrusion reconstruction with grep, cut, sort, uniq -c, grep -oE, chmod -R.',
+  setup(sh){
+    sh.mkdir('~/ir/logs'); sh.mkdir('~/ir/vault');
+    const auth=[];
+    for(let i=0;i<10;i++) auth.push('Failed password for root from 45.9.9.9');
+    for(let i=0;i<5;i++) auth.push('Failed password for admin from 45.9.9.9');
+    auth.push('Accepted password for admin from 45.9.9.9');
+    auth.push('Accepted password for astra from 10.0.0.2');
+    sh.mkfile('~/ir/logs/auth.log', auth.join('\n')+'\n');
+    sh.mkfile('~/ir/logs/web.log', ['45.9.9.9 GET /admin 200','10.0.0.2 GET /home 200','45.9.9.9 POST /upload 200','45.9.9.9 GET /etc 403'].join('\n')+'\n');
+    sh.mkfile('~/ir/logs/proc.log', ['user=admin cmd=wget','user=admin cmd=chmod','user=admin cmd=curl','user=astra cmd=ls'].join('\n')+'\n');
+  },
+  steps:[
+    { brief:'Enter the IR folder.', check:(sh)=> cwdIs(sh,'~/ir'), solution:['cd ~/ir'] },
+    { brief:'Count total failed auth attempts.', check:(sh,ctx)=> /grep/.test(ctx.line) && ctx.out.trim()==='15', solution:['grep -c "Failed password" logs/auth.log'] },
+    { brief:'Identify the brute-force source by frequency: from the failed lines extract the source IP (last field), tally, rank, keep the top line into vault/entry_ip.txt.', check:(sh)=> isFile(sh,'~/ir/vault/entry_ip.txt') && has(sh,'~/ir/vault/entry_ip.txt','45.9.9.9') && linecount(sh,'~/ir/vault/entry_ip.txt')===1, solution:['grep "Failed password" logs/auth.log | grep -oE "[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+" | sort | uniq -c | sort -nr | head -n 1 > vault/entry_ip.txt'] },
+    { brief:'The attacker eventually logged in. Which account did 45.9.9.9 successfully breach? Extract the accepted account for that IP (field 4) into vault/breached.txt.', check:(sh)=>{ const n=sh.get('~/ir/vault/breached.txt'); if(!n) return false; const ls=fileLines(n); return ls.length===1 && ls[0]==='admin'; }, solution:['grep "Accepted password" logs/auth.log | grep 45.9.9.9 | cut -d " " -f 4 | sort -u > vault/breached.txt'] },
+    { brief:'Preserve every auth line involving the attacker IP into vault/auth_evidence.txt.', check:(sh)=> isFile(sh,'~/ir/vault/auth_evidence.txt') && linecount(sh,'~/ir/vault/auth_evidence.txt')===16, solution:['grep 45.9.9.9 logs/auth.log > vault/auth_evidence.txt'] },
+    { brief:'Cross-reference the web log: how many requests came from the attacker IP?', check:(sh,ctx)=> /grep/.test(ctx.line) && ctx.out.trim()==='3', solution:['grep -c 45.9.9.9 logs/web.log'] },
+    { brief:'Preserve the attacker web requests into vault/web_evidence.txt.', check:(sh)=> isFile(sh,'~/ir/vault/web_evidence.txt') && linecount(sh,'~/ir/vault/web_evidence.txt')===3, solution:['grep 45.9.9.9 logs/web.log > vault/web_evidence.txt'] },
+    { brief:'The breached account is admin. Extract every command admin ran from the process log (the cmd=X value) into vault/commands.txt.', check:(sh)=>{ const n=sh.get('~/ir/vault/commands.txt'); if(!n) return false; const c=n.content||''; return c.includes('wget') && c.includes('curl') && c.includes('chmod') && !c.includes('ls'); }, solution:['grep "user=admin" logs/proc.log | grep -oE "cmd=[a-z]+" | cut -d = -f 2 > vault/commands.txt'] },
+    { brief:'How many distinct commands did the attacker run as admin? Count the unique command values.', check:(sh,ctx)=> ctx.out.trim()==='3' && ctx.line.includes('sort'), solution:['sort -u vault/commands.txt | wc -l'] },
+    { brief:'Build the kill-chain summary: write "ENTRY 45.9.9.9 -> admin" into vault/killchain.txt.', check:(sh)=> has(sh,'~/ir/vault/killchain.txt','ENTRY 45.9.9.9 -> admin'), solution:['echo "ENTRY 45.9.9.9 -> admin" > vault/killchain.txt'] },
+    { brief:'Append the attacker commands to the kill-chain summary.', check:(sh)=> has(sh,'~/ir/vault/killchain.txt','ENTRY 45.9.9.9 -> admin') && has(sh,'~/ir/vault/killchain.txt','wget') && linecount(sh,'~/ir/vault/killchain.txt')>=4, solution:['cat vault/commands.txt >> vault/killchain.txt'] },
+    { brief:'Append "failed attempts: 15" to the kill-chain summary.', check:(sh)=> has(sh,'~/ir/vault/killchain.txt','failed attempts: 15'), solution:['echo "failed attempts: 15" >> vault/killchain.txt'] },
+    { brief:'Seal the evidence vault: make the entire vault read-only recursively (chmod -R 400).', check:(sh)=> mode(sh,'~/ir/vault/killchain.txt')===0o400 && mode(sh,'~/ir/vault/auth_evidence.txt')===0o400, solution:['chmod -R 400 vault'] },
+    { brief:'Tree the vault to confirm the sealed evidence set.', check:(sh,ctx)=> ctx.cmd==='tree' && ctx.out.includes('killchain.txt') && ctx.out.includes('commands.txt'), solution:['tree vault'] }
+  ]
+});
+
+/* X10. The Grand Finale */
+SCENARIOS.push({
+  id:'grand-finale',
+  title:'The Grand Finale',
+  icon:'👑',
+  difficulty:'Expert',
+  story:'The ultimate operator exam. From a single raw dump you must bootstrap a project, cleanse and transform data across formats, run multi-stage analytics, enforce security, assemble a signed deliverable, and freeze it immutable — every command earned through everything you have learned. No hints. No second chances.',
+  brief:'A supreme capstone chaining the entire toolkit end to end.',
+  setup(sh){
+    sh.mkdir('~/finale');
+    sh.mkfile('~/finale/raw.psv', [
+      'HOST|STATUS|LATENCY',
+      'Alpha|OK|120',
+      'bravo|ERR|300',
+      'ALPHA|OK|120',
+      'charlie|ERR|450',
+      'bravo|ERR|300',
+      'delta|OK|90',
+      'charlie|OK|110'
+    ].join('\n')+'\n');
+  },
+  steps:[
+    { brief:'Enter the finale folder.', check:(sh)=> cwdIs(sh,'~/finale'), solution:['cd ~/finale'] },
+    { brief:'Scaffold the full project in one command: data work out secure.', check:(sh)=> isDir(sh,'~/finale/data') && isDir(sh,'~/finale/work') && isDir(sh,'~/finale/out') && isDir(sh,'~/finale/secure'), solution:['mkdir data work out secure'] },
+    { brief:'Move the raw pipe-separated dump into data/.', check:(sh)=> isFile(sh,'~/finale/data/raw.psv') && !exists(sh,'~/finale/raw.psv'), solution:['mv raw.psv data/'] },
+    { brief:'Convert the pipe-separated dump to CSV in work/data.csv using tr.', check:(sh)=> isFile(sh,'~/finale/work/data.csv') && has(sh,'~/finale/work/data.csv','Alpha,OK,120') && !has(sh,'~/finale/work/data.csv','|'), solution:['cat data/raw.psv | tr "|" "," > work/data.csv'] },
+    { brief:'Drop the header into a clean body work/body.csv (exclude the HOST header line).', check:(sh)=>{ const n=sh.get('~/finale/work/body.csv'); if(!n) return false; const ls=fileLines(n); return ls.length===7 && !ls.some(l=>l.startsWith('HOST')); }, solution:['grep -v "^HOST," work/data.csv > work/body.csv'] },
+    { brief:'Normalize host names to lowercase and dedupe exact rows into work/clean.csv (lowercase the whole body, sort unique).', check:(sh)=>{ const n=sh.get('~/finale/work/clean.csv'); if(!n) return false; const ls=fileLines(n); return ls.length===5 && ls.some(l=>l.startsWith('alpha,')) && !ls.some(l=>l.startsWith('ALPHA,')); }, solution:['cat work/body.csv | tr A-Z a-z | sort -u > work/clean.csv'] },
+    { brief:'How many distinct host-rows remain after cleaning?', check:(sh,ctx)=> ctx.cmd==='wc' && ctx.out.trim().startsWith('5'), solution:['wc -l work/clean.csv'] },
+    { brief:'Rank the clean rows by latency (field 3) descending into out/by_latency.csv.', check:(sh)=> isFile(sh,'~/finale/out/by_latency.csv') && fileLines(sh.get('~/finale/out/by_latency.csv'))[0].includes('450'), solution:['sort -t , -k 3 -nr work/clean.csv > out/by_latency.csv'] },
+    { brief:'Count the error rows in the clean data (the status was normalized to lowercase).', check:(sh,ctx)=> /grep/.test(ctx.line) && ctx.out.trim()==='2', solution:['grep -c err work/clean.csv'] },
+    { brief:'Tally status codes (field 2) in the clean data: cut, sort, uniq -c into out/status_tally.txt.', check:(sh)=> isFile(sh,'~/finale/out/status_tally.txt') && has(sh,'~/finale/out/status_tally.txt','ok') && has(sh,'~/finale/out/status_tally.txt','err'), solution:['cut -d , -f 2 work/clean.csv | sort | uniq -c > out/status_tally.txt'] },
+    { brief:'Find the single worst host by latency: from the clean data, the top latency row — extract its host (field 1) into out/worst_host.txt.', check:(sh)=>{ const n=sh.get('~/finale/out/worst_host.txt'); if(!n) return false; const ls=fileLines(n); return ls.length===1 && ls[0]==='charlie'; }, solution:['sort -t , -k 3 -nr work/clean.csv | head -n 1 | cut -d , -f 1 > out/worst_host.txt'] },
+    { brief:'Number the ranked latency report into out/report.txt.', check:(sh)=> isFile(sh,'~/finale/out/report.txt') && has(sh,'~/finale/out/report.txt','charlie'), solution:['nl out/by_latency.csv > out/report.txt'] },
+    { brief:'Write the executive summary "WORST charlie 450" into out/summary.txt.', check:(sh)=> has(sh,'~/finale/out/summary.txt','WORST charlie 450'), solution:['echo "WORST charlie 450" > out/summary.txt'] },
+    { brief:'Assemble the final signed deliverable: summary first, then the numbered report, into secure/deliverable.txt.', check:(sh)=> isFile(sh,'~/finale/secure/deliverable.txt') && has(sh,'~/finale/secure/deliverable.txt','WORST charlie 450') && has(sh,'~/finale/secure/deliverable.txt','charlie'), solution:['cat out/summary.txt out/report.txt > secure/deliverable.txt'] },
+    { brief:'Freeze the secure deliverable immutable: read-only for owner (chmod 400) and confirm the whole finale tree as a tree.', check:(sh,ctx)=> mode(sh,'~/finale/secure/deliverable.txt')===0o400, solution:['chmod 400 secure/deliverable.txt'] }
+  ]
+});
+
+/* ================================================================== *
+ *  NEW SCENARIOS — EXPERT · "WORST DAY ON CALL" (5)
+ *  Ultra-realistic senior-admin disasters using df / du / ps alongside
+ *  the full toolkit. No hints. More steps than Master. The kind of night
+ *  that ends with cold coffee and a clean postmortem.
+ * ================================================================== */
+
+/* W1. The 3 AM Pager Storm */
+SCENARIOS.push({
+  id:'pager-storm',
+  title:'The 3 AM Pager Storm',
+  icon:'📟',
+  difficulty:'Expert',
+  story:'Your phone screams at 03:00. The API is down, the disk alarm is red, and a core is pinned at 100%. Three alerts, one cause, zero patience from the on-call manager. Triage it, kill the bleeding, reclaim space, and bring the service back — in order, under pressure.',
+  brief:'Live incident triage with df, ps, du, grep, cut, rm, sed, and a documented all-clear.',
+  setup(sh){
+    sh.mkdir('/var/log/app'); sh.mkdir('/srv/app/config'); sh.mkdir('~/incident');
+    // the space hog: a runaway debug log plus rotated giants
+    sh.mkfile('/var/log/app/debug.log', 'DEBUG loop iteration\n'.repeat(400));
+    sh.mkfile('/var/log/app/app.log', Array.from({length:12},(_,i)=> (i%4===0?'ERROR worker stuck':'INFO ok')).join('\n')+'\n');
+    sh.mkfile('/var/log/app/app.log.1', 'old\n'.repeat(50));
+    sh.mkfile('/var/log/app/app.log.2', 'older\n'.repeat(50));
+    sh.mkfile('/srv/app/config/worker.conf', ['mode=loop','max_retries=0','restart=always'].join('\n')+'\n');
+  },
+  steps:[
+    { brief:'First breath: check which filesystems are full.', check:(sh,ctx)=> ctx.cmd==='df' && ctx.out.includes('Use%'), solution:['df'] },
+    { brief:'Pinpoint the critically full mount: pipe df into grep to find the 100% line.', check:(sh,ctx)=> ctx.piped?false:(/grep/.test(ctx.line) && ctx.out.includes('100%') && ctx.out.includes('/var')), solution:['df | grep 100%'] },
+    { brief:'Capture the full mount point for the ticket: pipe df, grep 100%, cut the mount field (6) into ~/incident/full_mount.txt.', check:(sh)=>{ const n=sh.get('~/incident/full_mount.txt'); if(!n) return false; return (n.content||'').trim()==='/var'; }, solution:['df | grep 100% | cut -d " " -f 6 > ~/incident/full_mount.txt'] },
+    { brief:'A core is pinned. List every process with CPU usage.', check:(sh,ctx)=> ctx.cmd==='ps' && ctx.out.includes('%CPU'), solution:['ps aux'] },
+    { brief:'Isolate the runaway: pipe ps aux into grep for the worker.', check:(sh,ctx)=> /grep/.test(ctx.line) && ctx.out.includes('worker.js') && ctx.out.includes('99.4'), solution:['ps aux | grep worker.js'] },
+    { brief:'Record the runaway PID: pipe ps aux, grep worker.js, cut the PID field (2) into ~/incident/runaway_pid.txt.', check:(sh)=>{ const n=sh.get('~/incident/runaway_pid.txt'); if(!n) return false; return (n.content||'').trim()==='6971'; }, solution:['ps aux | grep worker.js | cut -d " " -f 2 > ~/incident/runaway_pid.txt'] },
+    { brief:'Now find what is eating /var: list file sizes under the app log dir.', check:(sh,ctx)=> ctx.cmd==='du' && ctx.out.includes('debug.log'), solution:['du -a /var/log/app'] },
+    { brief:'Identify the single biggest log file: du all, keep only .log files, sort by size descending, take the top one into ~/incident/hog.txt.', check:(sh)=>{ const n=sh.get('~/incident/hog.txt'); if(!n) return false; return (n.content||'').includes('debug.log'); }, solution:['du -a /var/log/app | grep .log | sort -nr | head -n 1 > ~/incident/hog.txt'] },
+    { brief:'The debug.log is the runaway output. Before deleting, how many lines of ERROR are in the real app.log? Count them.', check:(sh,ctx)=> /grep/.test(ctx.line) && ctx.out.trim()==='3', solution:['grep -c "ERROR worker stuck" /var/log/app/app.log'] },
+    { brief:'Reclaim space now: delete the runaway debug.log.', check:(sh)=> !exists(sh,'/var/log/app/debug.log'), solution:['rm /var/log/app/debug.log'] },
+    { brief:'Purge the two rotated giants with a single wildcard.', check:(sh)=> !exists(sh,'/var/log/app/app.log.1') && !exists(sh,'/var/log/app/app.log.2') && exists(sh,'/var/log/app/app.log'), solution:['rm /var/log/app/app.log.1 /var/log/app/app.log.2'] },
+    { brief:'Stop the loop at the source: in worker.conf change mode=loop to mode=once, in place.', check:(sh)=> has(sh,'/srv/app/config/worker.conf','mode=once') && !has(sh,'/srv/app/config/worker.conf','mode=loop'), solution:['sed -i s/mode=loop/mode=once/ /srv/app/config/worker.conf'] },
+    { brief:'Give the worker a real retry budget: change max_retries=0 to max_retries=3 in place.', check:(sh)=> has(sh,'/srv/app/config/worker.conf','max_retries=3'), solution:['sed -i s/max_retries=0/max_retries=3/ /srv/app/config/worker.conf'] },
+    { brief:'Confirm the space hog is gone: du the log dir and verify debug.log no longer appears.', check:(sh,ctx)=> ctx.cmd==='du' && !ctx.out.includes('debug.log'), solution:['du -a /var/log/app'] },
+    { brief:'Close the incident: write "RESOLVED pid 6971 /var reclaimed" into ~/incident/status.txt.', check:(sh)=> has(sh,'~/incident/status.txt','RESOLVED pid 6971 /var reclaimed'), solution:['echo "RESOLVED pid 6971 /var reclaimed" > ~/incident/status.txt'] }
+  ]
+});
+
+/* W2. Black Friday Meltdown */
+SCENARIOS.push({
+  id:'black-friday',
+  title:'Black Friday Meltdown',
+  icon:'🛒',
+  difficulty:'Expert',
+  story:'Peak traffic, record sales, and the checkout service just fell over. The log partition is wedged full, the connection pool is maxed, and marketing is watching the revenue graph flatline. You cannot take downtime. Free space, fix the config live, and keep the money flowing.',
+  brief:'Zero-downtime capacity rescue with df, du, ps, grep, cut, sort, rm, sed, chmod.',
+  setup(sh){
+    sh.mkdir('/var/log/nginx'); sh.mkdir('/srv/checkout/config'); sh.mkdir('~/warroom');
+    sh.mkfile('/var/log/nginx/access.log', Array.from({length:20},(_,i)=> (i%5===0?'500 POST /checkout':'200 GET /home')).join('\n')+'\n');
+    sh.mkfile('/var/log/nginx/access.log.1', 'old access\n'.repeat(80));
+    sh.mkfile('/var/log/nginx/error.log', 'upstream timed out\n'.repeat(120));
+    sh.mkfile('/srv/checkout/config/pool.conf', ['max_connections=50','timeout=5','mode=throttled'].join('\n')+'\n');
+  },
+  steps:[
+    { brief:'Enter the war room.', check:(sh)=> cwdIs(sh,'~/warroom'), solution:['cd ~/warroom'] },
+    { brief:'Confirm the disk crunch: show filesystem usage.', check:(sh,ctx)=> ctx.cmd==='df' && ctx.out.includes('Use%'), solution:['df'] },
+    { brief:'Which mount is wedged? Pipe df into grep for the 100% line and save it to full.txt.', check:(sh)=>{ const n=sh.get('~/warroom/full.txt'); if(!n) return false; return (n.content||'').includes('/var') && (n.content||'').includes('100%'); }, solution:['df | grep 100% > full.txt'] },
+    { brief:'Find the biggest offenders on the log partition: list sizes under the nginx log dir.', check:(sh,ctx)=> ctx.cmd==='du' && ctx.out.includes('access.log'), solution:['du -a /var/log/nginx'] },
+    { brief:'Rank the log files by size: du all, keep .log files, sort descending, into reclaim.txt.', check:(sh)=>{ const n=sh.get('~/warroom/reclaim.txt'); if(!n) return false; const c=n.content||''; return c.includes('error.log') && c.includes('access.log'); }, solution:['du -a /var/log/nginx | grep .log | sort -nr > reclaim.txt'] },
+    { brief:'Quantify the pain before deleting: how many 500 errors are in the live access.log?', check:(sh,ctx)=> /grep/.test(ctx.line) && ctx.out.trim()==='4', solution:['grep -c 500 /var/log/nginx/access.log'] },
+    { brief:'Preserve evidence: save the 500 lines from access.log into checkout_errors.txt.', check:(sh)=> isFile(sh,'~/warroom/checkout_errors.txt') && linecount(sh,'~/warroom/checkout_errors.txt')===4, solution:['grep 500 /var/log/nginx/access.log > checkout_errors.txt'] },
+    { brief:'Free space fast: delete the rotated access.log.1.', check:(sh)=> !exists(sh,'/var/log/nginx/access.log.1'), solution:['rm /var/log/nginx/access.log.1'] },
+    { brief:'The error.log is pure upstream-timeout spam. Delete it to reclaim the rest.', check:(sh)=> !exists(sh,'/var/log/nginx/error.log'), solution:['rm /var/log/nginx/error.log'] },
+    { brief:'Now scale the pool live: raise max_connections=50 to max_connections=500 in place.', check:(sh)=> has(sh,'/srv/checkout/config/pool.conf','max_connections=500'), solution:['sed -i s/max_connections=50/max_connections=500/ /srv/checkout/config/pool.conf'] },
+    { brief:'Take it out of throttling: change mode=throttled to mode=live in place.', check:(sh)=> has(sh,'/srv/checkout/config/pool.conf','mode=live') && !has(sh,'/srv/checkout/config/pool.conf','mode=throttled'), solution:['sed -i s/mode=throttled/mode=live/ /srv/checkout/config/pool.conf'] },
+    { brief:'Give slow upstreams more room: bump timeout=5 to timeout=15 in place.', check:(sh)=> has(sh,'/srv/checkout/config/pool.conf','timeout=15'), solution:['sed -i s/timeout=5/timeout=15/ /srv/checkout/config/pool.conf'] },
+    { brief:'Verify the pool config is fully live: it must have no throttled flag left (grep finds nothing).', check:(sh,ctx)=> /grep/.test(ctx.line) && ctx.code===1, solution:['grep throttled /srv/checkout/config/pool.conf'] },
+    { brief:'Confirm the error.log spam is gone: du the dir and verify error.log no longer shows.', check:(sh,ctx)=> ctx.cmd==='du' && !ctx.out.includes('error.log'), solution:['du -a /var/log/nginx'] },
+    { brief:'Snapshot the live config for the postmortem.', check:(sh)=> isFile(sh,'~/warroom/pool.live.conf') && has(sh,'~/warroom/pool.live.conf','max_connections=500'), solution:['cp /srv/checkout/config/pool.conf ~/warroom/pool.live.conf'] },
+    { brief:'Call the all-clear: write "CHECKOUT RESTORED" into status.txt.', check:(sh)=> has(sh,'~/warroom/status.txt','CHECKOUT RESTORED'), solution:['echo "CHECKOUT RESTORED" > status.txt'] }
+  ]
+});
+
+/* W3. The OOM Killer Rampage */
+SCENARIOS.push({
+  id:'oom-rampage',
+  title:'The OOM Killer Rampage',
+  icon:'🧟',
+  difficulty:'Expert',
+  story:'Processes are vanishing. The kernel OOM killer is executing random services because one memory-hungry worker spun out of control and ate the box alive. Catch it in the act, capture forensics before it dies again, kill the loop at the config level, and prove the host is stable.',
+  brief:'Memory-exhaustion forensics with ps, grep, cut, sort, du, sed, chmod, redirection.',
+  setup(sh){
+    sh.mkdir('/srv/worker'); sh.mkdir('/var/log/worker'); sh.mkdir('~/forensics');
+    sh.mkfile('/srv/worker/worker.conf', ['heap=unbounded','batch_size=1000000','gc=off','mode=loop'].join('\n')+'\n');
+    sh.mkfile('/var/log/worker/oom.log', [
+      'oom-killer: killed process 3310 (nginx)',
+      'oom-killer: killed process 3410 (postgres)',
+      'worker 6971 rss growing',
+      'oom-killer: killed process 3510 (sshd)',
+      'worker 6971 rss growing'
+    ].join('\n')+'\n');
+    sh.mkfile('/var/log/worker/heap.dump', 'HEAP'.repeat(3000));
+  },
+  steps:[
+    { brief:'Enter the forensics folder.', check:(sh)=> cwdIs(sh,'~/forensics'), solution:['cd ~/forensics'] },
+    { brief:'Catch the memory hog in the act: show every process (BSD style).', check:(sh,ctx)=> ctx.cmd==='ps' && ctx.out.includes('%MEM'), solution:['ps aux'] },
+    { brief:'Isolate the worker: pipe ps aux into grep for worker.js.', check:(sh,ctx)=> /grep/.test(ctx.line) && ctx.out.includes('worker.js') && ctx.out.includes('46.2'), solution:['ps aux | grep worker.js'] },
+    { brief:'Record the offender PID: pipe ps aux, grep worker.js, cut field 2, into offender_pid.txt.', check:(sh)=>{ const n=sh.get('~/forensics/offender_pid.txt'); if(!n) return false; return (n.content||'').trim()==='6971'; }, solution:['ps aux | grep worker.js | cut -d " " -f 2 > offender_pid.txt'] },
+    { brief:'Record its %CPU too: pipe ps aux, grep worker.js, cut field 3, into offender_cpu.txt.', check:(sh)=>{ const n=sh.get('~/forensics/offender_cpu.txt'); if(!n) return false; return (n.content||'').trim()==='99.4'; }, solution:['ps aux | grep worker.js | cut -d " " -f 3 > offender_cpu.txt'] },
+    { brief:'How many processes has the OOM killer executed? Count the oom-killer lines in the log.', check:(sh,ctx)=> /grep/.test(ctx.line) && ctx.out.trim()==='3', solution:['grep -c oom-killer /var/log/worker/oom.log'] },
+    { brief:'Enumerate the victims: extract the killed process names (the parenthesised value) with grep -oE into victims.txt.', check:(sh)=>{ const n=sh.get('~/forensics/victims.txt'); if(!n) return false; const c=n.content||''; return c.includes('nginx') && c.includes('postgres') && c.includes('sshd'); }, solution:['grep -oE "\\([a-z]+\\)" /var/log/worker/oom.log > victims.txt'] },
+    { brief:'Preserve all worker-related evidence from the log into worker_evidence.txt.', check:(sh)=> isFile(sh,'~/forensics/worker_evidence.txt') && linecount(sh,'~/forensics/worker_evidence.txt')===2, solution:['grep "worker 6971" /var/log/worker/oom.log > worker_evidence.txt'] },
+    { brief:'A heap dump is also filling the disk. Find the biggest file in the worker log dir: du all, sort descending, take the top line into biggest.txt.', check:(sh)=>{ const n=sh.get('~/forensics/biggest.txt'); if(!n) return false; return (n.content||'').includes('worker'); }, solution:['du -a /var/log/worker | sort -nr | head -n 1 > biggest.txt'] },
+    { brief:'Delete the heap dump to reclaim memory-mapped disk.', check:(sh)=> !exists(sh,'/var/log/worker/heap.dump'), solution:['rm /var/log/worker/heap.dump'] },
+    { brief:'Kill the loop at the source: change mode=loop to mode=drain in worker.conf, in place.', check:(sh)=> has(sh,'/srv/worker/worker.conf','mode=drain') && !has(sh,'/srv/worker/worker.conf','mode=loop'), solution:['sed -i s/mode=loop/mode=drain/ /srv/worker/worker.conf'] },
+    { brief:'Bound the heap: change heap=unbounded to heap=512m in place.', check:(sh)=> has(sh,'/srv/worker/worker.conf','heap=512m') && !has(sh,'/srv/worker/worker.conf','heap=unbounded'), solution:['sed -i s/heap=unbounded/heap=512m/ /srv/worker/worker.conf'] },
+    { brief:'Re-enable garbage collection: change gc=off to gc=on in place.', check:(sh)=> has(sh,'/srv/worker/worker.conf','gc=on'), solution:['sed -i s/gc=off/gc=on/ /srv/worker/worker.conf'] },
+    { brief:'Verify the dangerous settings are gone: grep for "unbounded" must find nothing.', check:(sh,ctx)=> /grep/.test(ctx.line) && ctx.code===1, solution:['grep unbounded /srv/worker/worker.conf'] },
+    { brief:'Lock the forensic bundle read-only recursively (chmod -R 400).', check:(sh)=> mode(sh,'~/forensics/offender_pid.txt')===0o400 && mode(sh,'~/forensics/victims.txt')===0o400, solution:['chmod -R 400 ~/forensics'] },
+    { brief:'Write the postmortem headline "OOM: worker 6971 bounded, 3 victims" into ~/forensics/summary.txt — wait, it is read-only now, so write it to home instead at ~/oom_summary.txt.', check:(sh)=> has(sh,'~/oom_summary.txt','OOM: worker 6971 bounded, 3 victims'), solution:['echo "OOM: worker 6971 bounded, 3 victims" > ~/oom_summary.txt'] }
+  ]
+});
+
+/* W4. The Backup Partition That Ate Itself */
+SCENARIOS.push({
+  id:'backup-full',
+  title:'The Backup Partition That Ate Itself',
+  icon:'🗜️',
+  difficulty:'Expert',
+  story:'The nightly backup failed because the backup partition is 100% full — ironically, of old backups. Last night\'s snapshot never completed, retention never pruned, and now you have no fresh restore point and no room to make one. Hunt the bloat, prune safely by age, and get a clean snapshot through.',
+  brief:'Capacity reclamation with df, du, find, grep, sort, rm, cp, chmod, verification.',
+  setup(sh){
+    sh.mkdir('/var/backups/daily'); sh.mkdir('/srv/data'); sh.mkdir('~/ticket');
+    // old oversized snapshots + a failed partial
+    sh.mkfile('/var/backups/daily/2035-01-01.tar', 'A'.repeat(8000));
+    sh.mkfile('/var/backups/daily/2035-01-02.tar', 'B'.repeat(7000));
+    sh.mkfile('/var/backups/daily/2035-01-03.tar', 'C'.repeat(9000));
+    sh.mkfile('/var/backups/daily/2035-01-04.partial', 'D'.repeat(2000));
+    sh.mkfile('/srv/data/app.db', 'LIVEDATA'.repeat(300));
+    sh.mkfile('/srv/data/config.yml', 'env: prod\nversion: 9\n');
+  },
+  steps:[
+    { brief:'Enter the ticket folder.', check:(sh)=> cwdIs(sh,'~/ticket'), solution:['cd ~/ticket'] },
+    { brief:'Confirm the backup partition is full: show disk usage.', check:(sh,ctx)=> ctx.cmd==='df' && ctx.out.includes('Use%'), solution:['df'] },
+    { brief:'Save the full-mount evidence: pipe df, grep 100%, into full.txt.', check:(sh)=> isFile(sh,'~/ticket/full.txt') && has(sh,'~/ticket/full.txt','100%'), solution:['df | grep 100% > full.txt'] },
+    { brief:'Inventory the backup directory: list every file size with du.', check:(sh,ctx)=> ctx.cmd==='du' && ctx.out.includes('.tar'), solution:['du -a /var/backups/daily'] },
+    { brief:'Rank the snapshots by size: du all, keep only .tar files, sort descending, into sizes.txt.', check:(sh)=>{ const n=sh.get('~/ticket/sizes.txt'); if(!n) return false; const c=n.content||''; return c.includes('2035-01-03.tar') && c.includes('2035-01-01.tar'); }, solution:['du -a /var/backups/daily | grep .tar | sort -nr > sizes.txt'] },
+    { brief:'Find the failed partial from last night: find any .partial file under the backups tree.', check:(sh,ctx)=> ctx.cmd==='find' && ctx.out.includes('2035-01-04.partial'), solution:['find /var/backups -name "*.partial"'] },
+    { brief:'Delete the useless failed partial first.', check:(sh)=> !exists(sh,'/var/backups/daily/2035-01-04.partial'), solution:['rm /var/backups/daily/2035-01-04.partial'] },
+    { brief:'Retention policy keeps 1 snapshot. The two oldest (01 and 02) are past retention. Delete them with a single wildcard matching 2035-01-0[12].tar.', check:(sh)=> !exists(sh,'/var/backups/daily/2035-01-01.tar') && !exists(sh,'/var/backups/daily/2035-01-02.tar') && exists(sh,'/var/backups/daily/2035-01-03.tar'), solution:['rm /var/backups/daily/2035-01-01.tar /var/backups/daily/2035-01-02.tar'] },
+    { brief:'How many snapshots remain? Count the .tar files via find piped to wc.', check:(sh,ctx)=> /find/.test(ctx.line) && /wc/.test(ctx.line) && ctx.out.trim()==='1', solution:['find /var/backups/daily -name "*.tar" | wc -l'] },
+    { brief:'Now that there is room, take a fresh snapshot: copy the live db into the backups dir as 2035-01-05.tar.', check:(sh)=> isFile(sh,'/var/backups/daily/2035-01-05.tar') && has(sh,'/var/backups/daily/2035-01-05.tar','LIVEDATA'), solution:['cp /srv/data/app.db /var/backups/daily/2035-01-05.tar'] },
+    { brief:'Also back up the config alongside it as config-2035-01-05.yml.', check:(sh)=> isFile(sh,'/var/backups/daily/config-2035-01-05.yml') && has(sh,'/var/backups/daily/config-2035-01-05.yml','env: prod'), solution:['cp /srv/data/config.yml /var/backups/daily/config-2035-01-05.yml'] },
+    { brief:'Verify the fresh snapshot exists and the old ones are gone: du the backup dir.', check:(sh,ctx)=> ctx.cmd==='du' && ctx.out.includes('2035-01-05.tar') && !ctx.out.includes('2035-01-01.tar'), solution:['du -a /var/backups/daily'] },
+    { brief:'Write a manifest of the current backup set: du the .tar snapshots into ~/ticket/manifest.txt.', check:(sh)=> isFile(sh,'~/ticket/manifest.txt') && has(sh,'~/ticket/manifest.txt','2035-01-05.tar'), solution:['du -a /var/backups/daily | grep .tar > ~/ticket/manifest.txt'] },
+    { brief:'Protect the fresh snapshot from accidental writes: chmod 400 the new tar.', check:(sh)=> mode(sh,'/var/backups/daily/2035-01-05.tar')===0o400, solution:['chmod 400 /var/backups/daily/2035-01-05.tar'] },
+    { brief:'Close the ticket: write "BACKUP GREEN 2035-01-05" into ~/ticket/status.txt.', check:(sh)=> has(sh,'~/ticket/status.txt','BACKUP GREEN 2035-01-05'), solution:['echo "BACKUP GREEN 2035-01-05" > ~/ticket/status.txt'] }
+  ]
+});
+
+/* W5. Total System Meltdown — the capstone worst day */
+SCENARIOS.push({
+  id:'total-meltdown',
+  title:'Total System Meltdown',
+  icon:'🔥',
+  difficulty:'Expert',
+  story:'Everything at once. The disk is full, a worker is pinning the CPU, the production config is corrupted, the logs are screaming, and the CEO just walked into the room. This is the incident you will tell war stories about. Take command: diagnose across df, ps and du, stop the bleeding, repair the config, reclaim space, restore service, and leave a sealed postmortem that proves you held the line.',
+  brief:'The capstone on-call disaster: df, ps, du, grep, cut, sort, sed, rm, cp, chmod, nl, end to end.',
+  setup(sh){
+    sh.mkdir('/srv/app/config'); sh.mkdir('/srv/app/bin'); sh.mkdir('/var/log/app');
+    sh.mkdir('/var/backups'); sh.mkdir('~/war');
+    sh.mkfile('/srv/app/config/app.conf', ['mode=corrupt','port=0','workers=0','db=prod-db'].join('\n')+'\n');
+    sh.mkfile('/var/backups/app.conf.good', ['mode=live','port=8080','workers=4','db=prod-db'].join('\n')+'\n');
+    sh.mkfile('/srv/app/bin/start.sh', '#!/bin/sh\nstart\n', {mode:0o644});
+    sh.mkfile('/var/log/app/error.log', Array.from({length:10},(_,i)=> (i%2? 'INFO ok':'ERROR port 0 refused')).join('\n')+'\n');
+    sh.mkfile('/var/log/app/trace.log', 'TRACE spam\n'.repeat(500));
+  },
+  steps:[
+    { brief:'Enter the war room.', check:(sh)=> cwdIs(sh,'~/war'), solution:['cd ~/war'] },
+    { brief:'Assess disk first: show filesystem usage.', check:(sh,ctx)=> ctx.cmd==='df' && ctx.out.includes('Use%'), solution:['df'] },
+    { brief:'Record the full mount: pipe df, grep 100%, cut the mount field (6), into ~/war/full_mount.txt.', check:(sh)=>{ const n=sh.get('~/war/full_mount.txt'); if(!n) return false; return (n.content||'').trim()==='/var'; }, solution:['df | grep 100% | cut -d " " -f 6 > ~/war/full_mount.txt'] },
+    { brief:'Assess CPU: show every process.', check:(sh,ctx)=> ctx.cmd==='ps' && ctx.out.includes('%CPU'), solution:['ps aux'] },
+    { brief:'Capture the runaway PID: ps aux, grep worker.js, cut field 2, into ~/war/pid.txt.', check:(sh)=>{ const n=sh.get('~/war/pid.txt'); if(!n) return false; return (n.content||'').trim()==='6971'; }, solution:['ps aux | grep worker.js | cut -d " " -f 2 > ~/war/pid.txt'] },
+    { brief:'Find the space hog: du the app log dir, keep .log files, sort descending, top one into ~/war/hog.txt.', check:(sh)=>{ const n=sh.get('~/war/hog.txt'); if(!n) return false; return (n.content||'').includes('trace.log'); }, solution:['du -a /var/log/app | grep .log | sort -nr | head -n 1 > ~/war/hog.txt'] },
+    { brief:'Confirm the failure reason: how many ERROR lines mention the refused port?', check:(sh,ctx)=> /grep/.test(ctx.line) && ctx.out.trim()==='5', solution:['grep -c "ERROR port 0 refused" /var/log/app/error.log'] },
+    { brief:'Preserve the error evidence into ~/war/errors.txt.', check:(sh)=> isFile(sh,'~/war/errors.txt') && linecount(sh,'~/war/errors.txt')===5, solution:['grep "ERROR port 0 refused" /var/log/app/error.log > ~/war/errors.txt'] },
+    { brief:'Stop the bleeding — reclaim space by deleting the trace.log spam.', check:(sh)=> !exists(sh,'/var/log/app/trace.log'), solution:['rm /var/log/app/trace.log'] },
+    { brief:'The live config is corrupt. Snapshot it for the postmortem into ~/war/corrupt.conf.', check:(sh)=> isFile(sh,'~/war/corrupt.conf') && has(sh,'~/war/corrupt.conf','mode=corrupt'), solution:['cp /srv/app/config/app.conf ~/war/corrupt.conf'] },
+    { brief:'Restore the known-good config from backup over the corrupt one.', check:(sh)=> has(sh,'/srv/app/config/app.conf','mode=live') && has(sh,'/srv/app/config/app.conf','port=8080'), solution:['cp /var/backups/app.conf.good /srv/app/config/app.conf'] },
+    { brief:'Scale for recovery traffic: bump workers=4 to workers=8 in the restored config, in place.', check:(sh)=> has(sh,'/srv/app/config/app.conf','workers=8'), solution:['sed -i s/workers=4/workers=8/ /srv/app/config/app.conf'] },
+    { brief:'Make the start script executable so the service can come back up.', check:(sh)=> (mode(sh,'/srv/app/bin/start.sh')&0o111)!==0, solution:['chmod +x /srv/app/bin/start.sh'] },
+    { brief:'Verify the live config is fully healthy: a grep for "corrupt" or "port=0" must find nothing.', check:(sh,ctx)=> /grep/.test(ctx.line) && ctx.code===1, solution:['grep -E "corrupt|port=0" /srv/app/config/app.conf'] },
+    { brief:'Confirm the disk hog is gone: du the log dir and verify trace.log no longer appears.', check:(sh,ctx)=> ctx.cmd==='du' && !ctx.out.includes('trace.log'), solution:['du -a /var/log/app'] },
+    { brief:'Assemble the postmortem: write the headline "MELTDOWN CONTAINED" into ~/war/postmortem.txt.', check:(sh)=> has(sh,'~/war/postmortem.txt','MELTDOWN CONTAINED'), solution:['echo "MELTDOWN CONTAINED" > ~/war/postmortem.txt'] },
+    { brief:'Append the captured runaway PID file to the postmortem.', check:(sh)=> has(sh,'~/war/postmortem.txt','MELTDOWN CONTAINED') && has(sh,'~/war/postmortem.txt','6971'), solution:['cat ~/war/pid.txt >> ~/war/postmortem.txt'] },
+    { brief:'Seal the postmortem read-only (chmod 400) to hand to the incident review.', check:(sh)=> mode(sh,'~/war/postmortem.txt')===0o400, solution:['chmod 400 ~/war/postmortem.txt'] }
+  ]
+});
+
 module.exports = { SCENARIOS, helpers:{ exists,isFile,isDir,content,has,linecount,mode,cwdIs } };

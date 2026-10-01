@@ -98,7 +98,7 @@ const CMDS = {
   find grep wc head tail sort uniq cut sed tr
   tac rev nl seq basename dirname
   chmod chown stat file tree whoami hostname date
-  clear history man help
+  df du ps clear history man help
 Use  man <command>  for a short description. Combine with |  >  >>.`);
   },
   whoami(sh){ return ok(sh.user + '\n'); },
@@ -571,6 +571,112 @@ Use  man <command>  for a short description. Combine with |  >  >>.`);
     else { for(let i=start;i>=end;i+=step) out.push(String(i)); }
     return ok(out.join('\n') + (out.length?'\n':''));
   },
+  df(sh, args){
+    // report filesystem disk space usage. Supports -h (human-readable).
+    const { flags } = parseArgs(args, 'h');
+    // A realistic, deterministic mount table. Sizes in 1K-blocks.
+    const rows = [
+      { fs:'/dev/sda1',      size:51475068,  used:48901320, avail:2573748,  pct:95, mount:'/' },
+      { fs:'/dev/sda2',      size:103212544, used:102134272,avail:1078272,  pct:100,mount:'/var' },
+      { fs:'/dev/sdb1',      size:206428160, used:61928448, avail:144499712,pct:30, mount:'/home' },
+      { fs:'tmpfs',          size:8138240,   used:1024,     avail:8137216,  pct:1,  mount:'/run' },
+      { fs:'tmpfs',          size:16276480,  used:0,        avail:16276480, pct:0,  mount:'/dev/shm' }
+    ];
+    const human = v => {
+      if(v >= 1048576) return (v/1048576).toFixed(0)+'G';
+      if(v >= 1024) return (v/1024).toFixed(0)+'M';
+      return v+'K';
+    };
+    const sizeCol = flags.h ? 'Size' : '1K-blocks';
+    const fmt = v => flags.h ? human(v) : String(v);
+    const out = [];
+    out.push(['Filesystem', sizeCol, 'Used', 'Avail', 'Use%', 'Mounted on'].join(' '));
+    for(const r of rows){
+      out.push([r.fs, fmt(r.size), fmt(r.used), fmt(r.avail), r.pct+'%', r.mount].join(' '));
+    }
+    return ok(out.join('\n') + '\n');
+  },
+  du(sh, args){
+    // estimate file/dir space usage from the virtual filesystem.
+    // Supports -s (summary), -h (human), -a (all files), and a path argument.
+    const { flags, pos } = parseArgs(args, 'sha');
+    const startPath = pos.length ? pos[0] : '.';
+    const base = sh.get(startPath);
+    if(!base) return err('du: cannot access \'' + startPath + '\': No such file or directory');
+    // size in bytes of a node's content; dirs count as a 4096 block overhead
+    const bytesOf = n => n.type === 'dir' ? 4096 : (n.content ? n.content.length : 0);
+    // du reports in 1K blocks (rounded up), like real du
+    const blocks = bytes => Math.max(1, Math.ceil(bytes / 1024));
+    const human = kb => {
+      const b = kb * 1024;
+      if(b >= 1048576) return (b/1048576).toFixed(1)+'M';
+      if(b >= 1024) return Math.max(1, Math.round(b/1024))+'K';
+      return b+'B';
+    };
+    const sizeStr = kb => flags.h ? human(kb) : String(kb);
+    const displayPath = p => p;
+    const results = [];
+    // post-order traversal accumulating subtree totals
+    function walk(n, path){
+      let total = bytesOf(n);
+      if(n.type === 'dir'){
+        const kids = Object.keys(n.children).sort().map(k => n.children[k]);
+        for(const c of kids){
+          const sub = walk(c, path + '/' + c.name);
+          total += sub;
+        }
+      }
+      // emit this node:
+      const isDir = n.type === 'dir';
+      if(!flags.s){
+        if(flags.a || isDir){
+          results.push({ path, kb: blocks(total) });
+        }
+      }
+      return total;
+    }
+    const grandTotal = walk(base, startPath === '.' ? '.' : startPath.replace(/\/$/,''));
+    if(flags.s){
+      return ok(sizeStr(blocks(grandTotal)) + '\t' + (startPath === '.' ? '.' : startPath.replace(/\/$/,'')) + '\n');
+    }
+    const out = results.map(r => sizeStr(r.kb) + '\t' + displayPath(r.path));
+    return ok(out.join('\n') + (out.length ? '\n' : ''));
+  },
+  ps(sh, args){
+    // report running processes. Supports BSD-style `aux` and SysV `-ef`.
+    const style = args.includes('aux') || args.includes('-aux') ? 'aux'
+      : (args.includes('-ef') || args.includes('ef')) ? 'ef' : 'plain';
+    // A realistic, deterministic process table.
+    const procs = [
+      { user:'root',  pid:1,    ppid:0,    cpu:0.0,  mem:0.1, vsz:168432, rss:11284, tty:'?',    stat:'Ss', start:'09:00', time:'0:04', cmd:'/sbin/init' },
+      { user:'root',  pid:420,  ppid:1,    cpu:0.0,  mem:0.2, vsz:72304,  rss:7120,  tty:'?',    stat:'Ss', start:'09:00', time:'0:00', cmd:'/usr/sbin/sshd -D' },
+      { user:'postgres',pid:812,ppid:1,    cpu:1.3,  mem:4.5, vsz:394820, rss:184320,tty:'?',    stat:'Ss', start:'09:01', time:'2:12', cmd:'postgres: main' },
+      { user:'www-data',pid:1337,ppid:1,   cpu:2.1,  mem:3.2, vsz:512044, rss:131072,tty:'?',    stat:'Sl', start:'09:02', time:'1:40', cmd:'nginx: worker process' },
+      { user:'app',   pid:2048, ppid:1,    cpu:5.4,  mem:8.9, vsz:1204880,rss:364544,tty:'?',    stat:'Sl', start:'09:03', time:'4:55', cmd:'node /srv/app/server.js' },
+      { user:'app',   pid:6971, ppid:2048, cpu:99.4, mem:46.2,vsz:4809216,rss:1894400,tty:'?',   stat:'R',  start:'02:14', time:'88:21',cmd:'node /srv/app/worker.js --loop' },
+      { user:'root',  pid:7020, ppid:1,    cpu:0.0,  mem:0.1, vsz:39212,  rss:3980,  tty:'?',    stat:'S',  start:'09:04', time:'0:00', cmd:'/usr/sbin/cron -f' },
+      { user:'astra', pid:9100, ppid:420,  cpu:0.0,  mem:0.2, vsz:21560,  rss:5120,  tty:'pts/0',stat:'Ss', start:'09:30', time:'0:00', cmd:'-bash' },
+      { user:'astra', pid:9340, ppid:9100, cpu:0.0,  mem:0.1, vsz:19804,  rss:3600,  tty:'pts/0',stat:'R+', start:'09:41', time:'0:00', cmd:'ps aux' }
+    ];
+    const out = [];
+    if(style === 'ef'){
+      out.push(['UID','PID','PPID','C','STIME','TTY','TIME','CMD'].join(' '));
+      for(const p of procs){
+        out.push([p.user, p.pid, p.ppid, Math.round(p.cpu), p.start, p.tty, p.time, p.cmd].join(' '));
+      }
+    } else if(style === 'aux'){
+      out.push(['USER','PID','%CPU','%MEM','VSZ','RSS','TTY','STAT','START','TIME','COMMAND'].join(' '));
+      for(const p of procs){
+        out.push([p.user, p.pid, p.cpu.toFixed(1), p.mem.toFixed(1), p.vsz, p.rss, p.tty, p.stat, p.start, p.time, p.cmd].join(' '));
+      }
+    } else {
+      out.push(['PID','TTY','TIME','CMD'].join(' '));
+      for(const p of procs){
+        if(p.tty.startsWith('pts')){ out.push([p.pid, p.tty, p.time, p.cmd].join(' ')); }
+      }
+    }
+    return ok(out.join('\n') + '\n');
+  },
   clear(){ return { out:'', code:0, clear:true }; },
   history(sh){ return ok(sh.history.map((h,i)=>String(i+1).padStart(5)+'  '+h).join('\n') + '\n'); },
   man(sh, args){
@@ -586,7 +692,9 @@ Use  man <command>  for a short description. Combine with |  >  >>.`);
       stat:'display file status', file:'determine file type', tree:'list contents as a tree',
       tac:'concatenate and print files in reverse', rev:'reverse lines characterwise',
       nl:'number lines of files', seq:'print a sequence of numbers',
-      basename:'strip directory and suffix from a path', dirname:'strip last component from a path'
+      basename:'strip directory and suffix from a path', dirname:'strip last component from a path',
+      df:'report file system disk space usage', du:'estimate file space usage',
+      ps:'report a snapshot of the current processes'
     };
     const c = args[0];
     if(!c) return err('What manual page do you want?');

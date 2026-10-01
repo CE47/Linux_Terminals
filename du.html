@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Learn `du` — Visual Linux</title>
+<style>
+:root{
+  --bg:#06120f;--txt:#e6f5ef;--dim:#8ba99d;--accent:#5eead4;--accent2:#a7f3d0;--blue:#67e8f9;
+  --folder:#fbbf24;--file:#7dd3fc;--err:#fb7185;--line:rgba(255,255,255,.11);
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;min-height:100dvh;font-family:var(--mono);color:var(--txt);background:var(--bg);overflow-x:hidden;-webkit-font-smoothing:antialiased}
+body::before{content:'';position:fixed;inset:0;z-index:-2;background:
+  radial-gradient(900px 600px at 8% -12%,rgba(94,234,212,.15),transparent 62%),
+  radial-gradient(800px 620px at 100% 4%,rgba(103,232,249,.11),transparent 60%),
+  radial-gradient(720px 700px at 48% 118%,rgba(251,191,36,.1),transparent 62%),#06120f}
+body::after{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;
+  background-image:linear-gradient(rgba(255,255,255,.026) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.026) 1px,transparent 1px);
+  background-size:46px 46px;-webkit-mask-image:radial-gradient(ellipse at 50% 0%,#000 15%,transparent 72%);mask-image:radial-gradient(ellipse at 50% 0%,#000 15%,transparent 72%)}
+.app{max-width:1320px;margin:0 auto;min-height:100dvh;display:flex;flex-direction:column;padding:14px 16px 16px;gap:11px}
+.top{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:11px}
+.logo{width:38px;height:38px;flex:0 0 auto;border-radius:11px;display:grid;place-items:center;font-size:20px;font-weight:700;color:#05221d;
+  background:linear-gradient(150deg,#a7f3d0,#5eead4 45%,#2dd4bf);box-shadow:0 8px 22px -8px rgba(94,234,212,.9),inset 0 1px 0 rgba(255,255,255,.65);animation:logoPulse 3.2s ease-in-out infinite}
+@keyframes logoPulse{0%,100%{box-shadow:0 8px 22px -8px rgba(94,234,212,.9),inset 0 1px 0 rgba(255,255,255,.65)}50%{box-shadow:0 8px 32px -6px rgba(94,234,212,1),inset 0 1px 0 rgba(255,255,255,.65)}}
+.brand h1{margin:0;font-size:16px;letter-spacing:.01em;font-weight:700}
+.brand h1 code{color:#99f6e4;background:rgba(94,234,212,.14);padding:1px 7px;border-radius:6px;border:1px solid rgba(94,234,212,.28)}
+.brand p{margin:2px 0 0;font-size:11.5px;color:var(--dim)}
+.steps{display:flex;gap:7px;align-items:center}
+.steps i{width:9px;height:9px;border-radius:50%;display:block;background:rgba(255,255,255,.13);transition:all .45s cubic-bezier(.34,1.56,.64,1)}
+.steps i.done{background:var(--accent);box-shadow:0 0 0 4px rgba(94,234,212,.14),0 0 14px rgba(94,234,212,.7);transform:scale(1.15)}
+.mission{display:flex;align-items:center;gap:12px;padding:10px 13px;border-radius:14px;background:linear-gradient(90deg,rgba(94,234,212,.11),rgba(94,234,212,.02));border:1px solid rgba(94,234,212,.22);transition:background .35s,border-color .35s,transform .35s,box-shadow .35s}
+.mission.complete{background:linear-gradient(90deg,rgba(74,222,128,.24),rgba(74,222,128,.05));border-color:rgba(74,222,128,.55);transform:scale(1.012);box-shadow:0 0 30px -8px rgba(74,222,128,.5)}
+.badge{font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;padding:5px 9px;border-radius:999px;white-space:nowrap;color:#99f6e4;background:rgba(94,234,212,.16);border:1px solid rgba(94,234,212,.3);transition:all .3s}
+.mission.complete .badge{color:#86efac;background:rgba(74,222,128,.2);border-color:rgba(74,222,128,.45)}
+.mission-text{flex:1;font-size:13px;line-height:1.4;min-width:0}
+.mission-text b{color:#99f6e4}
+.mission.complete .mission-text b{color:#86efac}
+.hint-btn{font:inherit;font-size:11px;color:var(--dim);cursor:pointer;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);padding:6px 11px;border-radius:9px;white-space:nowrap;transition:.2s}
+.hint-btn:hover{color:var(--txt);background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.24)}
+.hint{max-height:0;overflow:hidden;opacity:0;font-size:12.5px;color:var(--dim);padding:0 14px;border-radius:12px;transition:max-height .3s ease,opacity .3s ease,padding .3s ease,background .3s}
+.hint.show{max-height:80px;opacity:1;padding:9px 14px;background:rgba(255,255,255,.035)}
+.hint code{color:#fde68a;background:rgba(251,191,36,.13);padding:1px 6px;border-radius:5px}
+main{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1.12fr) minmax(0,1fr);gap:13px}
+.panel{background:linear-gradient(180deg,rgba(255,255,255,.048),rgba(255,255,255,.014));border:1px solid rgba(255,255,255,.08);border-radius:17px;padding:12px;display:flex;flex-direction:column;min-height:0;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:0 22px 44px -24px rgba(0,0,0,.9),inset 0 1px 0 rgba(255,255,255,.055)}
+.panel-head{display:flex;align-items:center;gap:9px;padding:1px 4px 10px}
+.title{font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:var(--dim);font-weight:700}
+.sub{font-size:11px;color:rgba(139,169,157,.65);margin-left:auto}
+.dots{display:flex;gap:5px;margin-right:2px}
+.dots i{width:9px;height:9px;border-radius:50%;display:block}
+.dots i:nth-child(1){background:#fb7185}.dots i:nth-child(2){background:#fbbf24}.dots i:nth-child(3){background:#4ade80}
+.usage-scroll{flex:1;min-height:0;overflow:auto;padding:2px 2px 8px;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.16) transparent}
+.usage-scroll::-webkit-scrollbar{width:8px;height:8px}
+.usage-scroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:99px}
+.row{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:11px;margin-bottom:7px;background:rgba(0,0,0,.26);border:1px solid rgba(255,255,255,.06);animation:rowIn .4s cubic-bezier(.2,.8,.2,1) backwards;animation-delay:calc(var(--i) * 50ms)}
+@keyframes rowIn{from{opacity:0;transform:translateX(-10px)}to{opacity:1;transform:none}}
+.row.flash{box-shadow:0 0 0 2px rgba(251,191,36,.6),0 0 22px -6px rgba(251,191,36,.7)}
+.row .ic{width:26px;height:22px;flex:0 0 auto;border-radius:4px;position:relative;background:linear-gradient(180deg,#bae6fd,#38bdf8);box-shadow:0 4px 11px rgba(56,189,248,.2)}
+.row.dir .ic{background:linear-gradient(180deg,#fcd34d,#f59e0b)}
+.row.dir .ic::before{content:'';position:absolute;left:0;top:-4px;width:12px;height:6px;border-radius:3px 3px 0 0;background:#fcd34d}
+.row .meta{flex:1;min-width:0}
+.row .nm{font-size:12.5px;font-weight:700;color:#edfdf7;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .track{height:9px;border-radius:6px;background:rgba(255,255,255,.07);margin-top:6px;overflow:hidden}
+.row .track-fill{height:100%;border-radius:6px;width:0;background:linear-gradient(90deg,#38bdf8,#5eead4);transition:width .8s cubic-bezier(.3,.9,.4,1)}
+.row.dir .track-fill{background:linear-gradient(90deg,#fbbf24,#f59e0b)}
+.row.hog .track-fill{background:linear-gradient(90deg,#fb7185,#e11d48)}
+.row .sz{flex:0 0 auto;font-size:12px;font-weight:700;color:#fde68a;min-width:54px;text-align:right;font-variant-numeric:tabular-nums}
+.row.hog .sz{color:#fb7185}
+.legend{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:8px 3px 0;color:var(--dim);font-size:10px}
+.legend-item{display:flex;align-items:center;gap:5px}
+.legend-dot{width:9px;height:9px;border-radius:3px;display:block}
+.legend-dot.file{background:#38bdf8}.legend-dot.dir{background:#fbbf24}.legend-dot.hog{background:#fb7185}
+.term{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:12px 13px;border-radius:12px;background:rgba(0,0,0,.36);border:1px solid rgba(255,255,255,.055);font-size:12.5px;line-height:1.7;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.16) transparent}
+.term::-webkit-scrollbar{width:8px;height:8px}.term::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:99px}
+.line{white-space:pre-wrap;word-break:break-word;animation:lineIn .22s ease-out}
+@keyframes lineIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+.line .p{color:var(--accent2);opacity:.9}.line .c{color:#f8fffc;font-weight:600}.line.err{color:var(--err)}
+.line .dim{color:var(--dim)}.line .ok{color:#86efac}.line .hl{color:#99f6e4;font-weight:700}
+.line .code{color:#fde68a;background:rgba(251,191,36,.11);padding:1px 7px;border-radius:6px;border:1px solid rgba(251,191,36,.2)}
+.line .sz{color:#fde68a}.line .dir-name{color:#fbbf24}.line .file-name{color:#7dd3fc}
+.chips{display:flex;gap:7px;overflow-x:auto;padding:10px 1px 2px;scrollbar-width:none;-ms-overflow-style:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{font:inherit;font-size:11.5px;white-space:nowrap;cursor:pointer;padding:6px 11px;border-radius:9px;color:#a7f3d0;background:rgba(94,234,212,.09);border:1px solid rgba(94,234,212,.24);transition:.18s}
+.chip:hover{background:rgba(94,234,212,.2);transform:translateY(-1px)}.chip:active{transform:scale(.96)}
+.input-row{display:flex;align-items:center;gap:8px;margin-top:9px;padding:9px 10px;border-radius:12px;background:rgba(0,0,0,.4);border:1px solid rgba(94,234,212,.25);transition:border-color .2s,box-shadow .2s}
+.input-row:focus-within{border-color:rgba(94,234,212,.7);box-shadow:0 0 0 3px rgba(94,234,212,.13)}
+.input-row.shake{animation:shake .4s}
+@keyframes shake{10%,90%{transform:translateX(-2px)}20%,80%{transform:translateX(4px)}30%,50%,70%{transform:translateX(-6px)}40%,60%{transform:translateX(6px)}}
+.ps1{font-size:12.5px;color:var(--accent2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:0 1 auto}
+.ps1 .ps-user{opacity:.8}
+.input-row input{flex:1;min-width:40px;background:none;border:none;outline:none;color:#f1fff9;font:inherit;font-size:13px;padding:0}
+.input-row input::placeholder{color:rgba(139,169,157,.5)}
+.send{font:inherit;font-size:14px;line-height:1;cursor:pointer;width:30px;height:30px;flex:0 0 auto;border-radius:9px;color:#06231d;background:linear-gradient(150deg,#a7f3d0,#5eead4);border:none;display:grid;place-items:center;transition:.18s;box-shadow:0 4px 14px -4px rgba(94,234,212,.8)}
+.send:hover{transform:translateY(-1px)}.send:active{transform:scale(.93)}
+.confetti{position:fixed;top:-14px;width:8px;height:13px;border-radius:2px;z-index:999;pointer-events:none;animation:fall linear forwards}
+@keyframes fall{to{transform:translateY(108vh) rotate(var(--rot,360deg));opacity:.05}}
+@media (min-width:901px){.term{flex:0 0 clamp(240px,42vh,420px);overflow-y:auto}}
+@media (max-width:900px){.app{padding:12px 12px 16px;gap:10px}main{grid-template-columns:1fr;grid-template-rows:auto auto;flex:none}.usage-scroll{max-height:46vh}.term{min-height:155px;max-height:34vh}.brand p,.sub{display:none}.ps1 .ps-user{display:none}}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <div class="logo">▣</div>
+      <div>
+        <h1>Learn <code>du</code></h1>
+        <p>Find what is eating your disk — folder by folder.</p>
+      </div>
+    </div>
+    <div class="steps" id="steps"></div>
+  </header>
+
+  <div class="mission" id="mission">
+    <span class="badge" id="missionBadge">Mission 1 / 6</span>
+    <span class="mission-text" id="missionText">Loading…</span>
+    <button class="hint-btn" id="hintBtn" type="button">Hint</button>
+  </div>
+  <div class="hint" id="hintBar"></div>
+
+  <main>
+    <section class="panel">
+      <div class="panel-head"><span class="title">Size map</span><span class="sub">longer bar = more disk</span></div>
+      <div class="usage-scroll" id="usageScroll"></div>
+      <div class="legend">
+        <span class="legend-item"><i class="legend-dot dir"></i>folder</span>
+        <span class="legend-item"><i class="legend-dot file"></i>file</span>
+        <span class="legend-item"><i class="legend-dot hog"></i>space hog</span>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><span class="dots"><i></i><i></i><i></i></span><span class="title">Terminal</span></div>
+      <div class="term" id="term"></div>
+      <div class="chips" id="chips"></div>
+      <form class="input-row" id="form" autocomplete="off">
+        <span class="ps1"><span class="ps-user">astra@nebula:</span><span>~/data</span>$</span>
+        <input id="cmd" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="type du…">
+        <button class="send" type="submit" aria-label="Run command">↵</button>
+      </form>
+    </section>
+  </main>
+</div>
+<script>
+const esc=v=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+// A small ~/data tree. Sizes are bytes of "content".
+const TREE = {name:'data', type:'dir', children:[
+  {name:'logs', type:'dir', children:[
+    {name:'app.log', type:'file', bytes:1048576},
+    {name:'access.log', type:'file', bytes:524288},
+    {name:'debug.log', type:'file', bytes:7340032}
+  ]},
+  {name:'cache', type:'dir', children:[
+    {name:'build.tmp', type:'file', bytes:2097152},
+    {name:'npm', type:'dir', children:[
+      {name:'pkg1.tgz', type:'file', bytes:3145728},
+      {name:'pkg2.tgz', type:'file', bytes:1572864}
+    ]}
+  ]},
+  {name:'backups', type:'dir', children:[
+    {name:'snapshot.tar', type:'file', bytes:15728640}
+  ]},
+  {name:'notes.txt', type:'file', bytes:4096}
+]};
+function bytesOf(n){ return n.type==='dir'?4096:(n.bytes||0); }
+function subtreeBytes(n){ let t=bytesOf(n); if(n.type==='dir') n.children.forEach(c=>t+=subtreeBytes(c)); return t; }
+function blocks(bytes){ return Math.max(1, Math.ceil(bytes/1024)); }
+function human(bytes){ if(bytes>=1048576) return (bytes/1048576).toFixed(1)+'M'; if(bytes>=1024) return Math.max(1,Math.round(bytes/1024))+'K'; return bytes+'B'; }
+
+const usageScroll=document.getElementById('usageScroll');
+const term=document.getElementById('term');
+const chips=document.getElementById('chips');
+const form=document.getElementById('form');
+const input=document.getElementById('cmd');
+const stepsEl=document.getElementById('steps');
+const missionEl=document.getElementById('mission');
+const missionBadge=document.getElementById('missionBadge');
+const missionText=document.getElementById('missionText');
+const hintBtn=document.getElementById('hintBtn');
+const hintBar=document.getElementById('hintBar');
+
+// visual: top-level entries of ~/data sized by subtree
+function renderMap(highlight){
+  usageScroll.innerHTML='';
+  const entries = TREE.children.map(c=>({node:c, bytes:subtreeBytes(c)}));
+  const max = Math.max(...entries.map(e=>e.bytes));
+  entries.sort((a,b)=>b.bytes-a.bytes);
+  const hog = entries[0];
+  entries.forEach((e,i)=>{
+    const isDir=e.node.type==='dir';
+    const row=document.createElement('div');
+    row.className='row '+(isDir?'dir':'file')+(e===hog?' hog':'')+(highlight===e.node.name?' flash':'');
+    row.style.setProperty('--i', i);
+    row.innerHTML=`<span class="ic"></span><div class="meta"><div class="nm">${esc(e.node.name)}${isDir?'/':''}</div><div class="track"><div class="track-fill" style="width:0"></div></div></div><span class="sz">${esc(human(e.bytes))}</span>`;
+    usageScroll.appendChild(row);
+    requestAnimationFrame(()=>{ row.querySelector('.track-fill').style.width=Math.max(4,Math.round(e.bytes/max*100))+'%'; });
+  });
+}
+
+function log(html,cls=''){ const d=document.createElement('div'); d.className='line'+(cls?' '+cls:''); d.innerHTML=html; term.appendChild(d); term.scrollTop=term.scrollHeight; }
+function shake(){ form.classList.remove('shake'); void form.offsetWidth; form.classList.add('shake'); }
+
+// produce du output lines (as real du would), honoring -s/-h/-a
+function duLines(flags){
+  const out=[];
+  (function walk(n, path){
+    let total=bytesOf(n);
+    if(n.type==='dir') n.children.slice().sort((a,b)=>a.name.localeCompare(b.name)).forEach(c=>{ total+=walk(c, path+'/'+c.name); });
+    const isDir=n.type==='dir';
+    if(!flags.s){ if(flags.a || isDir){ out.push({kb:blocks(total), path}); } }
+    return total;
+  })(TREE, '.');
+  if(flags.s){ const t=subtreeBytes(TREE); return [{kb:blocks(t), path:'.'}]; }
+  return out;
+}
+function sizeStr(kb, human_){ return human_?human(kb*1024):String(kb); }
+
+function doDu(args){
+  const flags={s:false,h:false,a:false};
+  for(const a of args){
+    if(a.startsWith('-') && a.length>1 && !a.startsWith('--')){ for(const f of a.slice(1)){ if(f in flags) flags[f]=true; else { log(`du: invalid option -- '${esc(f)}'`,'err'); shake(); return; } } }
+    else if(a.startsWith('--')){ log(`du: unsupported option '${esc(a)}'`,'err'); shake(); return; }
+  }
+  const rows=duLines(flags);
+  rows.forEach(r=> log(`<span class="sz">${esc(sizeStr(r.kb,flags.h))}</span>\t<span class="${r.path.endsWith('.txt')||r.path.endsWith('.log')||r.path.endsWith('.tmp')||r.path.endsWith('.tgz')||r.path.endsWith('.tar')?'file-name':'dir-name'}">${esc(r.path)}</span>`));
+  renderMap();
+  lastCtx={cmd:'du', flags, args:args.join(' '), out:rows.map(r=>sizeStr(r.kb,flags.h)+'\t'+r.path).join('\n')};
+  checkMission();
+}
+function doHelp(){
+  log('<span class="ok">du — estimate file space usage</span>');
+  log('  <span class="code">du</span>        size of every folder in the tree');
+  log('  <span class="code">du -a</span>     include every file too');
+  log('  <span class="code">du -s</span>     a single summary total');
+  log('  <span class="code">du -h</span>     human-readable sizes (M/K/B)');
+  log('<span class="dim">Combine: <b>du -ah | sort -nr | head -n 1</b> finds the biggest item.</span>');
+}
+function execute(raw){
+  const line=raw.trim(); if(!line) return;
+  history.push(line); historyIndex=-1;
+  log(`<span class="p">astra@nebula:~/data$</span> <span class="c">${esc(line)}</span>`);
+  if(line==='clear'){ term.innerHTML=''; return; }
+  if(line==='help'){ doHelp(); return; }
+  if(line.includes('|')){ runPipeline(line); return; }
+  const parts=line.match(/(?:[^\s"']+|"[^"]*"|'[^']*')+/g)||[];
+  const cmd=parts[0]; const args=parts.slice(1).map(a=>a.replace(/^["']|["']$/g,''));
+  if(cmd==='du') doDu(args);
+  else { log(`bash: ${esc(cmd)}: command not found`,'err'); log('<span class="dim">This lab is about <b>du</b>. Try <b>du -ah</b>.</span>'); shake(); }
+}
+function runPipeline(line){
+  const segs=line.split('|').map(s=>s.trim());
+  const first=segs[0].split(/\s+/);
+  if(first[0]!=='du'){ log('<span class="dim">Start the pipeline with <b>du</b> in this lab.</span>','err'); shake(); return; }
+  const flags={s:false,h:false,a:false}; first.slice(1).forEach(a=>{ if(a.startsWith('-')) for(const f of a.slice(1)) if(f in flags) flags[f]=true; });
+  let lines=duLines(flags).map(r=> sizeStr(r.kb,flags.h)+'\t'+r.path);
+  for(let i=1;i<segs.length;i++){
+    const p=segs[i].split(/\s+/); const c=p[0];
+    if(c==='sort'){ const nr=segs[i].includes('-nr'); const n=segs[i].includes('-n'); lines=lines.slice().sort((a,b)=>{ const av=parseInt(a,10)||0, bv=parseInt(b,10)||0; return n?av-bv:a.localeCompare(b); }); if(nr) lines.reverse(); }
+    else if(c==='head'){ const ni=p.indexOf('-n'); const k=ni>=0?parseInt(p[ni+1],10):10; lines=lines.slice(0,k); }
+    else if(c==='tail'){ const ni=p.indexOf('-n'); const k=ni>=0?parseInt(p[ni+1],10):10; lines=lines.slice(-k); }
+    else if(c==='grep'){ const pat=p.slice(1).join(' ').replace(/^["']|["']$/g,''); lines=lines.filter(l=>l.includes(pat)); }
+    else if(c==='wc'){ lines=[String(lines.length)]; }
+    else { log(`<span class="dim">This lab's pipeline supports sort, head, tail, grep, wc.</span>`,'err'); shake(); return; }
+  }
+  lines.forEach(l=> log(esc(l)));
+  renderMap();
+  lastCtx={cmd:'du', flags, args:segs.slice(1).join(' | '), piped:true, out:lines.join('\n')};
+  checkMission();
+}
+
+const missions=[
+  {text:'Show the size of every folder under <b>~/data</b>.', hint:'Just type <code>du</code>.', answer:'du', check:c=>c.cmd==='du' && !c.flags.s && !c.flags.a && !c.piped},
+  {text:'Make the sizes human-readable.', hint:'Add <code>-h</code>: <code>du -h</code>.', answer:'du -h', check:c=>c.cmd==='du' && c.flags.h && !c.flags.a && !c.flags.s && !c.piped},
+  {text:'Include every individual file, human-readable.', hint:'Combine flags: <code>du -ah</code>.', answer:'du -ah', check:c=>c.cmd==='du' && c.flags.a && c.flags.h && !c.piped},
+  {text:'Get a single grand-total for the whole tree.', hint:'Summary flag: <code>du -sh</code>.', answer:'du -sh', check:c=>c.cmd==='du' && c.flags.s},
+  {text:'Find the biggest item: list all files, sort by size descending, keep the top one.', hint:'<code>du -a | sort -nr | head -n 1</code>', answer:'du -a | sort -nr | head -n 1', check:c=>c.piped && /sort/.test(c.args) && /head/.test(c.args) && (c.out||'').includes('.')},
+  {text:'List only the files in the cache folder: run du on everything, then grep for cache.', hint:'<code>du -a | grep cache</code>', answer:'du -a | grep cache', check:c=>c.piped && /grep/.test(c.args) && (c.out||'').includes('cache')}
+];
+let missionIndex=0, missionLocked=false, history=[], historyIndex=-1, lastCtx=null;
+missions.forEach(()=>stepsEl.appendChild(document.createElement('i')));
+function renderMission(){ const m=missions[missionIndex]; missionBadge.textContent=`Mission ${missionIndex+1} / ${missions.length}`; missionText.innerHTML=m.text; hintBar.classList.remove('show'); hintBar.textContent=''; renderChips(); }
+function checkMission(){ if(missionLocked||missionIndex>=missions.length||!lastCtx) return; if(missions[missionIndex].check(lastCtx)) completeMission(); }
+function completeMission(){ missionLocked=true; stepsEl.children[missionIndex].classList.add('done'); missionEl.classList.add('complete'); setTimeout(()=>{ missionEl.classList.remove('complete'); missionIndex++; missionLocked=false; if(missionIndex>=missions.length) finishAll(); else renderMission(); },950); }
+function finishAll(){ missionBadge.textContent='All done'; missionText.innerHTML='You can hunt down a space hog in seconds now. Explore freely!'; hintBtn.style.display='none'; hintBar.classList.remove('show'); renderChips(); confetti(); log('<span class="ok">All missions complete — nicely done!</span>'); }
+function confetti(){ const cs=['#5eead4','#67e8f9','#fbbf24','#f472b6','#a7f3d0','#86efac']; for(let i=0;i<55;i++){ const p=document.createElement('i'); p.className='confetti'; p.style.left=Math.random()*100+'%'; p.style.background=cs[i%cs.length]; p.style.animationDelay=(Math.random()*.45)+'s'; p.style.animationDuration=(1.7+Math.random()*1.3)+'s'; p.style.setProperty('--rot',(Math.random()*900-450)+'deg'); document.body.appendChild(p); setTimeout(()=>p.remove(),3600);} }
+const chipPool=['du','du -h','du -ah','du -sh','du -a | sort -nr | head -n 1','du -a | grep cache','help'];
+function renderChips(){ chips.innerHTML=''; const m=missions[Math.min(missionIndex,missions.length-1)]; const cand=chipPool.filter(x=>x!==m.answer); const off=(missionIndex*2)%cand.length; const list=cand.slice(off).concat(cand.slice(0,off)).slice(0,4); if(hintBar.classList.contains('show')) list.unshift(m.answer); list.forEach(x=>{ const b=document.createElement('button'); b.type='button'; b.className='chip'; b.textContent=x; b.addEventListener('click',()=>{execute(x);input.focus();}); chips.appendChild(b); }); }
+hintBtn.addEventListener('click',()=>{ if(hintBar.classList.contains('show')){ hintBar.classList.remove('show'); renderChips(); return; } const m=missions[Math.min(missionIndex,missions.length-1)]; hintBar.innerHTML=m.hint; hintBar.classList.add('show'); renderChips(); });
+form.addEventListener('submit',e=>{ e.preventDefault(); const v=input.value; input.value=''; execute(v); input.focus(); });
+input.addEventListener('keydown',e=>{ if(e.key==='ArrowUp'){ e.preventDefault(); if(historyIndex<history.length-1){ historyIndex++; input.value=history[history.length-1-historyIndex]; } } else if(e.key==='ArrowDown'){ e.preventDefault(); if(historyIndex>0){ historyIndex--; input.value=history[history.length-1-historyIndex]; } else { historyIndex=-1; input.value=''; } } });
+
+renderMap();
+renderMission();
+log('<span class="hl">Welcome to the visual du terminal.</span>');
+log('The map on the left sizes each entry in <b>~/data</b>. The longest bar is your space hog.');
+log('');
+log('<span class="dim">Try this first:</span> <span class="code">du -ah</span>');
+if(!('ontouchstart' in window) && window.innerWidth>900) setTimeout(()=>input.focus(),400);
+</script>
+</body>
+</html>

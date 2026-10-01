@@ -35,6 +35,9 @@ Then visit `http://127.0.0.1:8000/` in your browser. There is no build step, pac
 | 15 | `chmod` | Symbolic modes like `u+x` and `g-w`, exact sets like `u=rw,g=r,o=`, octal modes like `644`, recursive changes with `-R`, and several files at once | [Launch `chmod`](chmod.html) |
 | 16 | `\|` and `>` `>>` | Piping one command's output into the next, writing results to a file with `>`, appending with `>>`, and chaining stages like `cat FILE \| grep ERROR \| wc -l` | [Launch pipes](pipes.html) |
 | 17 | `grep` | Searching text, case-insensitive matching, line numbers, counts, and recursive search | [Launch `grep`](grep.html) |
+| 18 | `df` | Reading filesystem disk usage, human-readable sizes with `-h`, and spotting a full mount | [Launch `df`](df.html) |
+| 19 | `du` | Estimating file and folder space with `-s`, `-a`, and `-h`, and finding the biggest space hog | [Launch `du`](du.html) |
+| 20 | `ps` | Listing running processes with `aux` and `-ef`, and isolating a runaway process | [Launch `ps`](ps.html) |
 
 ## How the labs work
 
@@ -82,6 +85,9 @@ The relative links in `index.html` and this README work both on GitHub Pages and
 ├── chmod.html       # Permission matrix lab
 ├── pipes.html       # Pipeline and redirection lab
 ├── grep.html        # Search lab
+├── df.html          # Disk-usage overview lab
+├── du.html          # Space-hog hunt lab
+├── ps.html          # Process monitor lab
 ├── ls.html          # Directory-listing lab
 ├── mkdir.html       # Directory-creation lab
 └── pwd.html         # Current-directory lab

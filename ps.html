@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Learn `ps` — Visual Linux</title>
+<style>
+:root{
+  --bg:#06120f;--txt:#e6f5ef;--dim:#8ba99d;--accent:#5eead4;--accent2:#a7f3d0;--blue:#67e8f9;
+  --folder:#fbbf24;--file:#7dd3fc;--err:#fb7185;--line:rgba(255,255,255,.11);
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;min-height:100dvh;font-family:var(--mono);color:var(--txt);background:var(--bg);overflow-x:hidden;-webkit-font-smoothing:antialiased}
+body::before{content:'';position:fixed;inset:0;z-index:-2;background:
+  radial-gradient(900px 600px at 8% -12%,rgba(94,234,212,.15),transparent 62%),
+  radial-gradient(800px 620px at 100% 4%,rgba(103,232,249,.11),transparent 60%),
+  radial-gradient(720px 700px at 48% 118%,rgba(251,191,36,.1),transparent 62%),#06120f}
+body::after{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;
+  background-image:linear-gradient(rgba(255,255,255,.026) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.026) 1px,transparent 1px);
+  background-size:46px 46px;-webkit-mask-image:radial-gradient(ellipse at 50% 0%,#000 15%,transparent 72%);mask-image:radial-gradient(ellipse at 50% 0%,#000 15%,transparent 72%)}
+.app{max-width:1320px;margin:0 auto;min-height:100dvh;display:flex;flex-direction:column;padding:14px 16px 16px;gap:11px}
+.top{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:11px}
+.logo{width:38px;height:38px;flex:0 0 auto;border-radius:11px;display:grid;place-items:center;font-size:20px;font-weight:700;color:#05221d;
+  background:linear-gradient(150deg,#a7f3d0,#5eead4 45%,#2dd4bf);box-shadow:0 8px 22px -8px rgba(94,234,212,.9),inset 0 1px 0 rgba(255,255,255,.65);animation:logoPulse 3.2s ease-in-out infinite}
+@keyframes logoPulse{0%,100%{box-shadow:0 8px 22px -8px rgba(94,234,212,.9),inset 0 1px 0 rgba(255,255,255,.65)}50%{box-shadow:0 8px 32px -6px rgba(94,234,212,1),inset 0 1px 0 rgba(255,255,255,.65)}}
+.brand h1{margin:0;font-size:16px;letter-spacing:.01em;font-weight:700}
+.brand h1 code{color:#99f6e4;background:rgba(94,234,212,.14);padding:1px 7px;border-radius:6px;border:1px solid rgba(94,234,212,.28)}
+.brand p{margin:2px 0 0;font-size:11.5px;color:var(--dim)}
+.steps{display:flex;gap:7px;align-items:center}
+.steps i{width:9px;height:9px;border-radius:50%;display:block;background:rgba(255,255,255,.13);transition:all .45s cubic-bezier(.34,1.56,.64,1)}
+.steps i.done{background:var(--accent);box-shadow:0 0 0 4px rgba(94,234,212,.14),0 0 14px rgba(94,234,212,.7);transform:scale(1.15)}
+.mission{display:flex;align-items:center;gap:12px;padding:10px 13px;border-radius:14px;background:linear-gradient(90deg,rgba(94,234,212,.11),rgba(94,234,212,.02));border:1px solid rgba(94,234,212,.22);transition:background .35s,border-color .35s,transform .35s,box-shadow .35s}
+.mission.complete{background:linear-gradient(90deg,rgba(74,222,128,.24),rgba(74,222,128,.05));border-color:rgba(74,222,128,.55);transform:scale(1.012);box-shadow:0 0 30px -8px rgba(74,222,128,.5)}
+.badge{font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;padding:5px 9px;border-radius:999px;white-space:nowrap;color:#99f6e4;background:rgba(94,234,212,.16);border:1px solid rgba(94,234,212,.3);transition:all .3s}
+.mission.complete .badge{color:#86efac;background:rgba(74,222,128,.2);border-color:rgba(74,222,128,.45)}
+.mission-text{flex:1;font-size:13px;line-height:1.4;min-width:0}
+.mission-text b{color:#99f6e4}
+.mission.complete .mission-text b{color:#86efac}
+.hint-btn{font:inherit;font-size:11px;color:var(--dim);cursor:pointer;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);padding:6px 11px;border-radius:9px;white-space:nowrap;transition:.2s}
+.hint-btn:hover{color:var(--txt);background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.24)}
+.hint{max-height:0;overflow:hidden;opacity:0;font-size:12.5px;color:var(--dim);padding:0 14px;border-radius:12px;transition:max-height .3s ease,opacity .3s ease,padding .3s ease,background .3s}
+.hint.show{max-height:80px;opacity:1;padding:9px 14px;background:rgba(255,255,255,.035)}
+.hint code{color:#fde68a;background:rgba(251,191,36,.13);padding:1px 6px;border-radius:5px}
+main{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1.12fr) minmax(0,1fr);gap:13px}
+.panel{background:linear-gradient(180deg,rgba(255,255,255,.048),rgba(255,255,255,.014));border:1px solid rgba(255,255,255,.08);border-radius:17px;padding:12px;display:flex;flex-direction:column;min-height:0;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:0 22px 44px -24px rgba(0,0,0,.9),inset 0 1px 0 rgba(255,255,255,.055)}
+.panel-head{display:flex;align-items:center;gap:9px;padding:1px 4px 10px}
+.title{font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:var(--dim);font-weight:700}
+.sub{font-size:11px;color:rgba(139,169,157,.65);margin-left:auto}
+.dots{display:flex;gap:5px;margin-right:2px}
+.dots i{width:9px;height:9px;border-radius:50%;display:block}
+.dots i:nth-child(1){background:#fb7185}.dots i:nth-child(2){background:#fbbf24}.dots i:nth-child(3){background:#4ade80}
+.proc-scroll{flex:1;min-height:0;overflow:auto;padding:2px 2px 8px;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.16) transparent}
+.proc-scroll::-webkit-scrollbar{width:8px;height:8px}
+.proc-scroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:99px}
+.proc{position:relative;overflow:hidden;padding:11px 12px;border-radius:12px;margin-bottom:8px;background:rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.06);animation:procIn .4s cubic-bezier(.2,.8,.2,1) backwards;animation-delay:calc(var(--i) * 45ms)}
+@keyframes procIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.proc.runaway{border-color:rgba(251,113,133,.5);box-shadow:0 0 22px -8px rgba(251,113,133,.6)}
+.proc.flash{box-shadow:0 0 0 2px rgba(94,234,212,.6),0 0 22px -6px rgba(94,234,212,.7)}
+.proc.dim-row{opacity:.42}
+.proc-head{display:flex;align-items:baseline;gap:9px;margin-bottom:8px}
+.proc-pid{font-size:10px;color:var(--dim);background:rgba(255,255,255,.06);padding:2px 7px;border-radius:999px}
+.proc-user{font-size:11px;color:#99f6e4}
+.proc-cmd{flex:1;min-width:0;font-size:12.5px;font-weight:700;color:#edfdf7;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.proc.runaway .proc-cmd{color:#fecdd3}
+.proc-bars{display:grid;grid-template-columns:34px 1fr 48px;gap:8px;align-items:center;font-size:10px;color:var(--dim)}
+.proc-bars .lab{text-align:right}
+.bar{height:9px;border-radius:6px;background:rgba(255,255,255,.07);overflow:hidden}
+.bar-fill{height:100%;border-radius:6px;width:0;background:linear-gradient(90deg,#34d399,#5eead4);transition:width .8s cubic-bezier(.3,.9,.4,1)}
+.proc.busy .bar-fill{background:linear-gradient(90deg,#fbbf24,#f59e0b)}
+.proc.runaway .bar-fill{background:linear-gradient(90deg,#fb7185,#e11d48)}
+.proc-val{text-align:right;color:#fde68a;font-variant-numeric:tabular-nums}
+.proc.runaway .proc-val{color:#fb7185;font-weight:700}
+.legend{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:8px 3px 0;color:var(--dim);font-size:10px}
+.legend-item{display:flex;align-items:center;gap:5px}
+.legend-dot{width:9px;height:9px;border-radius:3px;display:block}
+.legend-dot.idle{background:#34d399}.legend-dot.busy{background:#fbbf24}.legend-dot.runaway{background:#fb7185}
+.term{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:12px 13px;border-radius:12px;background:rgba(0,0,0,.36);border:1px solid rgba(255,255,255,.055);font-size:12px;line-height:1.7;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.16) transparent}
+.term::-webkit-scrollbar{width:8px;height:8px}.term::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:99px}
+.line{white-space:pre-wrap;word-break:break-word;animation:lineIn .22s ease-out}
+@keyframes lineIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+.line .p{color:var(--accent2);opacity:.9}.line .c{color:#f8fffc;font-weight:600}.line.err{color:var(--err)}
+.line .dim{color:var(--dim)}.line .ok{color:#86efac}.line .hl{color:#99f6e4;font-weight:700}
+.line .code{color:#fde68a;background:rgba(251,191,36,.11);padding:1px 7px;border-radius:6px;border:1px solid rgba(251,191,36,.2)}
+.line .tbl{display:block;font-variant-numeric:tabular-nums;white-space:pre}
+.line .crit{color:#fb7185;font-weight:700}
+.chips{display:flex;gap:7px;overflow-x:auto;padding:10px 1px 2px;scrollbar-width:none;-ms-overflow-style:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{font:inherit;font-size:11.5px;white-space:nowrap;cursor:pointer;padding:6px 11px;border-radius:9px;color:#a7f3d0;background:rgba(94,234,212,.09);border:1px solid rgba(94,234,212,.24);transition:.18s}
+.chip:hover{background:rgba(94,234,212,.2);transform:translateY(-1px)}.chip:active{transform:scale(.96)}
+.input-row{display:flex;align-items:center;gap:8px;margin-top:9px;padding:9px 10px;border-radius:12px;background:rgba(0,0,0,.4);border:1px solid rgba(94,234,212,.25);transition:border-color .2s,box-shadow .2s}
+.input-row:focus-within{border-color:rgba(94,234,212,.7);box-shadow:0 0 0 3px rgba(94,234,212,.13)}
+.input-row.shake{animation:shake .4s}
+@keyframes shake{10%,90%{transform:translateX(-2px)}20%,80%{transform:translateX(4px)}30%,50%,70%{transform:translateX(-6px)}40%,60%{transform:translateX(6px)}}
+.ps1{font-size:12.5px;color:var(--accent2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:0 1 auto}
+.ps1 .ps-user{opacity:.8}
+.input-row input{flex:1;min-width:40px;background:none;border:none;outline:none;color:#f1fff9;font:inherit;font-size:13px;padding:0}
+.input-row input::placeholder{color:rgba(139,169,157,.5)}
+.send{font:inherit;font-size:14px;line-height:1;cursor:pointer;width:30px;height:30px;flex:0 0 auto;border-radius:9px;color:#06231d;background:linear-gradient(150deg,#a7f3d0,#5eead4);border:none;display:grid;place-items:center;transition:.18s;box-shadow:0 4px 14px -4px rgba(94,234,212,.8)}
+.send:hover{transform:translateY(-1px)}.send:active{transform:scale(.93)}
+.confetti{position:fixed;top:-14px;width:8px;height:13px;border-radius:2px;z-index:999;pointer-events:none;animation:fall linear forwards}
+@keyframes fall{to{transform:translateY(108vh) rotate(var(--rot,360deg));opacity:.05}}
+@media (min-width:901px){.term{flex:0 0 clamp(240px,42vh,420px);overflow-y:auto}}
+@media (max-width:900px){.app{padding:12px 12px 16px;gap:10px}main{grid-template-columns:1fr;grid-template-rows:auto auto;flex:none}.proc-scroll{max-height:46vh}.term{min-height:155px;max-height:34vh}.brand p,.sub{display:none}.ps1 .ps-user{display:none}}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <div class="logo">⌘</div>
+      <div>
+        <h1>Learn <code>ps</code></h1>
+        <p>See what is actually running — and what is on fire.</p>
+      </div>
+    </div>
+    <div class="steps" id="steps"></div>
+  </header>
+
+  <div class="mission" id="mission">
+    <span class="badge" id="missionBadge">Mission 1 / 6</span>
+    <span class="mission-text" id="missionText">Loading…</span>
+    <button class="hint-btn" id="hintBtn" type="button">Hint</button>
+  </div>
+  <div class="hint" id="hintBar"></div>
+
+  <main>
+    <section class="panel">
+      <div class="panel-head"><span class="title">Process monitor</span><span class="sub">bar = %CPU</span></div>
+      <div class="proc-scroll" id="procScroll"></div>
+      <div class="legend">
+        <span class="legend-item"><i class="legend-dot idle"></i>idle</span>
+        <span class="legend-item"><i class="legend-dot busy"></i>busy</span>
+        <span class="legend-item"><i class="legend-dot runaway"></i>runaway (&ge;90%)</span>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><span class="dots"><i></i><i></i><i></i></span><span class="title">Terminal</span></div>
+      <div class="term" id="term"></div>
+      <div class="chips" id="chips"></div>
+      <form class="input-row" id="form" autocomplete="off">
+        <span class="ps1"><span class="ps-user">astra@nebula:</span><span>~</span>$</span>
+        <input id="cmd" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="type ps…">
+        <button class="send" type="submit" aria-label="Run command">↵</button>
+      </form>
+    </section>
+  </main>
+</div>
+<script>
+const esc=v=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const PROCS=[
+  {user:'root',pid:1,ppid:0,cpu:0.0,mem:0.1,vsz:168432,rss:11284,tty:'?',stat:'Ss',start:'09:00',time:'0:04',cmd:'/sbin/init'},
+  {user:'root',pid:420,ppid:1,cpu:0.0,mem:0.2,vsz:72304,rss:7120,tty:'?',stat:'Ss',start:'09:00',time:'0:00',cmd:'/usr/sbin/sshd -D'},
+  {user:'postgres',pid:812,ppid:1,cpu:1.3,mem:4.5,vsz:394820,rss:184320,tty:'?',stat:'Ss',start:'09:01',time:'2:12',cmd:'postgres: main'},
+  {user:'www-data',pid:1337,ppid:1,cpu:2.1,mem:3.2,vsz:512044,rss:131072,tty:'?',stat:'Sl',start:'09:02',time:'1:40',cmd:'nginx: worker process'},
+  {user:'app',pid:2048,ppid:1,cpu:5.4,mem:8.9,vsz:1204880,rss:364544,tty:'?',stat:'Sl',start:'09:03',time:'4:55',cmd:'node /srv/app/server.js'},
+  {user:'app',pid:6971,ppid:2048,cpu:99.4,mem:46.2,vsz:4809216,rss:1894400,tty:'?',stat:'R',start:'02:14',time:'88:21',cmd:'node /srv/app/worker.js --loop'},
+  {user:'root',pid:7020,ppid:1,cpu:0.0,mem:0.1,vsz:39212,rss:3980,tty:'?',stat:'S',start:'09:04',time:'0:00',cmd:'/usr/sbin/cron -f'},
+  {user:'astra',pid:9100,ppid:420,cpu:0.0,mem:0.2,vsz:21560,rss:5120,tty:'pts/0',stat:'Ss',start:'09:30',time:'0:00',cmd:'-bash'},
+  {user:'astra',pid:9340,ppid:9100,cpu:0.0,mem:0.1,vsz:19804,rss:3600,tty:'pts/0',stat:'R+',start:'09:41',time:'0:00',cmd:'ps aux'}
+];
+const sevClass=cpu=>cpu>=90?'runaway':cpu>=5?'busy':'idle';
+
+const procScroll=document.getElementById('procScroll');
+const term=document.getElementById('term');
+const chips=document.getElementById('chips');
+const form=document.getElementById('form');
+const input=document.getElementById('cmd');
+const stepsEl=document.getElementById('steps');
+const missionEl=document.getElementById('mission');
+const missionBadge=document.getElementById('missionBadge');
+const missionText=document.getElementById('missionText');
+const hintBtn=document.getElementById('hintBtn');
+const hintBar=document.getElementById('hintBar');
+
+function renderMonitor(filterFn, highlightPid){
+  procScroll.innerHTML='';
+  PROCS.forEach((p,i)=>{
+    const show = filterFn? filterFn(p): true;
+    const sev=sevClass(p.cpu);
+    const card=document.createElement('div');
+    card.className='proc '+sev+(sev==='runaway'?' runaway':'')+(highlightPid===p.pid?' flash':'')+(show?'':' dim-row');
+    card.style.setProperty('--i', i);
+    card.innerHTML=
+      `<div class="proc-head"><span class="proc-pid">pid ${p.pid}</span><span class="proc-user">${esc(p.user)}</span><span class="proc-cmd">${esc(p.cmd)}</span></div>`+
+      `<div class="proc-bars"><span class="lab">CPU</span><div class="bar"><div class="bar-fill" style="width:0"></div></div><span class="proc-val">${p.cpu.toFixed(1)}%</span></div>`;
+    procScroll.appendChild(card);
+    requestAnimationFrame(()=>{ card.querySelector('.bar-fill').style.width=Math.min(100,p.cpu)+'%'; });
+  });
+}
+
+function log(html,cls=''){ const d=document.createElement('div'); d.className='line'+(cls?' '+cls:''); d.innerHTML=html; term.appendChild(d); term.scrollTop=term.scrollHeight; }
+function shake(){ form.classList.remove('shake'); void form.offsetWidth; form.classList.add('shake'); }
+
+function psLines(style){
+  const out=[];
+  if(style==='ef'){
+    out.push(['UID','PID','PPID','C','STIME','TTY','TIME','CMD'].join(' '));
+    PROCS.forEach(p=> out.push([p.user,p.pid,p.ppid,Math.round(p.cpu),p.start,p.tty,p.time,p.cmd].join(' ')));
+  } else if(style==='aux'){
+    out.push(['USER','PID','%CPU','%MEM','VSZ','RSS','TTY','STAT','START','TIME','COMMAND'].join(' '));
+    PROCS.forEach(p=> out.push([p.user,p.pid,p.cpu.toFixed(1),p.mem.toFixed(1),p.vsz,p.rss,p.tty,p.stat,p.start,p.time,p.cmd].join(' ')));
+  } else {
+    out.push(['PID','TTY','TIME','CMD'].join(' '));
+    PROCS.filter(p=>p.tty.startsWith('pts')).forEach(p=> out.push([p.pid,p.tty,p.time,p.cmd].join(' ')));
+  }
+  return out;
+}
+function renderTable(style){
+  const pad=(s,n)=>String(s).padEnd(n); const padL=(s,n)=>String(s).padStart(n);
+  if(style==='aux'){
+    log(`<span class="tbl">${esc(pad('USER',9))}${esc(padL('PID',5))}${esc(padL('%CPU',6))}${esc(padL('%MEM',6))} ${esc(pad('TTY',6))}${esc(pad('STAT',5))} COMMAND</span>`,'dim');
+    PROCS.forEach(p=>{ const cls=p.cpu>=90?'crit':''; log(`<span class="tbl">${esc(pad(p.user,9))}${esc(padL(p.pid,5))}<span class="${cls}">${esc(padL(p.cpu.toFixed(1),6))}</span>${esc(padL(p.mem.toFixed(1),6))} ${esc(pad(p.tty,6))}${esc(pad(p.stat,5))} ${esc(p.cmd)}</span>`); });
+  } else if(style==='ef'){
+    log(`<span class="tbl">${esc(pad('UID',9))}${esc(padL('PID',6))}${esc(padL('PPID',6))} ${esc(pad('TTY',6))}${esc(pad('TIME',7))} CMD</span>`,'dim');
+    PROCS.forEach(p=> log(`<span class="tbl">${esc(pad(p.user,9))}${esc(padL(p.pid,6))}${esc(padL(p.ppid,6))} ${esc(pad(p.tty,6))}${esc(pad(p.time,7))} ${esc(p.cmd)}</span>`));
+  } else {
+    log(`<span class="tbl">${esc(padL('PID',6))} ${esc(pad('TTY',7))}${esc(pad('TIME',7))} CMD</span>`,'dim');
+    PROCS.filter(p=>p.tty.startsWith('pts')).forEach(p=> log(`<span class="tbl">${esc(padL(p.pid,6))} ${esc(pad(p.tty,7))}${esc(pad(p.time,7))} ${esc(p.cmd)}</span>`));
+  }
+}
+
+function doPs(args){
+  const style = (args.includes('aux')||args.includes('-aux'))?'aux':(args.includes('-ef')||args.includes('ef'))?'ef':'plain';
+  renderTable(style);
+  const runaway=PROCS.find(p=>p.cpu>=90);
+  if(style!=='plain' && runaway){ log(`<span class="dim">pid ${runaway.pid} is pinning a core: </span><span class="crit">${esc(runaway.cmd)}</span>`); }
+  renderMonitor(null, runaway?runaway.pid:null);
+  lastCtx={cmd:'ps', style, args:args.join(' ')};
+  checkMission();
+}
+function doHelp(){
+  log('<span class="ok">ps — report a snapshot of current processes</span>');
+  log('  <span class="code">ps</span>        processes attached to your terminal');
+  log('  <span class="code">ps aux</span>    every process with %CPU, %MEM and command (BSD style)');
+  log('  <span class="code">ps -ef</span>    every process in full format (SysV style)');
+  log('<span class="dim">Combine: <b>ps aux | grep worker.js</b> to isolate a runaway process.</span>');
+}
+function execute(raw){
+  const line=raw.trim(); if(!line) return;
+  history.push(line); historyIndex=-1;
+  log(`<span class="p">astra@nebula:~$</span> <span class="c">${esc(line)}</span>`);
+  if(line==='clear'){ term.innerHTML=''; return; }
+  if(line==='help'){ doHelp(); return; }
+  if(line.includes('|')){ runPipeline(line); return; }
+  const parts=line.match(/(?:[^\s"']+|"[^"]*"|'[^']*')+/g)||[];
+  const cmd=parts[0]; const args=parts.slice(1).map(a=>a.replace(/^["']|["']$/g,''));
+  if(cmd==='ps') doPs(args);
+  else { log(`bash: ${esc(cmd)}: command not found`,'err'); log('<span class="dim">This lab is about <b>ps</b>. Try <b>ps aux</b>.</span>'); shake(); }
+}
+function runPipeline(line){
+  const segs=line.split('|').map(s=>s.trim());
+  const first=segs[0].split(/\s+/);
+  if(first[0]!=='ps'){ log('<span class="dim">Start the pipeline with <b>ps</b> in this lab.</span>','err'); shake(); return; }
+  const style=(first.includes('aux')||first.includes('-aux'))?'aux':(first.includes('-ef')||first.includes('ef'))?'ef':'plain';
+  let lines=psLines(style);
+  let hadGrep=null;
+  for(let i=1;i<segs.length;i++){
+    const p=(segs[i].match(/(?:[^\s"']+|"[^"]*"|'[^']*')+/g)||[]).map(t=>t.replace(/^["']|["']$/g,''));
+    const c=p[0];
+    if(c==='grep'){ const pat=p.slice(1).join(' '); lines=lines.filter(l=>l.includes(pat)); hadGrep=pat; }
+    else if(c==='cut'){ const di=p.indexOf('-d'); const fi=p.indexOf('-f'); const delim=di>=0?p[di+1]:' '; const field=fi>=0?parseInt(p[fi+1],10):1; const d=delim===' '?/\s+/:delim; lines=lines.map(l=>{const cols=l.split(d).filter(Boolean); return cols[field-1]||'';}); }
+    else if(c==='sort'){ const nr=segs[i].includes('-nr'); const n=segs[i].includes('-n'); lines=lines.slice().sort((a,b)=>{ const av=parseFloat(a)||0,bv=parseFloat(b)||0; return n?av-bv:a.localeCompare(b);}); if(nr) lines.reverse(); }
+    else if(c==='head'){ const ni=p.indexOf('-n'); const k=ni>=0?parseInt(p[ni+1],10):10; lines=lines.slice(0,k); }
+    else if(c==='wc'){ lines=[String(lines.length)]; }
+    else { log(`<span class="dim">This lab's pipeline supports grep, cut, sort, head, wc.</span>`,'err'); shake(); return; }
+  }
+  lines.forEach(l=> log(esc(l)));
+  const runaway=PROCS.find(p=>p.cpu>=90);
+  renderMonitor(hadGrep?(p=>JSON.stringify(p).includes(hadGrep)||p.cmd.includes(hadGrep)):null, runaway?runaway.pid:null);
+  lastCtx={cmd:'ps', style, args:segs.slice(1).join(' | '), piped:true, out:lines.join('\n')};
+  checkMission();
+}
+
+const missions=[
+  {text:'Show the processes attached to your terminal.', hint:'Just type <code>ps</code>.', answer:'ps', check:c=>c.cmd==='ps' && c.style==='plain' && !c.piped},
+  {text:'Show every process with its %CPU (BSD style).', hint:'Type <code>ps aux</code>.', answer:'ps aux', check:c=>c.cmd==='ps' && c.style==='aux' && !c.piped},
+  {text:'Something is pinning the CPU. Pipe ps into grep to isolate the worker.', hint:'<code>ps aux | grep worker.js</code>', answer:'ps aux | grep worker.js', check:c=>c.piped && /grep/.test(c.args) && /worker/.test(c.args) && (c.out||'').includes('worker.js')},
+  {text:'Get just the PID of the runaway worker: pipe ps, grep worker.js, then cut the second field.', hint:'<code>ps aux | grep worker.js | cut -d " " -f 2</code>', answer:'ps aux | grep worker.js | cut -d " " -f 2', check:c=>c.piped && (c.out||'').trim()==='6971'},
+  {text:'List every process in full SysV format.', hint:'Type <code>ps -ef</code>.', answer:'ps -ef', check:c=>c.cmd==='ps' && c.style==='ef'},
+  {text:'How many processes is app running? Pipe ps aux, grep the app user, and count the lines.', hint:'<code>ps aux | grep app | wc</code>', answer:'ps aux | grep app | wc', check:c=>c.piped && /wc/.test(c.args) && parseInt((c.out||'').trim())>=1}
+];
+let missionIndex=0, missionLocked=false, history=[], historyIndex=-1, lastCtx=null;
+missions.forEach(()=>stepsEl.appendChild(document.createElement('i')));
+function renderMission(){ const m=missions[missionIndex]; missionBadge.textContent=`Mission ${missionIndex+1} / ${missions.length}`; missionText.innerHTML=m.text; hintBar.classList.remove('show'); hintBar.textContent=''; renderChips(); }
+function checkMission(){ if(missionLocked||missionIndex>=missions.length||!lastCtx) return; if(missions[missionIndex].check(lastCtx)) completeMission(); }
+function completeMission(){ missionLocked=true; stepsEl.children[missionIndex].classList.add('done'); missionEl.classList.add('complete'); setTimeout(()=>{ missionEl.classList.remove('complete'); missionIndex++; missionLocked=false; if(missionIndex>=missions.length) finishAll(); else renderMission(); },950); }
+function finishAll(){ missionBadge.textContent='All done'; missionText.innerHTML='You can spot a runaway process in one glance now. Explore freely!'; hintBtn.style.display='none'; hintBar.classList.remove('show'); renderChips(); confetti(); log('<span class="ok">All missions complete — nicely done!</span>'); }
+function confetti(){ const cs=['#5eead4','#67e8f9','#fbbf24','#f472b6','#a7f3d0','#86efac']; for(let i=0;i<55;i++){ const p=document.createElement('i'); p.className='confetti'; p.style.left=Math.random()*100+'%'; p.style.background=cs[i%cs.length]; p.style.animationDelay=(Math.random()*.45)+'s'; p.style.animationDuration=(1.7+Math.random()*1.3)+'s'; p.style.setProperty('--rot',(Math.random()*900-450)+'deg'); document.body.appendChild(p); setTimeout(()=>p.remove(),3600);} }
+const chipPool=['ps','ps aux','ps -ef','ps aux | grep worker.js','ps aux | grep worker.js | cut -d " " -f 2','ps aux | grep app | wc','help'];
+function renderChips(){ chips.innerHTML=''; const m=missions[Math.min(missionIndex,missions.length-1)]; const cand=chipPool.filter(x=>x!==m.answer); const off=(missionIndex*2)%cand.length; const list=cand.slice(off).concat(cand.slice(0,off)).slice(0,4); if(hintBar.classList.contains('show')) list.unshift(m.answer); list.forEach(x=>{ const b=document.createElement('button'); b.type='button'; b.className='chip'; b.textContent=x; b.addEventListener('click',()=>{execute(x);input.focus();}); chips.appendChild(b); }); }
+hintBtn.addEventListener('click',()=>{ if(hintBar.classList.contains('show')){ hintBar.classList.remove('show'); renderChips(); return; } const m=missions[Math.min(missionIndex,missions.length-1)]; hintBar.innerHTML=m.hint; hintBar.classList.add('show'); renderChips(); });
+form.addEventListener('submit',e=>{ e.preventDefault(); const v=input.value; input.value=''; execute(v); input.focus(); });
+input.addEventListener('keydown',e=>{ if(e.key==='ArrowUp'){ e.preventDefault(); if(historyIndex<history.length-1){ historyIndex++; input.value=history[history.length-1-historyIndex]; } } else if(e.key==='ArrowDown'){ e.preventDefault(); if(historyIndex>0){ historyIndex--; input.value=history[history.length-1-historyIndex]; } else { historyIndex=-1; input.value=''; } } });
+
+renderMonitor();
+renderMission();
+log('<span class="hl">Welcome to the visual ps terminal.</span>');
+log('Each card on the left is a running process. The red one is pinning a CPU core.');
+log('');
+log('<span class="dim">Try this first:</span> <span class="code">ps aux</span>');
+if(!('ontouchstart' in window) && window.innerWidth>900) setTimeout(()=>input.focus(),400);
+</script>
+</body>
+</html>

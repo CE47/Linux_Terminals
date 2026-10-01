@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Learn `df` — Visual Linux</title>
+<style>
+:root{
+  --bg:#06120f;--txt:#e6f5ef;--dim:#8ba99d;--accent:#5eead4;--accent2:#a7f3d0;--blue:#67e8f9;
+  --folder:#fbbf24;--file:#7dd3fc;--err:#fb7185;--line:rgba(255,255,255,.11);
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;min-height:100dvh;font-family:var(--mono);color:var(--txt);background:var(--bg);overflow-x:hidden;-webkit-font-smoothing:antialiased}
+body::before{content:'';position:fixed;inset:0;z-index:-2;background:
+  radial-gradient(900px 600px at 8% -12%,rgba(94,234,212,.15),transparent 62%),
+  radial-gradient(800px 620px at 100% 4%,rgba(103,232,249,.11),transparent 60%),
+  radial-gradient(720px 700px at 48% 118%,rgba(251,191,36,.1),transparent 62%),#06120f}
+body::after{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;
+  background-image:linear-gradient(rgba(255,255,255,.026) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.026) 1px,transparent 1px);
+  background-size:46px 46px;-webkit-mask-image:radial-gradient(ellipse at 50% 0%,#000 15%,transparent 72%);mask-image:radial-gradient(ellipse at 50% 0%,#000 15%,transparent 72%)}
+.app{max-width:1320px;margin:0 auto;min-height:100dvh;display:flex;flex-direction:column;padding:14px 16px 16px;gap:11px}
+.top{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:11px}
+.logo{width:38px;height:38px;flex:0 0 auto;border-radius:11px;display:grid;place-items:center;font-size:20px;font-weight:700;color:#05221d;
+  background:linear-gradient(150deg,#a7f3d0,#5eead4 45%,#2dd4bf);box-shadow:0 8px 22px -8px rgba(94,234,212,.9),inset 0 1px 0 rgba(255,255,255,.65);animation:logoPulse 3.2s ease-in-out infinite}
+@keyframes logoPulse{0%,100%{box-shadow:0 8px 22px -8px rgba(94,234,212,.9),inset 0 1px 0 rgba(255,255,255,.65)}50%{box-shadow:0 8px 32px -6px rgba(94,234,212,1),inset 0 1px 0 rgba(255,255,255,.65)}}
+.brand h1{margin:0;font-size:16px;letter-spacing:.01em;font-weight:700}
+.brand h1 code{color:#99f6e4;background:rgba(94,234,212,.14);padding:1px 7px;border-radius:6px;border:1px solid rgba(94,234,212,.28)}
+.brand p{margin:2px 0 0;font-size:11.5px;color:var(--dim)}
+.steps{display:flex;gap:7px;align-items:center}
+.steps i{width:9px;height:9px;border-radius:50%;display:block;background:rgba(255,255,255,.13);transition:all .45s cubic-bezier(.34,1.56,.64,1)}
+.steps i.done{background:var(--accent);box-shadow:0 0 0 4px rgba(94,234,212,.14),0 0 14px rgba(94,234,212,.7);transform:scale(1.15)}
+.mission{display:flex;align-items:center;gap:12px;padding:10px 13px;border-radius:14px;background:linear-gradient(90deg,rgba(94,234,212,.11),rgba(94,234,212,.02));border:1px solid rgba(94,234,212,.22);transition:background .35s,border-color .35s,transform .35s,box-shadow .35s}
+.mission.complete{background:linear-gradient(90deg,rgba(74,222,128,.24),rgba(74,222,128,.05));border-color:rgba(74,222,128,.55);transform:scale(1.012);box-shadow:0 0 30px -8px rgba(74,222,128,.5)}
+.badge{font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;padding:5px 9px;border-radius:999px;white-space:nowrap;color:#99f6e4;background:rgba(94,234,212,.16);border:1px solid rgba(94,234,212,.3);transition:all .3s}
+.mission.complete .badge{color:#86efac;background:rgba(74,222,128,.2);border-color:rgba(74,222,128,.45)}
+.mission-text{flex:1;font-size:13px;line-height:1.4;min-width:0}
+.mission-text b{color:#99f6e4}
+.mission.complete .mission-text b{color:#86efac}
+.hint-btn{font:inherit;font-size:11px;color:var(--dim);cursor:pointer;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);padding:6px 11px;border-radius:9px;white-space:nowrap;transition:.2s}
+.hint-btn:hover{color:var(--txt);background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.24)}
+.hint{max-height:0;overflow:hidden;opacity:0;font-size:12.5px;color:var(--dim);padding:0 14px;border-radius:12px;transition:max-height .3s ease,opacity .3s ease,padding .3s ease,background .3s}
+.hint.show{max-height:80px;opacity:1;padding:9px 14px;background:rgba(255,255,255,.035)}
+.hint code{color:#fde68a;background:rgba(251,191,36,.13);padding:1px 6px;border-radius:5px}
+main{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1.12fr) minmax(0,1fr);gap:13px}
+.panel{background:linear-gradient(180deg,rgba(255,255,255,.048),rgba(255,255,255,.014));border:1px solid rgba(255,255,255,.08);border-radius:17px;padding:12px;display:flex;flex-direction:column;min-height:0;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:0 22px 44px -24px rgba(0,0,0,.9),inset 0 1px 0 rgba(255,255,255,.055)}
+.panel-head{display:flex;align-items:center;gap:9px;padding:1px 4px 10px}
+.title{font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:var(--dim);font-weight:700}
+.sub{font-size:11px;color:rgba(139,169,157,.65);margin-left:auto}
+.dots{display:flex;gap:5px;margin-right:2px}
+.dots i{width:9px;height:9px;border-radius:50%;display:block}
+.dots i:nth-child(1){background:#fb7185}.dots i:nth-child(2){background:#fbbf24}.dots i:nth-child(3){background:#4ade80}
+.disk-scroll{flex:1;min-height:0;overflow:auto;padding:2px 2px 8px;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.16) transparent}
+.disk-scroll::-webkit-scrollbar{width:8px;height:8px}
+.disk-scroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:99px}
+.mount{position:relative;overflow:hidden;padding:13px;border-radius:14px;margin-bottom:10px;background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.075);animation:cardIn .45s cubic-bezier(.2,.8,.2,1) backwards;animation-delay:calc(var(--i) * 60ms)}
+@keyframes cardIn{from{opacity:0;transform:translateY(12px) scale(.97)}to{opacity:1;transform:none}}
+.mount.flash{box-shadow:0 0 0 2px rgba(94,234,212,.6),0 0 26px -6px rgba(94,234,212,.7)}
+.mount-head{display:flex;align-items:baseline;gap:9px;margin-bottom:9px}
+.mount-point{font-size:14px;font-weight:700;color:#edfdf7}
+.mount-fs{font-size:10.5px;color:var(--dim)}
+.mount-pct{margin-left:auto;font-size:13px;font-weight:700;color:#86efac}
+.mount.warn .mount-pct{color:#fbbf24}
+.mount.crit .mount-pct{color:#fb7185}
+.bar{height:16px;border-radius:8px;background:rgba(255,255,255,.07);overflow:hidden;position:relative}
+.bar-fill{height:100%;border-radius:8px;background:linear-gradient(90deg,#34d399,#5eead4);width:0;transition:width .9s cubic-bezier(.3,.9,.4,1)}
+.mount.warn .bar-fill{background:linear-gradient(90deg,#fbbf24,#f59e0b)}
+.mount.crit .bar-fill{background:linear-gradient(90deg,#fb7185,#e11d48)}
+.mount-foot{display:flex;gap:14px;margin-top:9px;font-size:10.5px;color:var(--dim);flex-wrap:wrap}
+.mount-foot b{color:#b7d8cb;font-weight:400}
+.mount-foot span b{color:#fde68a}
+.legend{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:8px 3px 0;color:var(--dim);font-size:10px}
+.legend-item{display:flex;align-items:center;gap:5px}
+.legend-dot{width:9px;height:9px;border-radius:3px;display:block}
+.legend-dot.ok{background:#34d399}.legend-dot.warn{background:#fbbf24}.legend-dot.crit{background:#fb7185}
+.term{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:12px 13px;border-radius:12px;background:rgba(0,0,0,.36);border:1px solid rgba(255,255,255,.055);font-size:12.5px;line-height:1.7;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.16) transparent}
+.term::-webkit-scrollbar{width:8px;height:8px}
+.term::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:99px}
+.line{white-space:pre-wrap;word-break:break-word;animation:lineIn .22s ease-out}
+@keyframes lineIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+.line .p{color:var(--accent2);opacity:.9}
+.line .c{color:#f8fffc;font-weight:600}
+.line.err{color:var(--err)}
+.line .dim{color:var(--dim)}.line .ok{color:#86efac}.line .hl{color:#99f6e4;font-weight:700}
+.line .code{color:#fde68a;background:rgba(251,191,36,.11);padding:1px 7px;border-radius:6px;border:1px solid rgba(251,191,36,.2)}
+.line .tbl{display:block;font-variant-numeric:tabular-nums}
+.line .crit{color:#fb7185;font-weight:700}.line .warn{color:#fbbf24;font-weight:700}
+.chips{display:flex;gap:7px;overflow-x:auto;padding:10px 1px 2px;scrollbar-width:none;-ms-overflow-style:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{font:inherit;font-size:11.5px;white-space:nowrap;cursor:pointer;padding:6px 11px;border-radius:9px;color:#a7f3d0;background:rgba(94,234,212,.09);border:1px solid rgba(94,234,212,.24);transition:.18s}
+.chip:hover{background:rgba(94,234,212,.2);transform:translateY(-1px);box-shadow:0 6px 16px -12px rgba(94,234,212,.9)}
+.chip:active{transform:translateY(0) scale(.96)}
+.input-row{display:flex;align-items:center;gap:8px;margin-top:9px;padding:9px 10px;border-radius:12px;background:rgba(0,0,0,.4);border:1px solid rgba(94,234,212,.25);transition:border-color .2s,box-shadow .2s}
+.input-row:focus-within{border-color:rgba(94,234,212,.7);box-shadow:0 0 0 3px rgba(94,234,212,.13)}
+.input-row.shake{animation:shake .4s}
+@keyframes shake{10%,90%{transform:translateX(-2px)}20%,80%{transform:translateX(4px)}30%,50%,70%{transform:translateX(-6px)}40%,60%{transform:translateX(6px)}}
+.ps1{font-size:12.5px;color:var(--accent2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:0 1 auto}
+.ps1 .ps-user{opacity:.8}
+.input-row input{flex:1;min-width:40px;background:none;border:none;outline:none;color:#f1fff9;font:inherit;font-size:13px;padding:0}
+.input-row input::placeholder{color:rgba(139,169,157,.5)}
+.send{font:inherit;font-size:14px;line-height:1;cursor:pointer;width:30px;height:30px;flex:0 0 auto;border-radius:9px;color:#06231d;background:linear-gradient(150deg,#a7f3d0,#5eead4);border:none;display:grid;place-items:center;transition:.18s;box-shadow:0 4px 14px -4px rgba(94,234,212,.8)}
+.send:hover{transform:translateY(-1px)}.send:active{transform:scale(.93)}
+.confetti{position:fixed;top:-14px;width:8px;height:13px;border-radius:2px;z-index:999;pointer-events:none;animation:fall linear forwards}
+@keyframes fall{to{transform:translateY(108vh) rotate(var(--rot,360deg));opacity:.05}}
+@media (min-width:901px){.term{flex:0 0 clamp(240px,42vh,420px);overflow-y:auto}}
+@media (max-width:900px){.app{padding:12px 12px 16px;gap:10px}main{grid-template-columns:1fr;grid-template-rows:auto auto;flex:none}.disk-scroll{max-height:46vh}.term{min-height:155px;max-height:34vh}.brand p,.sub{display:none}.ps1 .ps-user{display:none}}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <div class="logo">▰</div>
+      <div>
+        <h1>Learn <code>df</code></h1>
+        <p>See how full every mounted filesystem is — at a glance.</p>
+      </div>
+    </div>
+    <div class="steps" id="steps"></div>
+  </header>
+
+  <div class="mission" id="mission">
+    <span class="badge" id="missionBadge">Mission 1 / 6</span>
+    <span class="mission-text" id="missionText">Loading…</span>
+    <button class="hint-btn" id="hintBtn" type="button">Hint</button>
+  </div>
+  <div class="hint" id="hintBar"></div>
+
+  <main>
+    <section class="panel">
+      <div class="panel-head">
+        <span class="title">Disk gauges</span>
+        <span class="sub">one bar per mount point</span>
+      </div>
+      <div class="disk-scroll" id="diskScroll"></div>
+      <div class="legend">
+        <span class="legend-item"><i class="legend-dot ok"></i>healthy</span>
+        <span class="legend-item"><i class="legend-dot warn"></i>filling (&ge;85%)</span>
+        <span class="legend-item"><i class="legend-dot crit"></i>critical (&ge;95%)</span>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><span class="dots"><i></i><i></i><i></i></span><span class="title">Terminal</span></div>
+      <div class="term" id="term"></div>
+      <div class="chips" id="chips"></div>
+      <form class="input-row" id="form" autocomplete="off">
+        <span class="ps1"><span class="ps-user">astra@nebula:</span><span>~</span>$</span>
+        <input id="cmd" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="type df…">
+        <button class="send" type="submit" aria-label="Run command">↵</button>
+      </form>
+    </section>
+  </main>
+</div>
+<script>
+const esc = v => String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+// 1K-block based mount table (realistic, deterministic)
+const MOUNTS = [
+  {fs:'/dev/sda1', size:51475068, used:48901320, mount:'/'},
+  {fs:'/dev/sda2', size:103212544, used:103212544, mount:'/var'},
+  {fs:'/dev/sdb1', size:206428160, used:61928448, mount:'/home'},
+  {fs:'tmpfs', size:8138240, used:1024, mount:'/run'},
+  {fs:'tmpfs', size:16276480, used:0, mount:'/dev/shm'}
+];
+MOUNTS.forEach(m=>{ m.avail=m.size-m.used; m.pct=Math.round(m.used/m.size*100); });
+const human = v => { if(v>=1048576) return (v/1048576).toFixed(0)+'G'; if(v>=1024) return (v/1024).toFixed(0)+'M'; return v+'K'; };
+const sevClass = p => p>=95?'crit':p>=85?'warn':'ok';
+
+const diskScroll=document.getElementById('diskScroll');
+const term=document.getElementById('term');
+const chips=document.getElementById('chips');
+const form=document.getElementById('form');
+const input=document.getElementById('cmd');
+const stepsEl=document.getElementById('steps');
+const missionEl=document.getElementById('mission');
+const missionBadge=document.getElementById('missionBadge');
+const missionText=document.getElementById('missionText');
+const hintBtn=document.getElementById('hintBtn');
+const hintBar=document.getElementById('hintBar');
+
+function renderGauges(human_, highlightMount){
+  diskScroll.innerHTML='';
+  MOUNTS.forEach((m,i)=>{
+    const sev=sevClass(m.pct);
+    const card=document.createElement('div');
+    card.className='mount '+sev+(highlightMount===m.mount?' flash':'');
+    card.style.setProperty('--i', i);
+    card.innerHTML =
+      `<div class="mount-head"><span class="mount-point">${esc(m.mount)}</span><span class="mount-fs">${esc(m.fs)}</span><span class="mount-pct">${m.pct}%</span></div>`+
+      `<div class="bar"><div class="bar-fill" style="width:0"></div></div>`+
+      `<div class="mount-foot"><span><b>size</b> ${esc(human_?human(m.size):m.size+'')}</span><span><b>used</b> <b>${esc(human_?human(m.used):m.used+'')}</b></span><span><b>free</b> ${esc(human_?human(m.avail):m.avail+'')}</span></div>`;
+    diskScroll.appendChild(card);
+    requestAnimationFrame(()=>{ card.querySelector('.bar-fill').style.width=m.pct+'%'; });
+  });
+}
+
+function log(html, cls=''){ const d=document.createElement('div'); d.className='line'+(cls?' '+cls:''); d.innerHTML=html; term.appendChild(d); term.scrollTop=term.scrollHeight; }
+function shake(){ form.classList.remove('shake'); void form.offsetWidth; form.classList.add('shake'); }
+
+function renderDfTable(humanFlag){
+  const sizeHdr = humanFlag?'Size':'1K-blocks';
+  const fmt = v => humanFlag?human(v):String(v);
+  const pad = (s,n)=> String(s).padEnd(n);
+  const padL = (s,n)=> String(s).padStart(n);
+  log(`<span class="tbl">${esc(pad('Filesystem',13))}${esc(padL(sizeHdr,10))}${esc(padL('Used',10))}${esc(padL('Avail',10))}${esc(padL('Use%',6))}  Mounted on</span>`, 'dim');
+  MOUNTS.forEach(m=>{
+    const sev=sevClass(m.pct);
+    const pctCls = sev==='crit'?'crit':sev==='warn'?'warn':'';
+    log(`<span class="tbl">${esc(pad(m.fs,13))}${esc(padL(fmt(m.size),10))}${esc(padL(fmt(m.used),10))}${esc(padL(fmt(m.avail),10))}<span class="${pctCls}">${esc(padL(m.pct+'%',6))}</span>  ${esc(m.mount)}</span>`);
+  });
+}
+
+function doDf(args){
+  const human_ = args.includes('-h') || args.includes('--human-readable');
+  const unknown = args.find(a=>a.startsWith('-') && a!=='-h' && a!=='--human-readable');
+  if(unknown){ log(`df: invalid option -- '${esc(unknown.replace(/^-+/,''))}'`,'err'); log('<span class="dim">This lab understands <b>df</b> and <b>df -h</b>.</span>'); shake(); return; }
+  renderDfTable(human_);
+  const crit = MOUNTS.filter(m=>m.pct>=95);
+  if(crit.length){ log(`<span class="dim">${crit.length} filesystem${crit.length>1?'s are':' is'} critically full: </span><span class="crit">${crit.map(m=>m.mount).join(', ')}</span>`); }
+  renderGauges(human_);
+  lastCtx={cmd:'df', human:human_, args:args.join(' ')};
+  checkMission();
+}
+function doHelp(){
+  log('<span class="ok">df — report filesystem disk space usage</span>');
+  log('  <span class="code">df</span>        show usage in 1K-blocks');
+  log('  <span class="code">df -h</span>     show sizes in human-readable units (G/M/K)');
+  log('<span class="dim">Combine with a pipe, e.g. <b>df | grep 100%</b> to find a full disk.</span>');
+}
+function execute(raw){
+  const line=raw.trim(); if(!line) return;
+  history.push(line); historyIndex=-1;
+  log(`<span class="p">astra@nebula:~$</span> <span class="c">${esc(line)}</span>`);
+  if(line==='clear'){ term.innerHTML=''; return; }
+  if(line==='help'){ doHelp(); return; }
+  const parts=line.match(/(?:[^\s"']+|"[^"]*"|'[^']*')+/g)||[];
+  const cmd=parts[0]; const args=parts.slice(1).map(a=>a.replace(/^["']|["']$/g,''));
+  // support a trailing pipe to grep/cut for realism in the terminal view
+  if(line.includes('|')){ runPipeline(line); return; }
+  if(cmd==='df') doDf(args);
+  else { log(`bash: ${esc(cmd)}: command not found`,'err'); log('<span class="dim">This lab is about <b>df</b>. Try <b>df -h</b>.</span>'); shake(); }
+}
+// minimal pipeline so df | grep / cut feel real
+function dfPlain(human_){ const sizeHdr=human_?'Size':'1K-blocks'; const fmt=v=>human_?human(v):String(v); const rows=[['Filesystem',sizeHdr,'Used','Avail','Use%','Mounted on'].join(' ')]; MOUNTS.forEach(m=>rows.push([m.fs,fmt(m.size),fmt(m.used),fmt(m.avail),m.pct+'%',m.mount].join(' '))); return rows; }
+function runPipeline(line){
+  const segs=line.split('|').map(s=>s.trim());
+  if(segs[0]!=='df' && segs[0]!=='df -h'){ log('<span class="dim">Start the pipeline with <b>df</b> in this lab.</span>','err'); shake(); return; }
+  let lines=dfPlain(segs[0].includes('-h'));
+  for(let i=1;i<segs.length;i++){
+    const p=(segs[i].match(/(?:[^\s"']+|"[^"]*"|'[^']*')+/g)||[]).map(t=>t.replace(/^["']|["']$/g,''));
+    const c=p[0];
+    if(c==='grep'){ const pat=p.slice(1).join(' '); lines=lines.filter(l=>l.includes(pat)); }
+    else if(c==='cut'){ const di=p.indexOf('-d'); const fi=p.indexOf('-f'); const delim=di>=0?p[di+1]:' '; const field=fi>=0?parseInt(p[fi+1],10):1; const d=delim===' '?/\s+/:delim; lines=lines.map(l=>{const cols=l.split(d).filter(Boolean); return cols[field-1]||'';}); }
+    else if(c==='wc'){ lines=[String(lines.length)]; }
+    else { log(`<span class="dim">This lab's pipeline supports grep, cut, wc.</span>`,'err'); shake(); return; }
+  }
+  lines.forEach(l=> log(esc(l)));
+  renderGauges(segs[0].includes('-h'));
+  lastCtx={cmd:'df', human:segs[0].includes('-h'), args:segs.slice(1).join(' | '), piped:true, out:lines.join('\n')};
+  checkMission();
+}
+
+const missions=[
+  {text:'Show how full every filesystem is.', hint:'Just type <code>df</code>.', answer:'df', check:c=>c.cmd==='df' && !c.human && !c.piped},
+  {text:'Make the sizes human-readable (G, M, K).', hint:'Add the <code>-h</code> flag: <code>df -h</code>.', answer:'df -h', check:c=>c.cmd==='df' && c.human},
+  {text:'Which disk is 100% full? Pipe df into grep to find it.', hint:'Try <code>df | grep 100%</code>.', answer:'df | grep 100%', check:c=>c.piped && /100%/.test(c.args) && (c.out||'').includes('/var')},
+  {text:'List only the mount point of the full disk: pipe df, grep 100%, then cut the last field.', hint:'<code>df | grep 100% | cut -d " " -f 6</code>', answer:'df | grep 100% | cut -d " " -f 6', check:c=>c.piped && (c.out||'').trim()==='/var'},
+  {text:'How many filesystems are mounted? Pipe df into wc to count the data rows plus header.', hint:'<code>df | wc</code> counts lines. There are 5 mounts + 1 header.', answer:'df | wc', check:c=>c.piped && /wc/.test(c.args) && (c.out||'').trim()==='6'},
+  {text:'Show the human-readable table one more time to confirm the cleanup target.', hint:'<code>df -h</code>', answer:'df -h', check:c=>c.cmd==='df' && c.human}
+];
+let missionIndex=0, missionLocked=false, history=[], historyIndex=-1, lastCtx=null;
+missions.forEach(()=>stepsEl.appendChild(document.createElement('i')));
+function renderMission(){ const m=missions[missionIndex]; missionBadge.textContent=`Mission ${missionIndex+1} / ${missions.length}`; missionText.innerHTML=m.text; hintBar.classList.remove('show'); hintBar.textContent=''; renderChips(); }
+function checkMission(){ if(missionLocked||missionIndex>=missions.length||!lastCtx) return; if(missions[missionIndex].check(lastCtx)) completeMission(); }
+function completeMission(){ missionLocked=true; stepsEl.children[missionIndex].classList.add('done'); missionEl.classList.add('complete'); setTimeout(()=>{ missionEl.classList.remove('complete'); missionIndex++; missionLocked=false; if(missionIndex>=missions.length) finishAll(); else renderMission(); },950); }
+function finishAll(){ missionBadge.textContent='All done'; missionText.innerHTML='You can read disk usage like an on-call engineer. Explore freely!'; hintBtn.style.display='none'; hintBar.classList.remove('show'); renderChips(); confetti(); log('<span class="ok">All missions complete — nicely done!</span>'); }
+function confetti(){ const cs=['#5eead4','#67e8f9','#fbbf24','#f472b6','#a7f3d0','#86efac']; for(let i=0;i<55;i++){ const p=document.createElement('i'); p.className='confetti'; p.style.left=Math.random()*100+'%'; p.style.background=cs[i%cs.length]; p.style.animationDelay=(Math.random()*.45)+'s'; p.style.animationDuration=(1.7+Math.random()*1.3)+'s'; p.style.setProperty('--rot',(Math.random()*900-450)+'deg'); document.body.appendChild(p); setTimeout(()=>p.remove(),3600);} }
+const chipPool=['df','df -h','df | grep 100%','df | grep 100% | cut -d " " -f 6','df | wc','help'];
+function renderChips(){ chips.innerHTML=''; const m=missions[Math.min(missionIndex,missions.length-1)]; const cand=chipPool.filter(x=>x!==m.answer); const off=(missionIndex*2)%cand.length; const list=cand.slice(off).concat(cand.slice(0,off)).slice(0,4); if(hintBar.classList.contains('show')) list.unshift(m.answer); list.forEach(x=>{ const b=document.createElement('button'); b.type='button'; b.className='chip'; b.textContent=x; b.addEventListener('click',()=>{execute(x);input.focus();}); chips.appendChild(b); }); }
+hintBtn.addEventListener('click',()=>{ if(hintBar.classList.contains('show')){ hintBar.classList.remove('show'); renderChips(); return; } const m=missions[Math.min(missionIndex,missions.length-1)]; hintBar.innerHTML=m.hint; hintBar.classList.add('show'); renderChips(); });
+form.addEventListener('submit',e=>{ e.preventDefault(); const v=input.value; input.value=''; execute(v); input.focus(); });
+input.addEventListener('keydown',e=>{ if(e.key==='ArrowUp'){ e.preventDefault(); if(historyIndex<history.length-1){ historyIndex++; input.value=history[history.length-1-historyIndex]; } } else if(e.key==='ArrowDown'){ e.preventDefault(); if(historyIndex>0){ historyIndex--; input.value=history[history.length-1-historyIndex]; } else { historyIndex=-1; input.value=''; } } });
+
+renderGauges(false);
+renderMission();
+log('<span class="hl">Welcome to the visual df terminal.</span>');
+log('Each bar on the left is a mounted filesystem. The fill shows how full it is.');
+log('Red bars are the ones that page you at 3 AM.');
+log('');
+log('<span class="dim">Try this first:</span> <span class="code">df</span>');
+if(!('ontouchstart' in window) && window.innerWidth>900) setTimeout(()=>input.focus(),400);
+</script>
+</body>
+</html>
