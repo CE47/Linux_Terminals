@@ -38,6 +38,7 @@ Then visit `http://127.0.0.1:8000/` in your browser. There is no build step, pac
 | 18 | `df` | Reading filesystem disk usage, human-readable sizes with `-h`, and spotting a full mount | [Launch `df`](df.html) |
 | 19 | `du` | Estimating file and folder space with `-s`, `-a`, and `-h`, and finding the biggest space hog | [Launch `du`](du.html) |
 | 20 | `ps` | Listing running processes with `aux` and `-ef`, and isolating a runaway process | [Launch `ps`](ps.html) |
+| 21 | `awk` | Scanning text line by line, fields `$1`–`$NF` and `$0`, the `-F` field separator, patterns and comparisons like `$3 > 100`, pattern-plus-action rules, and summing a column with `END` | [Launch `awk`](awk.html) |
 
 ## How the labs work
 
@@ -88,6 +89,7 @@ The relative links in `index.html` and this README work both on GitHub Pages and
 ├── df.html          # Disk-usage overview lab
 ├── du.html          # Space-hog hunt lab
 ├── ps.html          # Process monitor lab
+├── awk.html         # Field-scanning and column-math lab
 ├── ls.html          # Directory-listing lab
 ├── mkdir.html       # Directory-creation lab
 └── pwd.html         # Current-directory lab
