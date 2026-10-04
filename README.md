@@ -39,6 +39,7 @@ Then visit `http://127.0.0.1:8000/` in your browser. There is no build step, pac
 | 19 | `du` | Estimating file and folder space with `-s`, `-a`, and `-h`, and finding the biggest space hog | [Launch `du`](du.html) |
 | 20 | `ps` | Listing running processes with `aux` and `-ef`, and isolating a runaway process | [Launch `ps`](ps.html) |
 | 21 | `awk` | Scanning text line by line, fields `$1`–`$NF` and `$0`, the `-F` field separator, patterns and comparisons like `$3 > 100`, pattern-plus-action rules, and summing a column with `END` | [Launch `awk`](awk.html) |
+| 22 | `tr` | Translating characters with `SET1` and `SET2`, ranges like `a-z`, character classes like `[:upper:]`, deleting with `-d`, squeezing repeats with `-s`, complementing with `-c`, truncating with `-t`, and feeding `tr` through `<`, `|` and `>` | [Launch `tr`](tr.html) |
 
 ## How the labs work
 
@@ -57,7 +58,7 @@ The filesystem is intentionally in-memory. Refreshing a lab resets its virtual f
 ## Publish with GitHub Pages
 
 1. Put the contents of this folder in the root of a GitHub repository.
-2. Commit `index.html`, `README.md`, and the seventeen command pages.
+2. Commit `index.html`, `README.md`, and the twenty-two command pages.
 3. In the repository, open **Settings → Pages**.
 4. Under **Build and deployment**, choose **Deploy from a branch**.
 5. Select the publishing branch and the `/ (root)` folder.
@@ -90,6 +91,7 @@ The relative links in `index.html` and this README work both on GitHub Pages and
 ├── du.html          # Space-hog hunt lab
 ├── ps.html          # Process monitor lab
 ├── awk.html         # Field-scanning and column-math lab
+├── tr.html          # Character translate, delete and squeeze lab
 ├── ls.html          # Directory-listing lab
 ├── mkdir.html       # Directory-creation lab
 └── pwd.html         # Current-directory lab
